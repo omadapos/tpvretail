@@ -1,41 +1,77 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Drawing.Drawing2D;
 
+/// <summary>
+/// PremiumMarket Theme — Regla 60-30-10
+/// 60% Blanco/Gris claro  → fondos y superficies (neutro, limpio)
+/// 30% Azul marino profundo → headers, paneles, labels (autoridad, confianza)
+/// 10% Verde fresco          → acciones, confirmaciones, highlights (energía, frescura)
+/// Inspirado en supermercados premium: Stop & Shop, Market 32, Whole Foods
+/// </summary>
 public static class AppColors
 {
-    // 🌙 Nueva Paleta Principal con colores pastel y ligeros
-    public static Color PrimaryDark = Color.FromArgb(180, 210, 200);    // Verde menta claro
-    public static Color PrimaryBase = Color.FromArgb(210, 235, 225);    // Turquesa suave
-    public static Color PrimaryLight = Color.FromArgb(235, 250, 245);   // Menta blanquecino
+    // ─────────────────────────────────────────────
+    // 60% — FONDOS Y SUPERFICIES (Blanco / Gris suave)
+    // ─────────────────────────────────────────────
+    public static Color BackgroundPrimary   = Color.FromArgb(247, 248, 250); // Gris blanquecino muy suave
+    public static Color BackgroundSecondary = Color.FromArgb(255, 255, 255); // Blanco puro — tarjetas/surfaces
+    public static Color SurfaceCard         = Color.FromArgb(255, 255, 255); // Blanco — áreas de contenido
+    public static Color SurfaceMuted        = Color.FromArgb(237, 240, 245); // Gris azulado muy claro — separadores
 
-    // 🎨 Colores Funcionales con tonos pastel
-    public static Color Success = Color.FromArgb(180, 230, 190);       // Verde manzana claro
-    public static Color Warning = Color.FromArgb(255, 220, 170);       // Melocotón suave
-    public static Color Danger = Color.FromArgb(250, 190, 195);        // Rosa pálido
-    public static Color Info = Color.FromArgb(190, 210, 240);          // Lavanda clara
+    // ─────────────────────────────────────────────
+    // 30% — AZUL MARINO (Headers, paneles, texto primario)
+    // ─────────────────────────────────────────────
+    public static Color NavyDark   = Color.FromArgb(13,  31,  45);  // Marino casi negro — header principal
+    public static Color NavyBase   = Color.FromArgb(26,  58,  92);  // Marino medio — sub-headers, sidebar
+    public static Color NavyLight  = Color.FromArgb(44,  82,  130); // Marino claro — elementos activos
+    public static Color SlateBlue  = Color.FromArgb(74,  85,  104); // Slate — bordes, divisores
 
-    // 💳 Métodos de Pago con colores dulces
-    public static Color PaymentCredit = Color.FromArgb(195, 235, 200); // Pistacho
-    public static Color PaymentCash = Color.FromArgb(245, 230, 195);   // Vainilla
-    public static Color PaymentDigital = Color.FromArgb(190, 220, 245); // Celeste claro
-    public static Color PaymentVoucher = Color.FromArgb(225, 200, 240); // Lila suave
-    public static Color PaymentGiftcard = Color.FromArgb(245, 200, 225);// Rosa algodón
+    // ─────────────────────────────────────────────
+    // 10% — VERDE FRESCO (Acento principal — acción, éxito)
+    // ─────────────────────────────────────────────
+    public static Color AccentGreen      = Color.FromArgb(0,   166,  80);  // Verde vibrante — CTA principal
+    public static Color AccentGreenLight = Color.FromArgb(72,  187, 120);  // Verde suave — hover/success
+    public static Color AccentGreenDark  = Color.FromArgb(0,   110,  53);  // Verde oscuro — pressed/activo
 
-    // 🏞 Fondos con tonos luminosos
-    public static Color BackgroundPrimary = Color.FromArgb(255, 255, 252); // Blanco marfil
-    public static Color BackgroundSecondary = Color.FromArgb(245, 245, 250);// Blanco lila
-    public static Color SurfaceDark = Color.FromArgb(200, 200, 210);    // Gris lila claro
+    // ─────────────────────────────────────────────
+    // COLORES FUNCIONALES SEMÁNTICOS
+    // ─────────────────────────────────────────────
+    public static Color Success = Color.FromArgb(0,   166,  80);  // Verde — confirmación, OK
+    public static Color Danger  = Color.FromArgb(197,  48,  48);  // Rojo profundo — cancelar, eliminar
+    public static Color Warning = Color.FromArgb(221, 107,  32);  // Ámbar — advertencia
+    public static Color Info    = Color.FromArgb(43,  108, 176);  // Azul — información
 
-    // 📝 Textos con colores delicados
-    public static Color TextPrimary = Color.FromArgb(100, 110, 120);    // Gris azulado medio
-    public static Color TextSecondary = Color.FromArgb(150, 160, 170);  // Gris celeste claro
-    public static Color TextWhite = Color.FromArgb(255, 255, 255);      // Blanco puro
+    // ─────────────────────────────────────────────
+    // MÉTODOS DE PAGO (con identidad semántica)
+    // ─────────────────────────────────────────────
+    public static Color PaymentCash     = Color.FromArgb(0,   166,  80);  // Verde — efectivo
+    public static Color PaymentCredit   = Color.FromArgb(43,  108, 176);  // Azul — crédito
+    public static Color PaymentDebit    = Color.FromArgb(74,  85,  104);  // Slate — débito
+    public static Color PaymentEBT      = Color.FromArgb(192,  86,  33);  // Ámbar oscuro — EBT
+    public static Color PaymentGiftCard = Color.FromArgb(107,  70, 193);  // Púrpura — Gift Card
+    public static Color PaymentSplit    = Color.FromArgb(93,  173, 226);  // Azul claro — Split
 
-    // ✨ Degradados con estética suave
-    public static LinearGradientBrush PrimaryGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, PrimaryBase, PrimaryLight, 60f);
-    public static LinearGradientBrush SuccessGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, Success, Color.FromArgb(210, 245, 220), 60f);
+    // ─────────────────────────────────────────────
+    // TEXTO
+    // ─────────────────────────────────────────────
+    public static Color TextPrimary   = Color.FromArgb(26,  32,  44);   // Casi negro — texto principal
+    public static Color TextSecondary = Color.FromArgb(74,  85,  104);  // Gris oscuro — texto secundario
+    public static Color TextMuted     = Color.FromArgb(113, 128, 150);  // Gris suave — placeholder/hint
+    public static Color TextWhite     = Color.FromArgb(255, 255, 255);  // Blanco — texto sobre fondos oscuros
+    public static Color TextAccent    = Color.FromArgb(0,   166,  80);  // Verde — precio destacado, énfasis
+
+    // ─────────────────────────────────────────────
+    // DEGRADADOS UTILITARIOS
+    // ─────────────────────────────────────────────
+    public static LinearGradientBrush HeaderGradient(Rectangle bounds) =>
+        new LinearGradientBrush(bounds, NavyDark, NavyBase, LinearGradientMode.Vertical);
+
+    public static LinearGradientBrush AccentGradient(Rectangle bounds) =>
+        new LinearGradientBrush(bounds, AccentGreen, AccentGreenDark, LinearGradientMode.Vertical);
+
     public static LinearGradientBrush DangerGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, Danger, Color.FromArgb(255, 220, 225), 60f);
+        new LinearGradientBrush(bounds, Danger, Color.FromArgb(155, 30, 30), LinearGradientMode.Vertical);
+
+    public static LinearGradientBrush SurfaceGradient(Rectangle bounds) =>
+        new LinearGradientBrush(bounds, BackgroundSecondary, BackgroundPrimary, LinearGradientMode.Vertical);
 }

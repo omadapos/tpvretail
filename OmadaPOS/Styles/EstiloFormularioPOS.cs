@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -13,7 +13,7 @@ namespace OmadaPOS.Estilos
         {
             this.FormBorderStyle = FormBorderStyle.None;
             this.StartPosition = FormStartPosition.Manual;
-            this.BackColor = Color.White;
+            this.BackColor = AppColors.BackgroundPrimary;
             this.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point);
             this.KeyPreview = true;
             this.Opacity = 1.0;
@@ -39,36 +39,45 @@ namespace OmadaPOS.Estilos
         {
             var barra = new Panel
             {
-                Height = 50,
+                Height = 54,
                 Dock = DockStyle.Top,
-                BackColor = Color.FromArgb(156, 163, 175)
+                BackColor = AppColors.NavyDark
             };
 
             var lblTitulo = new Label
             {
                 Text = "OmadaPOS",
-                ForeColor = Color.White,
-                Font = new Font("Montserrat", 14F, FontStyle.Bold),
+                ForeColor = AppColors.TextWhite,
+                Font = new Font("Montserrat", 13F, FontStyle.Bold),
                 AutoSize = true,
-                Location = new Point(20, 12)
+                Location = new Point(18, 14),
+                BackColor = Color.Transparent
             };
 
             var btnCerrar = new Button
             {
-                Text = "✖",
-                ForeColor = Color.White,
-                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-                BackColor = Color.Red,
+                Text = "✕",
+                ForeColor = AppColors.TextWhite,
+                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                BackColor = AppColors.Danger,
                 FlatStyle = FlatStyle.Flat,
-                Size = new Size(50, 50),
-                Location = new Point(this.Width - 60, 0),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Size = new Size(54, 54),
+                Dock = DockStyle.Right,
+                Cursor = Cursors.Hand
             };
             btnCerrar.FlatAppearance.BorderSize = 0;
+            btnCerrar.FlatAppearance.MouseOverBackColor = ElegantButtonStyles.Darken(AppColors.Danger, 0.15f);
             btnCerrar.Click += (s, e) => IniciarFadeOut();
 
             barra.Controls.Add(lblTitulo);
             barra.Controls.Add(btnCerrar);
+
+            barra.Paint += (s, e) =>
+            {
+                using var pen = new Pen(AppColors.AccentGreen, 3);
+                e.Graphics.DrawLine(pen, 0, barra.Height - 3, barra.Width, barra.Height - 3);
+            };
+
             this.Controls.Add(barra);
         }
 

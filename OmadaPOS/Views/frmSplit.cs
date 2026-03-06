@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using OmadaPOS.Componentes; // Asegúrate de tener RoundedPanel.cs en esta carpeta
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
@@ -31,21 +31,24 @@ namespace OmadaPOS.Views
             ConfigureCartListView();
             ConfigurePaymentListView();
             ConfigureUI();
-            ElegantButtonStyles.Style(buttonCredit, ElegantButtonStyles.CreditBlue, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonDebit, ElegantButtonStyles.DebitGray, fontSize: 18f); // Verde menta
-            ElegantButtonStyles.Style(buttonEbt, ElegantButtonStyles.EBTOrange, fontSize: 18f); // Azul intenso
+            // ── Métodos de pago ───────────────────────────────────────
+            ElegantButtonStyles.Style(buttonCash,          ElegantButtonStyles.CashGreen,        fontSize: 24f);
+            ElegantButtonStyles.Style(buttonCredit,        ElegantButtonStyles.CreditBlue,       fontSize: 18f);
+            ElegantButtonStyles.Style(buttonDebit,         ElegantButtonStyles.DebitGray,        fontSize: 18f);
+            ElegantButtonStyles.Style(buttonEbt,           ElegantButtonStyles.EBTOrange,        fontSize: 18f);
 
-            ElegantButtonStyles.Style(buttonCalculateEBT, ElegantButtonStyles.EBTBalanceOrange, fontSize: 18f); // Azul intenso
-            ElegantButtonStyles.Style(buttonClose, ElegantButtonStyles.AlertRed, fontSize: 18f); // Azul intenso
-            ElegantButtonStyles.Style(button10usd, ElegantButtonStyles.CashGreen, fontSize: 18f);
-            ElegantButtonStyles.Style(button20usd, ElegantButtonStyles.CashGreen, fontSize: 18f);
-            ElegantButtonStyles.Style(button50usd, ElegantButtonStyles.CashGreen, fontSize: 18f);
-            ElegantButtonStyles.Style(button100usd, ElegantButtonStyles.CashGreen, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonRemain, ElegantButtonStyles.CreditBlue, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonPrintBill, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonEbtBalance, ElegantButtonStyles.EBTBalanceOrange, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonClear, ElegantButtonStyles.Keypad, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonCash, ElegantButtonStyles.CashGreen, fontSize: 18f);
+            // ── Acciones EBT ──────────────────────────────────────────
+            ElegantButtonStyles.Style(buttonEbtBalance,    ElegantButtonStyles.EBTBalanceOrange, fontSize: 18f);
+            ElegantButtonStyles.Style(buttonCalculateEBT,  ElegantButtonStyles.EBTBalanceOrange, fontSize: 18f);
+
+            // ── Confirmar pago (verde = acción positiva/completar) ────
+            ElegantButtonStyles.Style(buttonPrintBill,     ElegantButtonStyles.CashGreen,        fontSize: 18f);
+
+            // ── Cerrar ────────────────────────────────────────────────
+            ElegantButtonStyles.Style(buttonClose,         ElegantButtonStyles.AlertRed,         fontSize: 18f);
+
+            // ── Teclado numérico (manejado en ConfigureNumericButtons) ─
+            ElegantButtonStyles.Style(buttonClear,         ElegantButtonStyles.Keypad,           fontSize: 18f);
 
             _shoppingCart = Program.GetService<IShoppingCart>();
             _paymentSplitService = Program.GetService<IPaymentSplitService>();
@@ -399,17 +402,19 @@ namespace OmadaPOS.Views
 
         private void ConfigureNumericButtons(Color numberButtonColor)
         {
-            var numericButtons = new[] { button0, button00, button1, button2, button3, button4, button5, button6, button7, button8, button9 };
-            foreach (var button in numericButtons)
-            {
-                ElegantButtonStyles.Style(button, ElegantButtonStyles.Keypad);
-            }
+            // Dígitos del teclado — Keypad navy
+            var numericButtons = new[] { button0, button00, button1, button2, button3,
+                                          button4, button5, button6, button7, button8, button9 };
+            foreach (var btn in numericButtons)
+                ElegantButtonStyles.Style(btn, ElegantButtonStyles.Keypad, fontSize: 30f);
 
-            var moneyButtons = new[] { button10usd, button20usd, button50usd, button100usd, buttonRemain };
-            foreach (var button in moneyButtons)
-            {
-                ElegantButtonStyles.Style(button, ElegantButtonStyles.CashGreen);
-            }
+            // Billetes y monto restante — verde efectivo, tamaño consistente con frmHome
+            var moneyButtons = new[] { button10usd, button20usd, button50usd, button100usd };
+            foreach (var btn in moneyButtons)
+                ElegantButtonStyles.Style(btn, ElegantButtonStyles.CashGreen, fontSize: 24f);
+
+            // Monto restante — azul split (semánticamente: "lo que falta por pagar")
+            ElegantButtonStyles.Style(buttonRemain, ElegantButtonStyles.SplitBlueLight, fontSize: 22f);
         }
 
         private void buttonCalculateEBT_Click(object sender, EventArgs e)

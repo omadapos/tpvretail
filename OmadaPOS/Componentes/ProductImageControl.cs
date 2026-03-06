@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using OmadaPOS.Libreria.Extensions;
@@ -8,9 +8,39 @@ namespace OmadaPOS.Componentes
 {
     public partial class ProductImageControl : UserControl
     {
+        // ── API pública — sin cambios ─────────────────────────────────────
         private ProductModel? _product;
         public event EventHandler? ProductClicked;
         public ProductModel? Product => _product;
+
+        // ── Colores de la tarjeta ─────────────────────────────────────────
+        private static readonly Color CardBackground   = Color.White;
+        private static readonly Color ImageBackground  = Color.White;
+        private static readonly Color BorderNormal     = Color.FromArgb(220, 224, 230);
+        private static readonly Color BorderHover      = AppColors.NavyBase;
+        private static readonly Color NameForeground   = AppColors.TextPrimary;
+        private static readonly Color PriceForeground  = AppColors.AccentGreen;
+        private static readonly Color PriceBackground  = Color.FromArgb(240, 252, 245);
+        private static readonly Color AccentBar        = AppColors.AccentGreen;
+
+        private bool _isHovered;
+
+        // ── Controles internos ────────────────────────────────────────────
+        private PictureBox?      pictureBoxImage;
+        private Label?           labelTitle;
+        private Label?           labelPrice;
+        private Panel?           panelCard;
+        private Panel?           panelImageArea;
+        private Panel?           panelInfo;
+        private Panel?           panelAccent;
+
+        // ── Constantes de tamaño ──────────────────────────────────────────
+        private const int CardW        = 185;
+        private const int CardH        = 215;
+        private const int Margin       = 6;
+        private const int CornerRadius = 14;
+        private const int ImageAreaH   = 120;
+        private const int AccentH      = 4;
 
         public ProductImageControl(ProductModel? product)
         {
@@ -18,229 +48,230 @@ namespace OmadaPOS.Componentes
             InitializeComponent();
         }
 
-        private PictureBox? pictureBoxImage;
-        private Label? labelTitle;
-        private Label? labelPrice;
-        private TableLayoutPanel? tableLayoutPanel1;
-        private Panel? panelContenedor;
-
         private void InitializeComponent()
         {
-            tableLayoutPanel1 = new TableLayoutPanel();
-            labelTitle = new Label();
-            pictureBoxImage = new PictureBox();
-            labelPrice = new Label();
-            panelContenedor = new Panel();
-            tableLayoutPanel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)pictureBoxImage).BeginInit();
-            panelContenedor.SuspendLayout();
-            SuspendLayout();
-            // 
-            // tableLayoutPanel1
-            // 
-            tableLayoutPanel1.BackColor = Color.White;
-            tableLayoutPanel1.ColumnCount = 1;
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.Controls.Add(labelTitle, 0, 0);
-            tableLayoutPanel1.Controls.Add(pictureBoxImage, 0, 1);
-            tableLayoutPanel1.Controls.Add(labelPrice, 0, 2);
-            tableLayoutPanel1.Dock = DockStyle.Fill;
-            tableLayoutPanel1.Location = new Point(0, 0);
-            tableLayoutPanel1.Margin = new Padding(4);
-            tableLayoutPanel1.Name = "tableLayoutPanel1";
-            tableLayoutPanel1.RowCount = 3;
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            tableLayoutPanel1.Size = new Size(160, 180);
-            tableLayoutPanel1.TabIndex = 0;
-            // 
-            // labelTitle
-            // 
-            labelTitle.BackColor = Color.LightGray;
-            labelTitle.Dock = DockStyle.Fill;
-            labelTitle.Font = new Font("Roboto Mono", 15.75F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            labelTitle.ForeColor = Color.Black;
-            labelTitle.Location = new Point(0, 0);
-            labelTitle.Margin = new Padding(0);
-            labelTitle.Name = "labelTitle";
-            labelTitle.Padding = new Padding(6, 4, 6, 4);
-            labelTitle.Size = new Size(160, 36);
-            labelTitle.TabIndex = 0;
-            labelTitle.Text = "Título del producto";
-            labelTitle.TextAlign = ContentAlignment.MiddleCenter;
-            labelTitle.Click += labelTitle_Click;
-            // 
-            // pictureBoxImage
-            // 
-            pictureBoxImage.BackColor = Color.White;
-            pictureBoxImage.Dock = DockStyle.Fill;
-            pictureBoxImage.Location = new Point(6, 42);
-            pictureBoxImage.Margin = new Padding(6, 6, 6, 2);
-            pictureBoxImage.Name = "pictureBoxImage";
-            pictureBoxImage.Size = new Size(148, 96);
-            pictureBoxImage.SizeMode = PictureBoxSizeMode.Zoom;
-            pictureBoxImage.TabIndex = 1;
-            pictureBoxImage.TabStop = false;
-            pictureBoxImage.Click += pictureBoxImage_Click;
-            // 
-            // labelPrice
-            // 
-            labelPrice.BackColor = Color.FromArgb(44, 62, 80);
-            labelPrice.Dock = DockStyle.Fill;
-            labelPrice.Font = new Font("Roboto Mono SemiBold", 14.25F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
-            labelPrice.ForeColor = Color.White;
-            labelPrice.Location = new Point(0, 140);
-            labelPrice.Margin = new Padding(0);
-            labelPrice.Name = "labelPrice";
-            labelPrice.Padding = new Padding(4, 2, 4, 2);
-            labelPrice.Size = new Size(160, 40);
-            labelPrice.TabIndex = 2;
-            labelPrice.Text = "$0.00";
-            labelPrice.TextAlign = ContentAlignment.MiddleCenter;
-            labelPrice.Click += labelPrice_Click;
-            // 
-            // panelContenedor
-            // 
-            panelContenedor.BackColor = Color.White;
-            panelContenedor.Controls.Add(tableLayoutPanel1);
-            panelContenedor.Location = new Point(4, 4);
-            panelContenedor.Name = "panelContenedor";
-            panelContenedor.Size = new Size(160, 180);
-            panelContenedor.TabIndex = 0;
-            panelContenedor.Paint += PanelContenedor_Paint;
-            // 
-            // ProductImageControl
-            // 
-            BackColor = Color.White;
-            Controls.Add(panelContenedor);
-            Name = "ProductImageControl";
-            Size = new Size(168, 188);
-            Load += ProductImageControl_Load;
-            tableLayoutPanel1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)pictureBoxImage).EndInit();
-            panelContenedor.ResumeLayout(false);
-            ResumeLayout(false);
+            // ── Outer UserControl ────────────────────────────────────────
+            this.BackColor = Color.Transparent;
+            this.Size      = new Size(CardW + Margin * 2, CardH + Margin * 2);
+            this.Cursor    = Cursors.Hand;
+
+            // ── Card panel (con sombra + bordes redondeados via Paint) ────
+            panelCard = new Panel
+            {
+                BackColor = CardBackground,
+                Location  = new Point(Margin, Margin),
+                Size      = new Size(CardW, CardH),
+                Cursor    = Cursors.Hand,
+            };
+            panelCard.Paint      += PanelCard_Paint;
+            panelCard.MouseEnter += OnMouseEnterCard;
+            panelCard.MouseLeave += OnMouseLeaveCard;
+            panelCard.Click      += OnCardClick;
+
+            // ── Área de imagen ───────────────────────────────────────────
+            panelImageArea = new Panel
+            {
+                BackColor = ImageBackground,
+                Location  = new Point(0, 0),
+                Size      = new Size(CardW, ImageAreaH),
+                Cursor    = Cursors.Hand,
+            };
+            panelImageArea.MouseEnter += OnMouseEnterCard;
+            panelImageArea.MouseLeave += OnMouseLeaveCard;
+            panelImageArea.Click      += OnCardClick;
+
+            pictureBoxImage = new PictureBox
+            {
+                Dock     = DockStyle.Fill,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Cursor   = Cursors.Hand,
+                Padding  = new Padding(8),
+            };
+            pictureBoxImage.MouseEnter += OnMouseEnterCard;
+            pictureBoxImage.MouseLeave += OnMouseLeaveCard;
+            pictureBoxImage.Click      += OnCardClick;
+            panelImageArea.Controls.Add(pictureBoxImage);
+
+            // ── Barra de acento verde (separador imagen / info) ──────────
+            panelAccent = new Panel
+            {
+                BackColor = AccentBar,
+                Location  = new Point(0, ImageAreaH),
+                Size      = new Size(CardW, AccentH),
+            };
+
+            // ── Área de texto (nombre + precio) ──────────────────────────
+            int infoY = ImageAreaH + AccentH;
+            int infoH = CardH - infoY;
+
+            panelInfo = new Panel
+            {
+                BackColor = CardBackground,
+                Location  = new Point(0, infoY),
+                Size      = new Size(CardW, infoH),
+                Cursor    = Cursors.Hand,
+                Padding   = new Padding(10, 6, 10, 6),
+            };
+            panelInfo.MouseEnter += OnMouseEnterCard;
+            panelInfo.MouseLeave += OnMouseLeaveCard;
+            panelInfo.Click      += OnCardClick;
+
+            int nameH  = (int)(infoH * 0.55);
+            int priceH = infoH - nameH;
+
+            labelTitle = new Label
+            {
+                AutoSize  = false,
+                Dock      = DockStyle.None,
+                Location  = new Point(8, 5),
+                Size      = new Size(CardW - 16, nameH - 5),
+                Font      = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = NameForeground,
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor    = Cursors.Hand,
+            };
+            labelTitle.MouseEnter += OnMouseEnterCard;
+            labelTitle.MouseLeave += OnMouseLeaveCard;
+            labelTitle.Click      += OnCardClick;
+
+            labelPrice = new Label
+            {
+                AutoSize  = false,
+                Dock      = DockStyle.None,
+                Location  = new Point(8, nameH),
+                Size      = new Size(CardW - 16, priceH - 4),
+                Font      = new Font("Montserrat", 13F, FontStyle.Bold),
+                ForeColor = PriceForeground,
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor    = Cursors.Hand,
+            };
+            labelPrice.MouseEnter += OnMouseEnterCard;
+            labelPrice.MouseLeave += OnMouseLeaveCard;
+            labelPrice.Click      += OnCardClick;
+
+            panelInfo.Controls.Add(labelTitle);
+            panelInfo.Controls.Add(labelPrice);
+
+            panelCard.Controls.Add(panelImageArea);
+            panelCard.Controls.Add(panelAccent);
+            panelCard.Controls.Add(panelInfo);
+
+            this.Controls.Add(panelCard);
+            this.Load += ProductImageControl_Load;
         }
 
-        // Método para dibujar bordes redondeados en el panel contenedor
-        private void PanelContenedor_Paint(object sender, PaintEventArgs e)
+        // ── Dibujar tarjeta: bordes redondeados + sombra suave ───────────
+        private void PanelCard_Paint(object sender, PaintEventArgs e)
         {
-            Panel panel = (Panel)sender;
-            Graphics g = e.Graphics;
+            var g      = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            int borderRadius = 12;
-            Rectangle bounds = new Rectangle(0, 0, panel.Width - 1, panel.Height - 1);
+            var bounds = new Rectangle(2, 2, panelCard!.Width - 5, panelCard.Height - 5);
 
-            // Crear path con esquinas redondeadas
-            using (GraphicsPath path = CreateRoundedRectanglePath(bounds, borderRadius))
+            // Sombra (capas semi-transparentes desplazadas)
+            for (int i = 3; i > 0; i--)
             {
-                // Rellenar el fondo
-                using (SolidBrush backgroundBrush = new SolidBrush(panel.BackColor))
-                {
-                    g.FillPath(backgroundBrush, path);
-                }
+                var shadowRect = new Rectangle(bounds.X + i, bounds.Y + i,
+                                               bounds.Width, bounds.Height);
+                using var shadowBrush = new SolidBrush(Color.FromArgb(18 - i * 4, 0, 0, 0));
+                using var shadowPath  = CreateRoundedPath(shadowRect, CornerRadius);
+                g.FillPath(shadowBrush, shadowPath);
+            }
 
-                // Dibujar el borde
-                using (Pen borderPen = new Pen(Color.FromArgb(200, 200, 200), 1))
-                {
-                    g.DrawPath(borderPen, path);
-                }
+            // Fondo de la tarjeta
+            using var cardPath   = CreateRoundedPath(bounds, CornerRadius);
+            using var cardBrush  = new SolidBrush(CardBackground);
+            g.FillPath(cardBrush, cardPath);
 
-                // Establecer la región para que los controles hijos respeten las esquinas redondeadas
-                panel.Region = new Region(path.Clone() as GraphicsPath);
+            // Borde — cambia color en hover
+            var borderColor = _isHovered ? BorderHover : BorderNormal;
+            var borderWidth = _isHovered ? 2f : 1f;
+            using var borderPen = new Pen(borderColor, borderWidth);
+            g.DrawPath(borderPen, cardPath);
+
+            // Recortar región para que los hijos respeten esquinas
+            panelCard.Region = new Region(cardPath);
+        }
+
+        // ── Hover ────────────────────────────────────────────────────────
+        private void OnMouseEnterCard(object? sender, EventArgs e)
+        {
+            _isHovered = true;
+            panelCard!.Invalidate();
+            panelImageArea!.BackColor = Color.FromArgb(240, 242, 245);
+        }
+
+        private void OnMouseLeaveCard(object? sender, EventArgs e)
+        {
+            // Solo salir del hover si el cursor realmente dejó la tarjeta
+            var pos = panelCard!.PointToClient(Cursor.Position);
+            if (!panelCard.ClientRectangle.Contains(pos))
+            {
+                _isHovered = false;
+                panelCard.Invalidate();
+                panelImageArea!.BackColor = ImageBackground;
             }
         }
 
-        // Método helper para crear un path con esquinas redondeadas
-        private GraphicsPath CreateRoundedRectanglePath(Rectangle bounds, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            int diameter = radius * 2;
-
-            // Esquina superior izquierda
-            path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
-
-            // Esquina superior derecha
-            path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
-
-            // Esquina inferior derecha
-            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
-
-            // Esquina inferior izquierda
-            path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
-
-            path.CloseFigure();
-            return path;
-        }
-
-        // Método para estados del producto (disponible/agotado)
-        public void SetProductState(bool isAvailable)
-        {
-            if (isAvailable)
-            {
-                labelTitle.BackColor = Color.FromArgb(44, 62, 80);   // Azul normal
-                labelPrice.BackColor = Color.FromArgb(39, 174, 96);  // Verde normal
-                pictureBoxImage.BackColor = Color.FromArgb(250, 251, 252);
-                this.Enabled = true;
-            }
-            else
-            {
-                labelTitle.BackColor = Color.FromArgb(149, 165, 166); // Gris deshabilitado
-                labelPrice.BackColor = Color.FromArgb(149, 165, 166);
-                pictureBoxImage.BackColor = Color.FromArgb(240, 240, 240);
-                this.Enabled = false;
-            }
-        }
-
-        // Método para agregar efectos hover (opcional)
-        private void AddHoverEffects()
-        {
-            // Evento MouseEnter para efecto hover
-            panelContenedor.MouseEnter += (s, e) =>
-            {
-                panelContenedor.BackColor = Color.FromArgb(248, 249, 250);  // Hover más claro
-                panelContenedor.Invalidate(); // Redibujar para actualizar el fondo
-            };
-
-            // Evento MouseLeave para volver al estado normal
-            panelContenedor.MouseLeave += (s, e) =>
-            {
-                panelContenedor.BackColor = Color.White;  // Color original
-                panelContenedor.Invalidate(); // Redibujar para actualizar el fondo
-            };
-        }
-
-        private void pictureBoxImage_Click(object sender, EventArgs e)
+        // ── Clic unificado en toda la tarjeta ────────────────────────────
+        private void OnCardClick(object? sender, EventArgs e)
         {
             if (_product != null)
-            {
                 ProductClicked?.Invoke(this, EventArgs.Empty);
-            }
         }
 
+        // ── Carga de datos del producto ───────────────────────────────────
         private void ProductImageControl_Load(object sender, EventArgs e)
         {
             if (_product == null) return;
 
-            pictureBoxImage.AccessibleName = _product.Id.ToString();
-            labelTitle.Text = _product.Name ?? "No Title";
-            labelPrice.Text = _product.Price?.ToString("C") ?? "No Price";
-            pictureBoxImage.ImageLocation = _product.Image.ConvertUrlString();
+            pictureBoxImage!.AccessibleName = _product.Id.ToString();
+            labelTitle!.Text  = _product.Name ?? "No Title";
+            labelPrice!.Text  = _product.Price?.ToString("C") ?? "--";
 
-            // Opcional: Activar efectos hover
-            // AddHoverEffects();
+            var url = _product.Image.ConvertUrlString();
+            if (!string.IsNullOrEmpty(url))
+                pictureBoxImage.ImageLocation = url;
+
+            // Tooltip con nombre completo si se trunca
+            var tip = new ToolTip();
+            tip.SetToolTip(labelTitle, _product.Name);
+            tip.SetToolTip(pictureBoxImage, _product.Name);
         }
 
-        private void labelPrice_Click(object sender, EventArgs e)
+        // ── Estado disponible / agotado — API pública sin cambios ────────
+        public void SetProductState(bool isAvailable)
         {
-            // Implementar lógica si es necesario
+            if (isAvailable)
+            {
+                panelImageArea!.BackColor = ImageBackground;
+                labelTitle!.ForeColor     = NameForeground;
+                labelPrice!.ForeColor     = PriceForeground;
+                this.Enabled = true;
+            }
+            else
+            {
+                panelImageArea!.BackColor = Color.FromArgb(240, 240, 240);
+                labelTitle!.ForeColor     = Color.FromArgb(160, 160, 160);
+                labelPrice!.ForeColor     = Color.FromArgb(160, 160, 160);
+                this.Enabled = false;
+            }
         }
 
-        private void labelTitle_Click(object sender, EventArgs e)
+        // ── Helper: path con esquinas redondeadas ─────────────────────────
+        private static GraphicsPath CreateRoundedPath(Rectangle bounds, int radius)
         {
-
+            int d    = radius * 2;
+            var path = new GraphicsPath();
+            path.AddArc(bounds.X,                   bounds.Y,                    d, d, 180, 90);
+            path.AddArc(bounds.Right - d,            bounds.Y,                    d, d, 270, 90);
+            path.AddArc(bounds.Right - d,            bounds.Bottom - d,           d, d,   0, 90);
+            path.AddArc(bounds.X,                   bounds.Bottom - d,           d, d,  90, 90);
+            path.CloseFigure();
+            return path;
         }
     }
 }

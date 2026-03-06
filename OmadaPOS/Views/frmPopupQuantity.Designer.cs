@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmPopupQuantity: Form
     {
@@ -54,7 +54,7 @@
             // 
             // tableLayoutPanel1
             // 
-            tableLayoutPanel1.BackColor = Color.White;
+            tableLayoutPanel1.BackColor = Color.FromArgb(247, 248, 250);
             tableLayoutPanel1.ColumnCount = 1;
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanel1.Controls.Add(tableLayoutPanel2, 0, 1);
@@ -100,8 +100,8 @@
             // 
             keyPadControl1.Anchor = AnchorStyles.None;
             keyPadControl1.AutoSize = true;
-            keyPadControl1.BackColor = Color.White;
-            keyPadControl1.ForeColor = Color.Black;
+            keyPadControl1.BackColor = Color.FromArgb(247, 248, 250);
+            keyPadControl1.ForeColor = Color.FromArgb(26, 32, 44);
             keyPadControl1.Location = new Point(21, 19);
             keyPadControl1.Margin = new Padding(2, 1, 2, 1);
             keyPadControl1.Name = "keyPadControl1";
@@ -110,9 +110,9 @@
             // 
             // frmPopupQuantity
             // 
-            AutoScaleDimensions = new SizeF(15F, 30F);
+            AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.White;
+            BackColor = Color.FromArgb(247, 248, 250);
             ClientSize = new Size(1008, 729);
             Controls.Add(tableLayoutPanel1);
             Font = new Font("Microsoft Sans Serif", 9.75F, FontStyle.Regular, GraphicsUnit.Point, 0);

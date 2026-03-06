@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Libreria.Utils;
+using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Models;
 using OmadaPOS.Services;
 using System.ComponentModel;
@@ -28,20 +28,16 @@ namespace OmadaPOS.Views
         {
             InitializeComponent();
 
-            ElegantButtonStyles.Style(buttonCancel, ElegantButtonStyles.ButtonCacnel, fontSize: 18f);
-
             _holdService = Program.GetService<IHoldService>();
             _shoppingCart = Program.GetService<IShoppingCart>();
 
             _heldCarts = new BindingList<HoldCartModel>();
 
-            // Configurar el ListBox para mostrar los carritos en hold
             listBoxHold.DataSource = _heldCarts;
             listBoxHold.ValueMember = "HoldId";
 
-            // Estilizar botones
-            ElegantButtonStyles.Style(buttonCancel, Color.FromArgb(37, 99, 235), Color.White);
-            ElegantButtonStyles.Style(buttonHold, Color.FromArgb(37, 99, 235), Color.White);
+            ElegantButtonStyles.Style(buttonCancel, AppColors.Danger,       AppColors.TextWhite, fontSize: 18f);
+            ElegantButtonStyles.Style(buttonHold,   AppColors.AccentGreen,  AppColors.TextWhite, fontSize: 18f);
         }
 
         private async void frmHold_Load(object sender, EventArgs e)

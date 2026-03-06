@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmProductNew: Form
     {
@@ -105,7 +105,7 @@
             // 
             // frmProductNew
             // 
-            AutoScaleDimensions = new SizeF(13F, 32F);
+            AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
             ClientSize = new Size(1872, 1555);

@@ -1,6 +1,7 @@
-﻿using OmadaPOS.Libreria.Services;
+using OmadaPOS.Libreria.Services;
 using OmadaPOS.Services;
 using System.Drawing.Drawing2D;
+using System.Drawing.Text;
 
 namespace OmadaPOS.Views
 {
@@ -20,107 +21,245 @@ namespace OmadaPOS.Views
         {
             InitializeComponent();
 
-            // Configurar pantalla completa
-            ConfigureListView();
-
             bannerService = Program.GetService<IBannerService>();
             _shoppingCart = Program.GetService<IShoppingCart>();
             _shoppingCart.CartChanged += ShoppingCart_CartChanged;
 
-            // Configuración del banner
-            pictureBoxBanner.Height = 100;
+            // Diseño profesional — debe aplicarse antes de mostrar controles
+            AplicarDisenoCliente();
+            ConfigureListView();
 
-            // Price, Total
-
-            // Cargar datos del banner
             LoadData();
-
-            // Configuración y arranque de timers
             ConfigureTimers();
-
-            // Inicialización de unidades de peso
-            labelWeight.Text = "0.0";
-
-            // Cargar carrito inicialmente
-            LoadCart();
-
-            // Agregar tecla de escape para cerrar en caso de emergencia
-            this.KeyPreview = true;
-            this.KeyDown += (s, e) =>
-            {
-                if (e.KeyCode == Keys.Escape)
-                    this.Close();
-            };
 
             labelWeight.Text = SharedData.WeightUnit;
             SharedData.WeightUnitChanged += OnWeightUnitChanged;
 
+            LoadCart();
+
+            this.KeyPreview = true;
+            this.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) this.Close(); };
         }
 
-        private async void LoadCart()
+        // ═══════════════════════════════════════════════════════════════
+        // TEMA VISUAL — PremiumMarket Customer Screen
+        // ═══════════════════════════════════════════════════════════════
+        private void AplicarDisenoCliente()
         {
-            await _shoppingCart.LoadCartAsync();
+            // ── Fondo general ─────────────────────────────────────────────
+            this.BackColor                 = AppColors.NavyDark;
+            tableLayoutPanelMain.BackColor = AppColors.NavyDark;
+            tableLayoutPanelMain.Padding   = new Padding(0);
+            tableLayoutPanelMain.Margin    = new Padding(0);
+
+            // ── Header bienvenida (label1) ────────────────────────────────
+            label1.BackColor  = AppColors.NavyBase;
+            label1.ForeColor  = AppColors.TextWhite;
+            label1.Font       = new Font("Montserrat", 30F, FontStyle.Bold);
+            label1.TextAlign  = ContentAlignment.MiddleCenter;
+            label1.Margin     = new Padding(0);
+            label1.Text       = "✦  WELCOME  —  DAILY STOP  ✦";
+
+            // ── Columna izquierda — Lista ─────────────────────────────────
+            tableLayoutPanelLeft.BackColor = AppColors.BackgroundPrimary;
+            tableLayoutPanelLeft.Padding   = new Padding(10, 10, 10, 0);
+            tableLayoutPanelLeft.Margin    = new Padding(0);
+
+            listViewCart.BackColor = Color.White;
+            listViewCart.ForeColor = AppColors.TextPrimary;
+            listViewCart.Font      = new Font("Segoe UI", 18F, FontStyle.Regular);
+            listViewCart.GridLines = false;
+
+            // ── Banner (columna derecha) ───────────────────────────────────
+            tableLayoutPanel2.BackColor = AppColors.NavyDark;
+            tableLayoutPanel2.Padding   = new Padding(10);
+            tableLayoutPanel2.Margin    = new Padding(0);
+            pictureBoxBanner.BackColor  = AppColors.NavyDark;
+            pictureBoxBanner.SizeMode   = PictureBoxSizeMode.StretchImage;
+
+            // ── Panel de totales ──────────────────────────────────────────
+            // BackColor del panel se dibuja via panel1_Paint (rediseñado abajo)
+            panel1.Margin  = new Padding(10, 10, 5, 10);
+
+            label2.Font      = new Font("Segoe UI", 20F, FontStyle.Bold);
+            label2.ForeColor = AppColors.TextMuted;
+            label2.BackColor = Color.Transparent;
+            label2.Text      = "TOTAL";
+
+            labelTotal.Font      = new Font("Montserrat", 56F, FontStyle.Bold);
+            labelTotal.ForeColor = AppColors.AccentGreen;
+            labelTotal.BackColor = Color.Transparent;
+            labelTotal.Text      = "$0.00";
+
+            label3.Font      = new Font("Segoe UI", 18F, FontStyle.Bold);
+            label3.ForeColor = AppColors.TextMuted;
+            label3.BackColor = Color.Transparent;
+            label3.Text      = "WEIGHT";
+
+            labelWeight.Font      = new Font("Montserrat", 32F, FontStyle.Bold);
+            labelWeight.ForeColor = AppColors.Warning;
+            labelWeight.BackColor = Color.Transparent;
+
+            // ── Panel del reloj (panel3) ──────────────────────────────────
+            panel3.BackColor = AppColors.NavyBase;
+            panel3.Margin    = new Padding(5, 10, 10, 10);
+            panel3.Paint    += Panel3_Paint;
+
+            labelHour.Font      = new Font("Montserrat", 26F, FontStyle.Bold);
+            labelHour.ForeColor = AppColors.TextWhite;
+            labelHour.BackColor = Color.Transparent;
+            labelHour.TextAlign = ContentAlignment.MiddleCenter;
         }
 
-        private void OnWeightUnitChanged(string newWeightUnit)
+        // ── ListView — columnas temáticas ─────────────────────────────────
+        private void ConfigureListView()
         {
-            if (InvokeRequired)
+            listViewCart.View         = View.Details;
+            listViewCart.FullRowSelect = true;
+            listViewCart.GridLines    = false;
+            listViewCart.MultiSelect  = false;
+
+            listViewCart.Columns.Add("#",        80);
+            listViewCart.Columns.Add("Product",  200);
+            listViewCart.Columns.Add("Qty",       80);
+            listViewCart.Columns.Add("Price",    100);
+            listViewCart.Columns.Add("Subtotal", 100);
+
+            foreach (ColumnHeader col in listViewCart.Columns)
+                col.TextAlign = HorizontalAlignment.Center;
+
+            listViewCart.OwnerDraw = true;
+
+            // Header navy con texto blanco — igual que frmHome
+            listViewCart.DrawColumnHeader += (s, e) =>
             {
-                Invoke(new Action(() => labelWeight.Text = newWeightUnit));
-            }
-            else
+                var g = e.Graphics;
+                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
+                using var bgBrush = new SolidBrush(AppColors.NavyBase);
+                g.FillRectangle(bgBrush, e.Bounds);
+
+                using var sep = new Pen(Color.FromArgb(60, 255, 255, 255), 1);
+                g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4,
+                                e.Bounds.Right - 1, e.Bounds.Bottom - 4);
+
+                using var hFont = new Font("Segoe UI", 14F, FontStyle.Bold);
+                using var tBrush = new SolidBrush(AppColors.TextWhite);
+                var sf = new StringFormat
+                {
+                    Alignment     = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center,
+                    Trimming      = StringTrimming.EllipsisCharacter
+                };
+                g.DrawString(e.Header.Text, hFont, tBrush,
+                    new Rectangle(e.Bounds.X + 2, e.Bounds.Y, e.Bounds.Width - 4, e.Bounds.Height), sf);
+            };
+
+            // Filas alternadas (zebra) para legibilidad
+            listViewCart.DrawItem += (s, e) =>
             {
-                labelWeight.Text = newWeightUnit;
-            }
+                bool isAlt = e.ItemIndex % 2 == 1;
+                var bg     = isAlt ? Color.FromArgb(245, 248, 252) : Color.White;
+                using var brush = new SolidBrush(bg);
+                e.Graphics.FillRectangle(brush, e.Bounds);
+                e.DrawDefault = true;
+            };
+            listViewCart.DrawSubItem += (s, e) => e.DrawDefault = true;
+
+            AdjustListViewColumns();
+            listViewCart.Resize += (s, e) => AdjustListViewColumns();
         }
 
-        private void ConfigureTimers()
+        private void AdjustListViewColumns()
         {
-            // Timer para carrusel de banners
-            timerCarrousel = new System.Windows.Forms.Timer();
-            timerCarrousel.Interval = 3000;
-            timerCarrousel.Tick += TimerCarrousel_Tick;
-            timerCarrousel.Start();
+            int total  = listViewCart.ClientSize.Width;
+            int count  = listViewCart.Columns.Count;
+            if (count == 0) return;
 
-            // Timer para el reloj
-            clockTimer = new System.Windows.Forms.Timer();
-            clockTimer.Interval = 1000;
-            clockTimer.Tick += Timer_Tick;
-            clockTimer.Start();
+            int colW   = total / count;
+            int lastW  = total - colW * (count - 1);
+            for (int i = 0; i < count; i++)
+                listViewCart.Columns[i].Width = (i == count - 1) ? lastW : colW;
         }
+
+        // ── Paint: Panel de totales ───────────────────────────────────────
+        private void panel1_Paint(object sender, PaintEventArgs e)
+        {
+            var panel = (Panel)sender;
+            var g     = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            var bounds = new Rectangle(1, 1, panel.Width - 3, panel.Height - 3);
+
+            // Fondo navy oscuro
+            using var bgBrush = new SolidBrush(AppColors.NavyBase);
+            using var path    = RoundedRect(bounds, 18);
+            g.FillPath(bgBrush, path);
+
+            // Borde sutil
+            using var borderPen = new Pen(Color.FromArgb(60, 255, 255, 255), 1f);
+            g.DrawPath(borderPen, path);
+
+            // Barra lateral verde de acento (izquierda)
+            using var accentBrush = new SolidBrush(AppColors.AccentGreen);
+            var accentRect = new Rectangle(bounds.X, bounds.Y + 16, 6, bounds.Height - 32);
+            using var accentPath = RoundedRect(accentRect, 3);
+            g.FillPath(accentBrush, accentPath);
+
+            panel.Region = new Region(path);
+        }
+
+        // ── Paint: Panel del reloj ────────────────────────────────────────
+        private void Panel3_Paint(object sender, PaintEventArgs e)
+        {
+            var panel = (Panel)sender;
+            var g     = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            var bounds = new Rectangle(1, 1, panel.Width - 3, panel.Height - 3);
+
+            using var bgBrush = new SolidBrush(AppColors.NavyBase);
+            using var path    = RoundedRect(bounds, 18);
+            g.FillPath(bgBrush, path);
+
+            using var borderPen = new Pen(Color.FromArgb(60, 255, 255, 255), 1f);
+            g.DrawPath(borderPen, path);
+
+            // Barra superior verde (acento)
+            using var accentBrush = new SolidBrush(AppColors.AccentGreen);
+            var accentRect = new Rectangle(bounds.X + 16, bounds.Y, bounds.Width - 32, 5);
+            using var accentPath = RoundedRect(accentRect, 2);
+            g.FillPath(accentBrush, accentPath);
+
+            panel.Region = new Region(path);
+        }
+
+        // ── Carrito ───────────────────────────────────────────────────────
+        private async void LoadCart() => await _shoppingCart.LoadCartAsync();
 
         private void ShoppingCart_CartChanged(object? sender, EventArgs e)
         {
-            if (InvokeRequired)
-            {
-                Invoke(new Action(() => UpdateCartDisplay()));
-                return;
-            }
+            if (InvokeRequired) { Invoke(UpdateCartDisplay); return; }
             UpdateCartDisplay();
         }
 
         public void UpdateCartDisplay()
         {
             listViewCart.Items.Clear();
-
             totalGlobal = 0;
 
             foreach (var item in _shoppingCart.Items)
             {
-                var listItem = new ListViewItem(
-                [
+                var li = new ListViewItem(new[]
+                {
                     item.Number.ToString(),
                     item.ProductName,
                     item.Quantity.ToString(),
                     item.UnitPrice.ToString("N2"),
                     item.Subtotal.ToString("N2")
-                ])
-                {
-                    Tag = item.ProductId
-                };
+                }) { Tag = item.ProductId };
 
-                listViewCart.Items.Add(listItem);
-
+                listViewCart.Items.Add(li);
                 totalGlobal += item.Subtotal;
             }
 
@@ -129,12 +268,32 @@ namespace OmadaPOS.Views
 
         private void UpdateTotals()
         {
-            labelTotal.Text = totalGlobal.ToString("N2");
+            labelTotal.Text = $"${totalGlobal:N2}";
+        }
+
+        // ── Peso ──────────────────────────────────────────────────────────
+        private void OnWeightUnitChanged(string newWeightUnit)
+        {
+            if (InvokeRequired)
+                Invoke(new Action(() => labelWeight.Text = newWeightUnit));
+            else
+                labelWeight.Text = newWeightUnit;
+        }
+
+        // ── Timers ────────────────────────────────────────────────────────
+        private void ConfigureTimers()
+        {
+            timerCarrousel = new System.Windows.Forms.Timer { Interval = 4000 };
+            timerCarrousel.Tick += TimerCarrousel_Tick;
+            timerCarrousel.Start();
+
+            clockTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+            clockTimer.Tick += Timer_Tick;
+            clockTimer.Start();
         }
 
         private void TimerCarrousel_Tick(object sender, EventArgs e)
         {
-            // Cambia a la siguiente imagen
             if (imageUrls != null && imageUrls.Length > 0)
             {
                 LoadPicture();
@@ -142,79 +301,24 @@ namespace OmadaPOS.Views
             }
         }
 
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            labelHour.Text = DateTime.Now.ToString("dddd\ndd/MM/yyyy   HH:mm:ss");
+        }
+
+        // ── Banners ───────────────────────────────────────────────────────
         private async void LoadData()
         {
             try
             {
-                var list = await bannerService!.LoadBanners();
-                imageUrls = list.Select(b => b.Image).ToArray();
+                var list   = await bannerService!.LoadBanners();
+                imageUrls  = list.Select(b => b.Image).ToArray();
                 if (imageUrls.Length > 0)
-                {
                     LoadPicture();
-                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al cargar banners: {ex.Message}");
-            }
-        }
-
-        private void ConfigureListView()
-        {
-            // Configurar columnas del ListView
-            listViewCart.View = View.Details;
-            listViewCart.FullRowSelect = true;
-            listViewCart.GridLines = true;
-            listViewCart.MultiSelect = false;
-
-            // Agregar columnas
-            listViewCart.Columns.Add("#", 80);
-            listViewCart.Columns.Add("Product", 200);
-            listViewCart.Columns.Add("Quantity", 80);
-            listViewCart.Columns.Add("Price", 100);
-            listViewCart.Columns.Add("Subtotal", 100);
-
-            // Estilo visual
-            listViewCart.BackColor = Color.White;
-            listViewCart.Font = new Font("Montserrat", 18F, FontStyle.Regular); // Subir fuente
-
-            // Subir fuente y estilo de encabezados
-            foreach (ColumnHeader column in listViewCart.Columns)
-            {
-                column.TextAlign = HorizontalAlignment.Center;
-            }
-            listViewCart.OwnerDraw = true;
-            listViewCart.DrawColumnHeader += (s, e) =>
-            {
-                using (var headerFont = new Font("Montserrat", 22F, FontStyle.Bold))
-                using (var brush = new SolidBrush(Color.Black))
-                using (var bgBrush = new SolidBrush(Color.Gainsboro))
-                {
-                    e.Graphics.FillRectangle(bgBrush, e.Bounds);
-                    e.Graphics.DrawString(e.Header.Text, headerFont, brush, e.Bounds);
-                }
-            };
-            listViewCart.DrawItem += (s, e) => e.DrawDefault = true;
-            listViewCart.DrawSubItem += (s, e) => e.DrawDefault = true;
-
-            // Ajustar el ancho de las columnas al ancho del ListView
-            AdjustListViewColumns();
-            listViewCart.Resize += (s, e) => AdjustListViewColumns();
-        }
-
-        private void AdjustListViewColumns()
-        {
-            // Sumar el ancho de los bordes y el scrollbar si es necesario
-            int totalWidth = listViewCart.ClientSize.Width;
-            int columnCount = listViewCart.Columns.Count;
-            if (columnCount == 0) return;
-
-            int columnWidth = totalWidth / columnCount;
-            int lastColumnWidth = totalWidth - (columnWidth * (columnCount - 1));
-
-            for (int i = 0; i < columnCount; i++)
-            {
-                listViewCart.Columns[i].Width = (i == columnCount - 1) ? lastColumnWidth : columnWidth;
+                Console.WriteLine($"Error loading banners: {ex.Message}");
             }
         }
 
@@ -222,237 +326,29 @@ namespace OmadaPOS.Views
         {
             if (imageUrls != null && imageUrls.Length > 0)
             {
-                try
-                {
-                    pictureBoxBanner.LoadAsync(imageUrls[currentIndex]);
-                }
-                catch
-                {
-                    // Manejo silencioso de errores de carga
-                }
+                try { pictureBoxBanner.LoadAsync(imageUrls[currentIndex]); }
+                catch { /* fallo silencioso */ }
             }
         }
 
-        private void Timer_Tick(object sender, EventArgs e)
-        {
-            labelHour.Text = DateTime.Now.ToString("dddd, dd/MM/yyyy HH:mm:ss");
-        }
-
-        private decimal CalculateItemTotal(dynamic row, double quantity, decimal price)
-        {
-            // Sin promoción
-            if (string.IsNullOrEmpty(row.PromotionName))
-            {
-                return (decimal)quantity * price;
-            }
-
-            // Con promoción de precio
-            if (row.PromotionName.Equals("Price"))
-            {
-                double quantityPromotion = row.PromotionValue;
-                decimal precioPromocion = row.PromotionLimit;
-
-                int vecesPromocion = (int)(quantity / quantityPromotion);
-                int productosRestantes = (int)(quantity % quantityPromotion);
-
-                return vecesPromocion * precioPromocion + productosRestantes * price;
-            }
-
-            // Otros tipos de promoción
-            return (decimal)quantity * price;
-        }
-
+        // ── Cierre limpio ─────────────────────────────────────────────────
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // Detener timers
-            if (timerCarrousel != null) timerCarrousel.Stop();
-            if (clockTimer != null) clockTimer.Stop();
-
-            // Limpiar suscripciones
+            timerCarrousel?.Stop();
+            clockTimer?.Stop();
             SharedData.WeightUnitChanged -= OnWeightUnitChanged;
-
             base.OnFormClosing(e);
         }
 
-        private void panel1_Paint(object sender, PaintEventArgs e)
+        // ── Helper: path con esquinas redondeadas ─────────────────────────
+        private static GraphicsPath RoundedRect(Rectangle r, int radius)
         {
-            // Obtener referencia al panel
-            Panel panel = (Panel)sender;
-
-            // Configurar calidad de gráficos
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-            // Definir parámetros de diseño
-            int borderRadius = 20;
-            int borderSize = 1;
-            int padding = 20; // Padding de 20
-            Color borderColor = Color.FromArgb(30, 64, 175);      // Azul profundo para bordes
-            Color fillColor = Color.White;                        // Fondo blanco limpio
-            bool useGradient = true;
-            Color gradientStart = Color.FromArgb(147, 197, 253);  // Azul claro suave
-            Color gradientEnd = Color.FromArgb(59, 130, 246);     // Azul vibrante (intermedio/profesional)
-
-            // Crear path para el panel redondeado
-            GraphicsPath path = new GraphicsPath();
-            Rectangle rect = panel.ClientRectangle;
-
-            // Ajustar el rectángulo para el borde y el padding
-            Rectangle drawRect = new Rectangle(
-                rect.Left + padding + (borderSize / 2),
-                rect.Top + padding + (borderSize / 2),
-                rect.Width - (2 * padding) - borderSize,
-                rect.Height - (2 * padding) - borderSize);
-
-            // Crear esquinas redondeadas
-            path.AddArc(drawRect.X, drawRect.Y, borderRadius, borderRadius, 180, 90);
-            path.AddArc(drawRect.Right - borderRadius, drawRect.Y, borderRadius, borderRadius, 270, 90);
-            path.AddArc(drawRect.Right - borderRadius, drawRect.Bottom - borderRadius, borderRadius, borderRadius, 0, 90);
-            path.AddArc(drawRect.X, drawRect.Bottom - borderRadius, borderRadius, borderRadius, 90, 90);
-            path.CloseFigure();
-
-            // Aplicar región al panel (opcional - esto hará que el panel sea realmente redondeado)
-            // panel.Region = new Region(path);
-
-            // Rellenar fondo
-            if (useGradient)
-            {
-                using (LinearGradientBrush brush = new LinearGradientBrush(
-                    rect, gradientStart, gradientEnd, System.Drawing.Drawing2D.LinearGradientMode.ForwardDiagonal))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-            }
-            else
-            {
-                using (SolidBrush brush = new SolidBrush(fillColor))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-            }
-
-            // Dibujar borde
-            using (Pen pen = new Pen(borderColor, borderSize))
-            {
-                pen.Alignment = PenAlignment.Inset;
-                e.Graphics.DrawPath(pen, path);
-            }
-        }
-
-        private void panel4_Paint(object sender, PaintEventArgs e)
-        {
-            // Obtener referencia al panel
-            Panel panel = (Panel)sender;
-
-            // Configurar calidad de gráficos para mejor renderizado
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
-            e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-            // Definir parámetros de diseño mejorados
-            int borderRadius = 25;
-            int borderSize = 2;
-
-            // Paleta de colores azul moderna
-            Color borderColor = Color.FromArgb(70, 130, 180);        // Azul acero
-            Color shadowColor = Color.FromArgb(40, 60, 90, 130);     // Sombra azul sutil
-            Color gradientStart = Color.FromArgb(240, 248, 255);     // Azul hielo claro
-            Color gradientMid = Color.FromArgb(200, 220, 240);       // Azul intermedio
-            Color gradientEnd = Color.FromArgb(135, 170, 210);       // Azul profundo
-
-            Rectangle rect = panel.ClientRectangle;
-
-            // Crear sombra para efecto de profundidad
-            Rectangle shadowRect = new Rectangle(
-                rect.Left + 3,
-                rect.Top + 3,
-                rect.Width - 3,
-                rect.Height - 3);
-
-            GraphicsPath shadowPath = CreateRoundedRectanglePath(shadowRect, borderRadius);
-            using (SolidBrush shadowBrush = new SolidBrush(shadowColor))
-            {
-                e.Graphics.FillPath(shadowBrush, shadowPath);
-            }
-
-            // Rectángulo principal ajustado para el borde
-            Rectangle drawRect = new Rectangle(
-                rect.Left + (borderSize / 2),
-                rect.Top + (borderSize / 2),
-                rect.Width - borderSize - 3,
-                rect.Height - borderSize - 3);
-
-            // Crear path para el panel redondeado
-            GraphicsPath path = CreateRoundedRectanglePath(drawRect, borderRadius);
-
-            // Aplicar gradiente triple para mayor profundidad
-            using (LinearGradientBrush brush = new LinearGradientBrush(
-                drawRect, gradientStart, gradientEnd, LinearGradientMode.ForwardDiagonal))
-            {
-                // Crear blend personalizado para gradiente más suave
-                ColorBlend colorBlend = new ColorBlend(3);
-                colorBlend.Colors = new Color[] { gradientStart, gradientMid, gradientEnd };
-                colorBlend.Positions = new float[] { 0.0f, 0.5f, 1.0f };
-                brush.InterpolationColors = colorBlend;
-
-                e.Graphics.FillPath(brush, path);
-            }
-
-            // Agregar highlight interno para efecto glass
-            Rectangle highlightRect = new Rectangle(
-                drawRect.X + 2,
-                drawRect.Y + 2,
-                drawRect.Width - 4,
-                drawRect.Height / 2);
-
-            GraphicsPath highlightPath = CreateRoundedRectanglePath(highlightRect, borderRadius - 2);
-            using (LinearGradientBrush highlightBrush = new LinearGradientBrush(
-                highlightRect,
-                Color.FromArgb(80, 255, 255, 255),
-                Color.FromArgb(20, 255, 255, 255),
-                LinearGradientMode.Vertical))
-            {
-                e.Graphics.FillPath(highlightBrush, highlightPath);
-            }
-
-            // Dibujar borde principal con efecto biselado
-            using (Pen outerPen = new Pen(borderColor, borderSize))
-            {
-                outerPen.Alignment = PenAlignment.Inset;
-                e.Graphics.DrawPath(outerPen, path);
-            }
-
-            // Borde interno más claro para efecto 3D
-            Rectangle innerRect = new Rectangle(
-                drawRect.X + 1,
-                drawRect.Y + 1,
-                drawRect.Width - 2,
-                drawRect.Height - 2);
-
-            GraphicsPath innerPath = CreateRoundedRectanglePath(innerRect, borderRadius - 2);
-            using (Pen innerPen = new Pen(Color.FromArgb(100, 180, 210, 240), 1))
-            {
-                e.Graphics.DrawPath(innerPen, innerPath);
-            }
-
-            // Opcional: aplicar región al panel para hacerlo realmente redondeado
-            // panel.Region = new Region(path);
-        }
-
-        // Método auxiliar para crear rectángulos redondeados
-        private GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-
-            // Esquina superior izquierda
-            path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
-            // Esquina superior derecha
-            path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
-            // Esquina inferior derecha
-            path.AddArc(rect.Right - radius, rect.Bottom - radius, radius, radius, 0, 90);
-            // Esquina inferior izquierda
-            path.AddArc(rect.X, rect.Bottom - radius, radius, radius, 90, 90);
-
+            int d    = radius * 2;
+            var path = new GraphicsPath();
+            path.AddArc(r.X,          r.Y,          d, d, 180, 90);
+            path.AddArc(r.Right - d,  r.Y,          d, d, 270, 90);
+            path.AddArc(r.Right - d,  r.Bottom - d, d, d,   0, 90);
+            path.AddArc(r.X,          r.Bottom - d, d, d,  90, 90);
             path.CloseFigure();
             return path;
         }

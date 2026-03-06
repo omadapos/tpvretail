@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Componentes;
+namespace OmadaPOS.Componentes;
 
 partial class KeyPadControl
 {
@@ -233,7 +233,7 @@ partial class KeyPadControl
         // 
         tableLayoutPanelMain.AutoSize = true;
         tableLayoutPanelMain.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        tableLayoutPanelMain.BackColor = Color.White;
+        tableLayoutPanelMain.BackColor = Color.FromArgb(247, 248, 250);
         tableLayoutPanelMain.ColumnCount = 1;
         tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         tableLayoutPanelMain.Controls.Add(labelDisplay, 0, 0);
@@ -284,7 +284,7 @@ partial class KeyPadControl
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         AutoSize = true;
-        BackColor = Color.White;
+        BackColor = Color.FromArgb(247, 248, 250);
         Controls.Add(tableLayoutPanelMain);
         Margin = new Padding(2, 1, 2, 1);
         Name = "KeyPadControl";
@@ -315,21 +315,4 @@ partial class KeyPadControl
     private TableLayoutPanel tableLayoutPanelMain;
     private TableLayoutPanel tableLayoutPanelButton;
 
-  private void ApplyStyles()
-    {
-        ElegantButtonStyles.Style(button1, ElegantButtonStyles.HeaderNavy, ElegantButtonStyles.HoverOverlay);
-
-        ElegantButtonStyles.Style(button1);
-        ElegantButtonStyles.Style(button2);
-        ElegantButtonStyles.Style(button3);
-        ElegantButtonStyles.Style(button4);
-        ElegantButtonStyles.Style(button5);
-        ElegantButtonStyles.Style(button6);
-        ElegantButtonStyles.Style(button7);
-        ElegantButtonStyles.Style(button8);
-        ElegantButtonStyles.Style(button9);
-        ElegantButtonStyles.Style(button0);
-        ElegantButtonStyles.Style(buttonC);
-
-    }
 }

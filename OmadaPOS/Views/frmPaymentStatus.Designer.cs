@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmPaymentStatus: Form
     {
@@ -35,10 +35,10 @@
             // labelMsg
             // 
             labelMsg.AutoSize = true;
-            labelMsg.BackColor = Color.White;
+            labelMsg.BackColor = Color.FromArgb(247, 248, 250);
             labelMsg.Dock = DockStyle.Fill;
             labelMsg.Font = new Font("Cambria", 36F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelMsg.ForeColor = Color.Black;
+            labelMsg.ForeColor = Color.FromArgb(26, 32, 44);
             labelMsg.Location = new Point(0, 0);
             labelMsg.Margin = new Padding(4, 0, 4, 0);
             labelMsg.Name = "labelMsg";
@@ -64,11 +64,11 @@
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.White;
+            BackColor = Color.FromArgb(247, 248, 250);
             ClientSize = new Size(1456, 1111);
             Controls.Add(buttonClose);
             Controls.Add(labelMsg);
-            ForeColor = Color.Black;
+            ForeColor = Color.FromArgb(26, 32, 44);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             Margin = new Padding(4, 2, 4, 2);
             Name = "frmPaymentStatus";

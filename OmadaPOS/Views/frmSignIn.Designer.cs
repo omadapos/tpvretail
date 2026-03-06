@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmSignIn: Form
     {
@@ -53,6 +53,7 @@
             // tableLayoutPanelMain
             // 
             tableLayoutPanelMain.BackColor = Color.Transparent;
+            tableLayoutPanelMain.CellBorderStyle = TableLayoutPanelCellBorderStyle.None;
             tableLayoutPanelMain.ColumnCount = 3;
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 31.9277115F));
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 39.2493057F));
@@ -275,11 +276,11 @@
             // 
             // textBoxPhone
             // 
-            textBoxPhone.BackColor = Color.WhiteSmoke;
+            textBoxPhone.BackColor = Color.FromArgb(13, 31, 45);
             textBoxPhone.BorderStyle = BorderStyle.None;
             textBoxPhone.Dock = DockStyle.Bottom;
             textBoxPhone.Font = new Font("Calibri", 36F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            textBoxPhone.ForeColor = Color.Black;
+            textBoxPhone.ForeColor = Color.FromArgb(0, 166, 80);
             textBoxPhone.ImeMode = ImeMode.NoControl;
             textBoxPhone.Location = new Point(326, 55);
             textBoxPhone.Margin = new Padding(5);
@@ -298,7 +299,7 @@
             labelId.BackColor = Color.Transparent;
             labelId.Dock = DockStyle.Fill;
             labelId.Font = new Font("Consolas", 20.1F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelId.ForeColor = Color.IndianRed;
+            labelId.ForeColor = Color.FromArgb(113, 128, 150);
             labelId.Location = new Point(718, 672);
             labelId.Margin = new Padding(2, 0, 2, 0);
             labelId.Name = "labelId";
@@ -322,7 +323,7 @@
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            BackColor = Color.WhiteSmoke;
+            BackColor = Color.FromArgb(13, 31, 45);
             ClientSize = new Size(1008, 729);
             Controls.Add(tableLayoutPanelMain);
             Icon = (Icon)resources.GetObject("$this.Icon");

@@ -1,4 +1,4 @@
-﻿
+
 
 namespace OmadaPOS.Componentes;
 
@@ -26,22 +26,26 @@ public partial class KeyPaymentControl : UserControl
 
     private void ApplyStyles()
     {
-        ElegantButtonStyles.Style(button1, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button2, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button3, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button4, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button5, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button6, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button7, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button8, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button9, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button10, ElegantButtonStyles.CashGreen);
-        ElegantButtonStyles.Style(button20, ElegantButtonStyles.CashGreen);
-        ElegantButtonStyles.Style(button50, ElegantButtonStyles.CashGreen);
-        ElegantButtonStyles.Style(button100, ElegantButtonStyles.CashGreen);
-        ElegantButtonStyles.Style(buttonClear, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button0, ElegantButtonStyles.Keypad);
-        ElegantButtonStyles.Style(button00, ElegantButtonStyles.Keypad);
+        // Fondo del panel
+        tableLayoutPanelMoney.BackColor = AppColors.BackgroundPrimary;
+        tableLayoutPanelMoney.Padding   = new Padding(4);
+
+        // ── Dígitos — Navy (teclado numérico) ────────────────────────────
+        var digits = new[] { button1, button2, button3, button4,
+                              button5, button6, button7, button8,
+                              button9, button0, button00 };
+        foreach (var btn in digits)
+            ElegantButtonStyles.Style(btn, ElegantButtonStyles.Keypad, fontSize: 30f);
+
+        // ── Billetes — Verde (dinero en efectivo), columna derecha ───────
+        ElegantButtonStyles.Style(button10,  ElegantButtonStyles.CashGreen, fontSize: 26f);
+        ElegantButtonStyles.Style(button20,  ElegantButtonStyles.CashGreen, fontSize: 26f);
+        ElegantButtonStyles.Style(button50,  ElegantButtonStyles.CashGreen, fontSize: 26f);
+        ElegantButtonStyles.Style(button100, ElegantButtonStyles.CashGreen, fontSize: 26f);
+
+        // ── Clear — Rojo (acción destructiva: borrar monto ingresado) ─────
+        ElegantButtonStyles.Style(buttonClear, ElegantButtonStyles.AlertRed, fontSize: 26f);
+        buttonClear.Text = "⌫  C";
     }
 
 

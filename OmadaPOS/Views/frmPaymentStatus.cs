@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     public partial class frmPaymentStatus : Form
     {
@@ -9,6 +9,11 @@
             InitializeComponent();
 
             this.msg = msg;
+
+            this.BackColor = AppColors.BackgroundPrimary;
+            labelMsg.BackColor = AppColors.BackgroundPrimary;
+            labelMsg.ForeColor = AppColors.TextPrimary;
+            ElegantButtonStyles.Style(buttonClose, AppColors.NavyBase, AppColors.TextWhite, fontSize: 20f);
         }
 
         private void frmPaymentStatus_Load(object sender, EventArgs e)

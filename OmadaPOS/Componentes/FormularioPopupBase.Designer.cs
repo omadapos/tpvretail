@@ -1,65 +1,50 @@
-﻿namespace OmadaPOS.Componentes
+namespace OmadaPOS.Componentes
 {
     partial class FormularioPopupBase
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
-            {
                 components.Dispose();
-            }
             base.Dispose(disposing);
         }
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
-            panel1 = new Panel();
+            panelHeader = new System.Windows.Forms.Panel();
             SuspendLayout();
-            // 
-            // panel1
-            // 
-            panel1.BackColor = Color.FromArgb(44, 62, 80);
-            panel1.Dock = DockStyle.Top;
-            panel1.Location = new Point(0, 0);
-            panel1.Name = "panel1";
-            panel1.Size = new Size(584, 50);
-            panel1.TabIndex = 0;
-            // 
+
+            // panelHeader — 30% Navy (banda superior)
+            panelHeader.BackColor = AppColors.NavyDark;
+            panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            panelHeader.Location = new System.Drawing.Point(0, 0);
+            panelHeader.Name = "panelHeader";
+            panelHeader.Size = new System.Drawing.Size(584, 54);
+            panelHeader.TabIndex = 0;
+
             // FormularioPopupBase
-            // 
-            AutoScaleDimensions = new SizeF(9F, 21F);
-            AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.WhiteSmoke;
-            ClientSize = new Size(584, 561);
-            Controls.Add(panel1);
-            Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            Margin = new Padding(4);
+            AutoScaleDimensions = new System.Drawing.SizeF(9F, 21F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            BackColor = AppColors.BackgroundPrimary;
+            ClientSize = new System.Drawing.Size(584, 561);
+            Controls.Add(panelHeader);
+            Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            Margin = new System.Windows.Forms.Padding(4);
             MaximizeBox = false;
             MinimizeBox = false;
-            Name = "FormularioPopupBase";
             ShowIcon = false;
+            Name = "FormularioPopupBase";
             Text = "FormularioPopupBase";
             ResumeLayout(false);
         }
 
         #endregion
 
-        private Panel panel1;
+        private System.Windows.Forms.Panel panelHeader;
     }
 }

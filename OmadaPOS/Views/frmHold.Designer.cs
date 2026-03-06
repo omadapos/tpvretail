@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmHold: Form
     {
@@ -39,7 +39,7 @@
             // 
             // tableLayoutPanelMain
             // 
-            tableLayoutPanelMain.BackColor = Color.White;
+            tableLayoutPanelMain.BackColor = Color.FromArgb(247, 248, 250);
             tableLayoutPanelMain.ColumnCount = 1;
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanelMain.Controls.Add(tableLayoutPanelButton, 0, 1);
@@ -57,7 +57,7 @@
             // tableLayoutPanelButton
             // 
             tableLayoutPanelButton.Anchor = AnchorStyles.None;
-            tableLayoutPanelButton.BackColor = Color.White;
+            tableLayoutPanelButton.BackColor = Color.FromArgb(247, 248, 250);
             tableLayoutPanelButton.ColumnCount = 2;
             tableLayoutPanelButton.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tableLayoutPanelButton.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -87,7 +87,7 @@
             // 
             // buttonCancel
             // 
-            buttonCancel.BackColor = Color.WhiteSmoke;
+            buttonCancel.BackColor = Color.FromArgb(247, 248, 250);
             buttonCancel.Dock = DockStyle.Fill;
             buttonCancel.FlatStyle = FlatStyle.Flat;
             buttonCancel.Font = new Font("Segoe UI", 36F);

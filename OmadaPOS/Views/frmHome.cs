@@ -68,31 +68,138 @@ namespace OmadaPOS.Views
 
         private void ConfigureUI()
         {
-            ElegantButtonStyles.Style(buttonInvoice, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
-            ElegantButtonStyles.Style(ButtonSettings, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
-            ElegantButtonStyles.Style(DualScreenButton, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
-            ElegantButtonStyles.Style(labelCashier, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonClose, ElegantButtonStyles.AlertRed, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonCheckPrice, ElegantButtonStyles.AlertRed, fontSize: 18f);
+            // ═══════════════════════════════════════════════════════════
+            // GRUPO 1 — Barra superior (header)
+            // ═══════════════════════════════════════════════════════════
+            ElegantButtonStyles.Style(buttonInvoice,    ElegantButtonStyles.Keypad,    fontSize: 16f);
+            ElegantButtonStyles.Style(DualScreenButton, ElegantButtonStyles.Keypad,    fontSize: 16f);
+            ElegantButtonStyles.Style(ButtonSettings,   ElegantButtonStyles.Keypad,    fontSize: 16f);
+            ElegantButtonStyles.Style(labelCashier,     ElegantButtonStyles.Keypad,    fontSize: 16f);
+            ElegantButtonStyles.Style(buttonClose,      ElegantButtonStyles.AlertRed,  fontSize: 16f);
+            ElegantButtonStyles.Style(buttonCheckPrice, ElegantButtonStyles.Keypad,    fontSize: 16f);
 
-            ElegantButtonStyles.Style(buttonHold, ElegantButtonStyles.DebitGray, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonCancelOrder, ElegantButtonStyles.AlertRed, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonChangeQuantity, ElegantButtonStyles.WarningOrange, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonDeleteItem, ElegantButtonStyles.AlertRed, fontSize: 18f);
+            buttonInvoice.Text    = "🖨  PRINT";
+            DualScreenButton.Text = "🖥  DUAL";
+            ButtonSettings.Text   = "⚙  CONFIG";
+            buttonClose.Text      = "⏻  EXIT";
+            buttonCheckPrice.Text = "💲  PRICE";
 
-            ElegantButtonStyles.Style(buttonQsale, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonLookup, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
+            // ═══════════════════════════════════════════════════════════
+            // GRUPO 2 — Acciones del carrito (texto + icono ya se asigna
+            //           en EstilizarColumnaCarrito via AplicarEstiloVisual)
+            // ═══════════════════════════════════════════════════════════
+            ElegantButtonStyles.Style(buttonCancelOrder,    ElegantButtonStyles.AlertRed,    fontSize: 16f);
+            ElegantButtonStyles.Style(buttonChangeQuantity, ElegantButtonStyles.WarningOrange, fontSize: 16f);
+            ElegantButtonStyles.Style(buttonDeleteItem,     ElegantButtonStyles.AlertRed,    fontSize: 16f);
+            ElegantButtonStyles.Style(buttonHold,           ElegantButtonStyles.WarningOrange, fontSize: 16f);
 
-            ElegantButtonStyles.Style(buttonEBTBalance, ElegantButtonStyles.EBTBalanceOrange, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonEBTFood, ElegantButtonStyles.EBTOrange, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonGiftCard, ElegantButtonStyles.GiftPurple, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonOpenDrawer, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonPayCash, ElegantButtonStyles.CashGreen, fontSize: 24f);
-            ElegantButtonStyles.Style(buttonPayCreditCard, ElegantButtonStyles.CreditBlue, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonPayDebitCard, ElegantButtonStyles.DebitGray, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonSplit, ElegantButtonStyles.HeaderNavy, fontSize: 18f);
+            // ═══════════════════════════════════════════════════════════
+            // GRUPO 3 — Herramientas (Quick Sale / Lookup)
+            // ═══════════════════════════════════════════════════════════
+            // Quick Sale → verde: es una acción de venta directa (generar ingreso)
+            ElegantButtonStyles.Style(buttonQsale,  ElegantButtonStyles.CashGreen, fontSize: 16f);
+            // Lookup UPC → navy: es una consulta/búsqueda informativa
+            ElegantButtonStyles.Style(buttonLookup, ElegantButtonStyles.Keypad,    fontSize: 16f);
+
+            buttonQsale.Text  = "⚡  QUICK SALE";
+            buttonLookup.Text = "🔍  LOOKUP UPC";
+
+            // ── Fila 1: métodos de pago principales ──────────────────────
+            ElegantButtonStyles.Style(buttonPayCash,       ElegantButtonStyles.CashGreen,       fontSize: 22f);
+            ElegantButtonStyles.Style(buttonPayCreditCard, ElegantButtonStyles.CreditBlue,      fontSize: 18f);
+            ElegantButtonStyles.Style(buttonPayDebitCard,  ElegantButtonStyles.DebitGray,       fontSize: 18f);
+            ElegantButtonStyles.Style(buttonSplit,         ElegantButtonStyles.SplitBlueLight,  fontSize: 18f);
+
+            // ── Fila 2: métodos secundarios ───────────────────────────────
+            ElegantButtonStyles.Style(buttonEBTBalance,    ElegantButtonStyles.EBTBalanceOrange, fontSize: 16f);
+            ElegantButtonStyles.Style(buttonEBTFood,       ElegantButtonStyles.EBTOrange,        fontSize: 16f);
+            ElegantButtonStyles.Style(buttonOpenDrawer,    ElegantButtonStyles.HeaderNavy,       fontSize: 16f);
+            ElegantButtonStyles.Style(buttonGiftCard,      ElegantButtonStyles.GiftPurple,       fontSize: 16f);
+
+            // Textos con iconos — uniformes y reconocibles de un vistazo
+            buttonPayCash.Text       = "💵  CASH";
+            buttonPayCreditCard.Text = "💳  CREDIT";
+            buttonPayDebitCard.Text  = "💳  DEBIT";
+            buttonSplit.Text         = "⇌  SPLIT PAY";
+            buttonEBTBalance.Text    = "⚖  EBT BAL";
+            buttonEBTFood.Text       = "🌿  EBT FOOD";
+            buttonOpenDrawer.Text    = "🗄  DRAWER";
+            buttonGiftCard.Text      = "🎁  GIFT CARD";
 
             ElegantButtonStyles.StyleSplitContainer(splitContainerScale);
+
+            EstilizarTabControl();
+        }
+
+        // ── Tab Control profesional con owner-drawing ─────────────────────
+        private void EstilizarTabControl()
+        {
+            var tab = tabControlMenuCategories;
+
+            // Fuente legible para las pestañas
+            tab.Font     = new Font("Segoe UI", 13F, FontStyle.Bold);
+            tab.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tab.SizeMode = TabSizeMode.FillToRight;
+            tab.ItemSize = new Size(0, 54);
+            tab.Padding  = new Point(18, 14);
+
+            tab.DrawItem += TabControl_DrawItem;
+
+            // Fondo del área de producto
+            tableLayoutPanelCategoria.BackColor = AppColors.BackgroundPrimary;
+            tableLayoutPanelCategoria.Padding   = new Padding(6, 6, 6, 0);
+
+            tab.BackColor = AppColors.BackgroundPrimary;
+        }
+
+        private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
+        {
+            var tab = tabControlMenuCategories;
+            var g   = e.Graphics;
+            g.SmoothingMode    = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            bool isSelected = e.Index == tab.SelectedIndex;
+            var  bounds     = e.Bounds;
+            var  page       = tab.TabPages[e.Index];
+
+            // ── Fondo de la pestaña ──────────────────────────────────────
+            Color back = isSelected
+                ? AppColors.NavyBase
+                : Color.FromArgb(228, 233, 240);
+
+            using (var bgBrush = new SolidBrush(back))
+                g.FillRectangle(bgBrush, bounds);
+
+            // ── Línea de acento verde en la parte superior del tab ───────
+            // (los tabs están al fondo, la línea conecta con el contenido)
+            if (isSelected)
+            {
+                using var accentBrush = new SolidBrush(AppColors.AccentGreen);
+                g.FillRectangle(accentBrush, bounds.X, bounds.Y, bounds.Width, 4);
+            }
+            else
+            {
+                // Separador sutil entre tabs no seleccionados
+                using var sep = new Pen(Color.FromArgb(200, 210, 220), 1);
+                g.DrawLine(sep, bounds.Right - 1, bounds.Y + 6, bounds.Right - 1, bounds.Bottom - 6);
+            }
+
+            // ── Texto ────────────────────────────────────────────────────
+            Color fore      = isSelected ? Color.White : AppColors.SlateBlue;
+            var   textFont  = new Font("Segoe UI", 12F, isSelected ? FontStyle.Bold : FontStyle.Regular);
+            var   sf        = new StringFormat
+            {
+                Alignment     = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center,
+                Trimming      = StringTrimming.EllipsisCharacter
+            };
+
+            var textRect = new Rectangle(bounds.X, bounds.Y + 4, bounds.Width, bounds.Height - 4);
+            g.DrawString(page.Text, textFont, new SolidBrush(fore), textRect, sf);
+
+            textFont.Dispose();
+            sf.Dispose();
         }
 
         private void ConfigureListView()
@@ -118,15 +225,32 @@ namespace OmadaPOS.Views
             listViewCart.OwnerDraw = true;
             listViewCart.DrawColumnHeader += (s, e) =>
             {
-                using (var headerFont = new Font("Montserrat", 22F, FontStyle.Bold))
-                using (var brush = new SolidBrush(Color.Black))
-                using (var bgBrush = new SolidBrush(Color.Gainsboro))
+                var g = e.Graphics;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                // Fondo navy
+                using var bgBrush = new SolidBrush(AppColors.NavyBase);
+                g.FillRectangle(bgBrush, e.Bounds);
+
+                // Separador derecho entre columnas
+                using var sep = new Pen(Color.FromArgb(60, 255, 255, 255), 1);
+                g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4,
+                                e.Bounds.Right - 1, e.Bounds.Bottom - 4);
+
+                // Texto blanco centrado
+                using var headerFont = new Font("Segoe UI", 12F, FontStyle.Bold);
+                using var textBrush  = new SolidBrush(AppColors.TextWhite);
+                var sf = new StringFormat
                 {
-                    e.Graphics.FillRectangle(bgBrush, e.Bounds);
-                    e.Graphics.DrawString(e.Header.Text, headerFont, brush, e.Bounds);
-                }
+                    Alignment     = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center,
+                    Trimming      = StringTrimming.EllipsisCharacter
+                };
+                var textRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y,
+                                             e.Bounds.Width - 8, e.Bounds.Height);
+                g.DrawString(e.Header.Text, headerFont, textBrush, textRect, sf);
             };
-            listViewCart.DrawItem += (s, e) => e.DrawDefault = true;
+            listViewCart.DrawItem    += (s, e) => e.DrawDefault = true;
             listViewCart.DrawSubItem += (s, e) => e.DrawDefault = true;
 
             AdjustListViewColumns();
@@ -202,11 +326,146 @@ namespace OmadaPOS.Views
             labelTotalValue.Text = totalGlobal.ToString("N2");
         }
 
+        // ═══════════════════════════════════════════════════════════════
+        // TEMA VISUAL — PremiumMarket
+        // ═══════════════════════════════════════════════════════════════
+        private void AplicarEstiloVisual()
+        {
+            EstilizarBarraSuperior();
+            EstilizarColumnaCarrito();
+            EstilizarColumnaPago();
+            EstilizarSeccionBalanza();
+        }
+
+        // ── Barra superior (header del sistema) ──────────────────────────
+        private void EstilizarBarraSuperior()
+        {
+            // Layout raíz — navy para no dejar bordes blancos visibles
+            MaintableLayout.BackColor = AppColors.NavyDark;
+            MaintableLayout.Padding   = new Padding(0);
+            MaintableLayout.Margin    = new Padding(0);
+
+            tableLayoutPanel1.BackColor = AppColors.NavyDark;
+            tableLayoutPanel1.Margin    = new Padding(0);
+
+            labelProductName.Font      = new Font("Montserrat", 15F, FontStyle.Bold);
+            labelProductName.ForeColor = AppColors.TextWhite;
+            labelProductName.BackColor = Color.Transparent;
+            labelProductName.Text      = "OMADA POS";
+
+            textBoxUPC.BackColor   = AppColors.NavyBase;
+            textBoxUPC.ForeColor   = AppColors.AccentGreen;
+            textBoxUPC.Font        = new Font("Consolas", 15F, FontStyle.Bold);
+            textBoxUPC.BorderStyle = BorderStyle.None;
+        }
+
+        // ── Columna izquierda — Carrito ───────────────────────────────────
+        private void EstilizarColumnaCarrito()
+        {
+            tableLayoutPanelCart.BackColor       = AppColors.BackgroundPrimary;
+            tableLayoutPanelButtonCart.BackColor = AppColors.BackgroundPrimary;
+
+            // ListView del carrito
+            listViewCart.BackColor = Color.White;
+            listViewCart.ForeColor = AppColors.TextPrimary;
+            listViewCart.Font      = new Font("Segoe UI", 13F, FontStyle.Regular);
+
+            // Headers del ListView → ya se dibujan en ConfigureListView via DrawColumnHeader
+
+            // Panel de totales
+            roundedPanel1.BackColor = Color.White;
+            roundedPanel1.Padding   = new Padding(18, 12, 18, 12);
+
+            label1.Font      = new Font("Segoe UI", 13F, FontStyle.Regular);
+            label1.ForeColor = AppColors.TextSecondary;
+            label1.BackColor = Color.Transparent;
+
+            label2.Font      = new Font("Segoe UI", 13F, FontStyle.Regular);
+            label2.ForeColor = AppColors.TextSecondary;
+            label2.BackColor = Color.Transparent;
+
+            label3.Font      = new Font("Segoe UI", 16F, FontStyle.Bold);
+            label3.ForeColor = AppColors.TextPrimary;
+            label3.BackColor = Color.Transparent;
+
+            labelSubTotal.Font      = new Font("Consolas", 13F, FontStyle.Regular);
+            labelSubTotal.ForeColor = AppColors.TextPrimary;
+            labelSubTotal.BackColor = Color.Transparent;
+
+            labelTotalTax.Font      = new Font("Consolas", 13F, FontStyle.Regular);
+            labelTotalTax.ForeColor = AppColors.TextSecondary;
+            labelTotalTax.BackColor = Color.Transparent;
+
+            labelTotalValue.Font      = new Font("Montserrat", 24F, FontStyle.Bold);
+            labelTotalValue.ForeColor = AppColors.AccentGreen;
+            labelTotalValue.BackColor = Color.Transparent;
+
+            // Botones de acción del carrito — actualizar texto con iconos
+            buttonCancelOrder.Text    = "✕  CANCEL";
+            buttonChangeQuantity.Text = "✎  QTY";
+            buttonDeleteItem.Text     = "⌫  REMOVE";
+            buttonHold.Text           = "⏸  HOLD";
+        }
+
+        // ── Columna derecha — Pagos ──────────────────────────────────────
+        private void EstilizarColumnaPago()
+        {
+            tableLayoutPanelPayment.BackColor = AppColors.BackgroundPrimary;
+            tableLayoutPanel2.BackColor       = AppColors.BackgroundPrimary;
+
+            // Contenedor de botones de pago
+            tableLayoutPanel3.BackColor = AppColors.BackgroundPrimary;
+            tableLayoutPanel3.Padding   = new Padding(4, 0, 4, 4);
+
+            // Panel Quick Sale / Lookup / Tender
+            roundedPanel2.BackColor     = Color.White;
+            tableLayoutPanel4.BackColor = Color.White;
+
+            label4.Font      = new Font("Segoe UI", 16F, FontStyle.Bold);
+            label4.ForeColor = AppColors.SlateBlue;
+            label4.BackColor = Color.Transparent;
+
+            label5.Font      = new Font("Segoe UI", 16F, FontStyle.Bold);
+            label5.ForeColor = AppColors.SlateBlue;
+            label5.BackColor = Color.Transparent;
+
+            labelInputValue.Font      = new Font("Montserrat", 22F, FontStyle.Bold);
+            labelInputValue.ForeColor = AppColors.NavyBase;
+            labelInputValue.BackColor = Color.Transparent;
+
+            labelChangeValue.Font      = new Font("Montserrat", 22F, FontStyle.Bold);
+            labelChangeValue.ForeColor = AppColors.AccentGreen;
+            labelChangeValue.BackColor = Color.Transparent;
+        }
+
+        // ── Sección balanza / scale ──────────────────────────────────────
+        private void EstilizarSeccionBalanza()
+        {
+            tableLayoutPanelPesado.BackColor = AppColors.NavyDark;
+            tableLayoutPanelPesado.Padding   = new Padding(6);
+
+            labelWeight.Font      = new Font("Montserrat", 20F, FontStyle.Bold);
+            labelWeight.ForeColor = AppColors.Warning;
+            labelWeight.BackColor = Color.Transparent;
+
+            labelPesaProduct.Font      = new Font("Segoe UI", 12F, FontStyle.Regular);
+            labelPesaProduct.ForeColor = AppColors.TextWhite;
+            labelPesaProduct.BackColor = Color.Transparent;
+
+            lblScalStatusDesc.Font      = new Font("Segoe UI", 9F, FontStyle.Italic);
+            lblScalStatusDesc.ForeColor = AppColors.TextMuted;
+            lblScalStatusDesc.BackColor = Color.Transparent;
+
+            pictureBoxPesado.BackColor = AppColors.NavyDark;
+        }
+
         private async void frmHome_Load(object sender, EventArgs e)
         {
             try
             {
                 Cursor = Cursors.WaitCursor;
+
+                AplicarEstiloVisual();
 
                 await LoadMenuCategoriesAsync();
 
@@ -220,8 +479,8 @@ namespace OmadaPOS.Views
 
                 await _shoppingCart.LoadCartAsync();
 
-                buttonInvoice.Text = $"Last One : {orderId}";
-                labelCashier.Text = SessionManager.Name;
+                buttonInvoice.Text = $"⬡  {orderId}";
+                labelCashier.Text  = $"👤  {SessionManager.Name}";
             }
             catch (Exception ex)
             {
@@ -255,10 +514,10 @@ namespace OmadaPOS.Views
 
                 TabPage tabMenu = new TabPage(tabName)
                 {
-                    Name = $"tab{tabName}",
-                    UseVisualStyleBackColor = true,
-                    BackColor = Color.White,
-                    Padding = new Padding(10),
+                    Name                  = $"tab{tabName}",
+                    UseVisualStyleBackColor = false,
+                    BackColor             = AppColors.BackgroundPrimary,
+                    Padding               = new Padding(12, 12, 12, 8),
                 };
 
                 int[] listCategoriesId = Categories.Where(c => c.Tipo == tabName).Select(c => c.Id).ToArray();
@@ -270,21 +529,14 @@ namespace OmadaPOS.Views
 
                 FlowLayoutPanel flowLayoutPanel = new FlowLayoutPanel
                 {
-                    BackColor = Color.White,
-                    Name = $"flowLayoutPanel{tabName}",
-                    Dock = DockStyle.Fill,
+                    BackColor    = AppColors.BackgroundPrimary,
+                    Name         = $"flowLayoutPanel{tabName}",
+                    Dock         = DockStyle.Fill,
                     WrapContents = true,
-                    AutoScroll = true
+                    AutoScroll   = true,
+                    Padding      = new Padding(4),
+                    Font         = new Font("Segoe UI", 11F, FontStyle.Regular),
                 };
-
-                flowLayoutPanel.ControlAdded += (sender, e) =>
-                {
-                    Control control = e.Control;
-                    control.Left = (flowLayoutPanel.ClientSize.Width - control.Width) / 2;
-                };
-
-                Font flowLayoutPanelFont = new Font("Arial", 18, FontStyle.Regular);
-                flowLayoutPanel.Font = flowLayoutPanelFont;
 
                 Controls.Add(flowLayoutPanel);
 
