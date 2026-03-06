@@ -1,0 +1,95 @@
+﻿using System;
+using System.Drawing;
+using System.Windows.Forms;
+
+namespace OmadaPOS.Estilos
+{
+    public class EstiloFormularioPOS : Form
+    {
+        private System.Windows.Forms.Timer fadeOutTimer;
+
+
+        public EstiloFormularioPOS()
+        {
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.StartPosition = FormStartPosition.Manual;
+            this.BackColor = Color.White;
+            this.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point);
+            this.KeyPreview = true;
+            this.Opacity = 1.0;
+
+            ConfigurarTamañoYPosicion();
+            EstablecerCabecera();
+        }
+
+        private void ConfigurarTamañoYPosicion()
+        {
+            var pantalla = Screen.PrimaryScreen.WorkingArea;
+
+            this.Width = (int)(pantalla.Width * 0.7);
+            this.Height = (int)(pantalla.Height * 0.7);
+
+            this.Location = new Point(
+                (pantalla.Width - this.Width) / 2,
+                (pantalla.Height - this.Height) / 2
+            );
+        }
+
+        private void EstablecerCabecera()
+        {
+            var barra = new Panel
+            {
+                Height = 50,
+                Dock = DockStyle.Top,
+                BackColor = Color.FromArgb(156, 163, 175)
+            };
+
+            var lblTitulo = new Label
+            {
+                Text = "OmadaPOS",
+                ForeColor = Color.White,
+                Font = new Font("Montserrat", 14F, FontStyle.Bold),
+                AutoSize = true,
+                Location = new Point(20, 12)
+            };
+
+            var btnCerrar = new Button
+            {
+                Text = "✖",
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                BackColor = Color.Red,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(50, 50),
+                Location = new Point(this.Width - 60, 0),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnCerrar.FlatAppearance.BorderSize = 0;
+            btnCerrar.Click += (s, e) => IniciarFadeOut();
+
+            barra.Controls.Add(lblTitulo);
+            barra.Controls.Add(btnCerrar);
+            this.Controls.Add(barra);
+        }
+
+        private void IniciarFadeOut()
+        {
+            fadeOutTimer = new System.Windows.Forms.Timer();
+
+            fadeOutTimer.Interval = 25; // velocidad del fade
+            fadeOutTimer.Tick += (s, e) =>
+            {
+                if (this.Opacity > 0)
+                {
+                    this.Opacity -= 0.05;
+                }
+                else
+                {
+                    fadeOutTimer.Stop();
+                    this.Close();
+                }
+            };
+            fadeOutTimer.Start();
+        }
+    }
+}
