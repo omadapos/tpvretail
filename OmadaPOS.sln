@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35818.85
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmadaPOS", "OmadaPOS\OmadaPOS.csproj", "{97CFFE1D-F5D6-4106-BFB3-D93A23B0C9AB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmadaPOS.Libreria", "OmadaPOS.Libreria\OmadaPOS.Libreria.csproj", "{CEE39B9E-6D71-0876-1100-E1875F28D066}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{97CFFE1D-F5D6-4106-BFB3-D93A23B0C9AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97CFFE1D-F5D6-4106-BFB3-D93A23B0C9AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97CFFE1D-F5D6-4106-BFB3-D93A23B0C9AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97CFFE1D-F5D6-4106-BFB3-D93A23B0C9AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CEE39B9E-6D71-0876-1100-E1875F28D066}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CEE39B9E-6D71-0876-1100-E1875F28D066}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CEE39B9E-6D71-0876-1100-E1875F28D066}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CEE39B9E-6D71-0876-1100-E1875F28D066}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {530FB41E-2660-432C-96BA-C1E820B93B38}
+	EndGlobalSection
+EndGlobal

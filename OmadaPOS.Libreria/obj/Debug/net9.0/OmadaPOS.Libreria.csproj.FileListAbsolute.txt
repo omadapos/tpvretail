@@ -1,0 +1,13 @@
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\bin\Debug\net9.0\OmadaPOS.Libreria.deps.json
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\bin\Debug\net9.0\OmadaPOS.Libreria.dll
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\bin\Debug\net9.0\OmadaPOS.Libreria.pdb
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.csproj.AssemblyReference.cache
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.AssemblyInfoInputs.cache
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.AssemblyInfo.cs
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.csproj.CoreCompileInputs.cache
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.sourcelink.json
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.dll
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\refint\OmadaPOS.Libreria.dll
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\OmadaPOS.Libreria.pdb
+c:\Users\pc\source\repos\omadapos\omadapos\OmadaPOS.Libreria\obj\Debug\net9.0\ref\OmadaPOS.Libreria.dll
