@@ -25,7 +25,6 @@ namespace OmadaPOS.Views
 
         decimal totalGlobal = 0;
         int inputValue = 0;
-        decimal dueValue = 0;
         decimal changeValue = 0;
         bool bDesc = false;
         double weight = 0.0;
@@ -147,14 +146,8 @@ namespace OmadaPOS.Views
             // ═══════════════════════════════════════════════════════════
             // Botones compactos del header — ícono solo, tooltip para accesibilidad
             ElegantButtonStyles.Style(buttonInvoice,  ElegantButtonStyles.Keypad,   fontSize: 20f);
-            ElegantButtonStyles.Style(labelCashier,   ElegantButtonStyles.Keypad,   fontSize: 16f);
             ElegantButtonStyles.Style(buttonClose,    ElegantButtonStyles.AlertRed, fontSize: 20f);
             ElegantButtonStyles.Style(ButtonSettings, ElegantButtonStyles.Keypad,   fontSize: 16f);
-
-            // Textos iniciales — POSHeaderControl.ApplyTheme() los redefine con íconos
-            buttonInvoice.Text  = "🖨";
-            ButtonSettings.Text = "⚙";
-            buttonClose.Text    = "⏻";
 
             // Tooltips accesibles para botones de ícono
             var toolTip = new ToolTip { ShowAlways = true };
@@ -492,7 +485,7 @@ namespace OmadaPOS.Views
                     UpdateProductsDisplay();
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 MessageBox.Show("Error loading products. Please try again.", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -583,7 +576,6 @@ namespace OmadaPOS.Views
         private void DisplayTotales()
         {
             changeValue = (inputValue / 100m) - totalGlobal;
-            dueValue = totalGlobal - (inputValue / 100m);
             var safeChange = changeValue > 0 ? changeValue : 0.0m;
 
             _paymentPanelControl?.UpdatePaymentValues(inputValue / 100.0m, safeChange);
@@ -593,7 +585,6 @@ namespace OmadaPOS.Views
         {
             inputValue = 0;
             changeValue = 0;
-            dueValue = 0;
 
             _cartTotalsControl?.ResetTotals(includeGrandTotal: all);
             _paymentPanelControl?.ResetPaymentValues();
@@ -624,7 +615,6 @@ namespace OmadaPOS.Views
             {
                 labelWeight.Text = weightStatus;
             }
-            SharedData.WeightUnit = weightStatus;
         }
 
         private void textBoxUPC_TextChanged(object sender, EventArgs e)
@@ -756,20 +746,6 @@ namespace OmadaPOS.Views
             if (qty > 0)
             {
                 _shoppingCart.UpdateQuantity(productId, qty);
-            }
-        }
-
-        /// <summary>
-        /// Creates an ad-hoc product on the server and adds it to the cart.
-        /// Called from frmProductNew. Business logic delegated to ProductApplicationService.
-        /// </summary>
-        public async void addCustomProduct(bool bTax, decimal price)
-        {
-            try { await AddCustomProductAsync(bTax, price); }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error adding product: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -933,19 +909,6 @@ namespace OmadaPOS.Views
         public async Task LoadProductsAsync(int[] categoryIds, string? searchLetter = null)
             => await _homeInitializationService.LoadProductsAsync(Products, categoryIds, searchLetter);
 
-        public async Task<PaymentResponseModel> ProcessPaymentAsync(string paymentType, decimal amount)
-            => await _paymentCoordinatorService.ProcessPaymentAsync(paymentType, amount);
-
-        public async void ProcessPaymentMultiple()
-        {
-            try { await ProcessPaymentMultipleAsync(); }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Payment error: {ex.Message}", "Payment Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
         private async Task ProcessPaymentMultipleAsync()
         {
             var orderResponse = await _paymentCoordinatorService.ProcessMultiplePaymentsAsync(changeValue, bDesc);
@@ -955,9 +918,6 @@ namespace OmadaPOS.Views
                 await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
             }
         }
-
-        public async Task<OrderResponse?> PlaceOrderAsync(string paymentMethod, decimal changeAmount)
-            => await _paymentCoordinatorService.PlaceOrderAsync(paymentMethod, changeAmount, bDesc);
 
         private async void pictureBoxPesado_Click(object sender, EventArgs e)
         {

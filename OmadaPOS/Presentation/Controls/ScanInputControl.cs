@@ -6,7 +6,6 @@ namespace OmadaPOS.Presentation.Controls;
 public class ScanInputControl : UserControl
 {
     private readonly TextBox _textBox;
-    private readonly Panel _scanPanel;
 
     private ScanInputControl(TextBox textBox)
     {
@@ -17,8 +16,7 @@ public class ScanInputControl : UserControl
         Padding = new Padding(0);
         BackColor = Color.Transparent;
 
-        _scanPanel = BuildScanPanel();
-        Controls.Add(_scanPanel);
+        Controls.Add(BuildScanPanel());
     }
 
     public static ScanInputControl Attach(TableLayoutPanel headerLayout, TextBox textBox)
@@ -34,15 +32,6 @@ public class ScanInputControl : UserControl
 
         return control;
     }
-
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public string TextValue
-    {
-        get => _textBox.Text;
-        set => _textBox.Text = value;
-    }
-
-    public void FocusInput() => _textBox.Focus();
 
     public void ClearInput()
     {

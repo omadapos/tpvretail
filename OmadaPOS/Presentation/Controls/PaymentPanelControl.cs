@@ -39,8 +39,8 @@ public class PaymentPanelControl : UserControl
         Label labelStatus,
         PictureBox pictureBox)
     {
-        _paymentPanel = paymentPanel;
-        _paymentHeader = paymentHeader;
+        _paymentPanel   = paymentPanel;
+        _paymentHeader  = paymentHeader;
         _keyPaymentControl = keyPaymentControl;
         _summaryPanel = summaryPanel;
         _summaryLayout = summaryLayout;
@@ -114,10 +114,10 @@ public class PaymentPanelControl : UserControl
 
     public void ApplyTheme()
     {
-        _paymentPanel.BackColor = AppColors.BackgroundPrimary;
-        _paymentPanel.Padding   = AppSpacing.PaymentColumn;
+        _paymentPanel.BackColor  = AppColors.BackgroundPrimary;
+        _paymentPanel.Padding    = AppSpacing.PaymentColumn;
 
-        _paymentHeader.BackColor     = AppColors.BackgroundPrimary;
+        _paymentHeader.BackColor = AppColors.BackgroundPrimary;
         _keyPaymentControl.BackColor = AppColors.BackgroundPrimary;
 
         _summaryPanel.BackgroundStart = AppColors.BackgroundSecondary;

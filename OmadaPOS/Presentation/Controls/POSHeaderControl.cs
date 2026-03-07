@@ -120,8 +120,7 @@ public class POSHeaderControl : UserControl
         _buttonPrint.Font   = AppTypography.HeaderIcon;
 
         // ── Zone 4: Settings ─────────────────────────────────────────────────────
-        _buttonSettings.Visible = true;
-        _buttonSettings.Text    = "⚙";
+        _buttonSettings.Text = "⚙";
         _buttonSettings.Margin  = new Padding(2, 8, 2, 8);
         _buttonSettings.Font    = AppTypography.HeaderIcon;
 

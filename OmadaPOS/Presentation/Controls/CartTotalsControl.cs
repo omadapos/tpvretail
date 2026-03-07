@@ -108,13 +108,6 @@ public class CartTotalsControl : UserControl
         _labelTotalValue.Text = total.ToString("N2");
     }
 
-    public void ClearTotals()
-    {
-        _labelSubtotalValue.Text = "0.00";
-        _labelTaxValue.Text = "0.00";
-        _labelTotalValue.Text = "0.00";
-    }
-
     public void ResetTotals(bool includeGrandTotal)
     {
         _labelSubtotalValue.Text = "0.00";
