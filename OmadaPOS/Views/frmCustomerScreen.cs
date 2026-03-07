@@ -143,9 +143,9 @@ namespace OmadaPOS.Views
                 g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4,
                                 e.Bounds.Right - 1, e.Bounds.Bottom - 4);
 
-                using var hFont = new Font("Segoe UI", 14F, FontStyle.Bold);
+                using var hFont  = new Font("Segoe UI", 14F, FontStyle.Bold);
                 using var tBrush = new SolidBrush(AppColors.TextWhite);
-                var sf = new StringFormat
+                using var sf     = new StringFormat
                 {
                     Alignment     = StringAlignment.Center,
                     LineAlignment = StringAlignment.Center,
@@ -155,16 +155,46 @@ namespace OmadaPOS.Views
                     new Rectangle(e.Bounds.X + 2, e.Bounds.Y, e.Bounds.Width - 4, e.Bounds.Height), sf);
             };
 
-            // Filas alternadas (zebra) para legibilidad
+            // Filas alternadas (zebra) — dibujamos fondo Y texto manualmente
+            // para que el fondo zebra no quede sobreescrito por DrawDefault
             listViewCart.DrawItem += (s, e) =>
             {
+                var g      = e.Graphics;
+                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
                 bool isAlt = e.ItemIndex % 2 == 1;
-                var bg     = isAlt ? Color.FromArgb(245, 248, 252) : Color.White;
-                using var brush = new SolidBrush(bg);
-                e.Graphics.FillRectangle(brush, e.Bounds);
-                e.DrawDefault = true;
+                bool isSel = (e.State & ListViewItemStates.Selected) != 0;
+
+                Color bg = isSel
+                    ? AppColors.NavyLight
+                    : isAlt ? Color.FromArgb(245, 248, 252) : Color.White;
+
+                using var bgBrush = new SolidBrush(bg);
+                g.FillRectangle(bgBrush, e.Bounds);
+
+                // No usamos DrawDefault — el texto lo dibuja DrawSubItem
             };
-            listViewCart.DrawSubItem += (s, e) => e.DrawDefault = true;
+
+            listViewCart.DrawSubItem += (s, e) =>
+            {
+                var g      = e.Graphics;
+                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
+                bool isSel = (e.ItemState & ListViewItemStates.Selected) != 0;
+                Color fg   = isSel ? AppColors.TextWhite : AppColors.TextPrimary;
+
+                using var textBrush = new SolidBrush(fg);
+                using var sf        = new StringFormat
+                {
+                    Alignment     = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center,
+                    Trimming      = StringTrimming.EllipsisCharacter
+                };
+
+                var textRect = new Rectangle(
+                    e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height);
+                g.DrawString(e.SubItem.Text, listViewCart.Font, textBrush, textRect, sf);
+            };
 
             AdjustListViewColumns();
             listViewCart.Resize += (s, e) => AdjustListViewColumns();
@@ -191,22 +221,22 @@ namespace OmadaPOS.Views
 
             var bounds = new Rectangle(1, 1, panel.Width - 3, panel.Height - 3);
 
-            // Fondo navy oscuro
             using var bgBrush = new SolidBrush(AppColors.NavyBase);
             using var path    = RoundedRect(bounds, 18);
             g.FillPath(bgBrush, path);
 
-            // Borde sutil
             using var borderPen = new Pen(Color.FromArgb(60, 255, 255, 255), 1f);
             g.DrawPath(borderPen, path);
 
-            // Barra lateral verde de acento (izquierda)
             using var accentBrush = new SolidBrush(AppColors.AccentGreen);
             var accentRect = new Rectangle(bounds.X, bounds.Y + 16, 6, bounds.Height - 32);
             using var accentPath = RoundedRect(accentRect, 3);
             g.FillPath(accentBrush, accentPath);
 
-            panel.Region = new Region(path);
+            // Dispose la región anterior antes de asignar la nueva — evita GDI leak
+            var oldRegion = panel.Region;
+            panel.Region  = new Region(path);
+            oldRegion?.Dispose();
         }
 
         // ── Paint: Panel del reloj ────────────────────────────────────────
@@ -225,13 +255,15 @@ namespace OmadaPOS.Views
             using var borderPen = new Pen(Color.FromArgb(60, 255, 255, 255), 1f);
             g.DrawPath(borderPen, path);
 
-            // Barra superior verde (acento)
             using var accentBrush = new SolidBrush(AppColors.AccentGreen);
             var accentRect = new Rectangle(bounds.X + 16, bounds.Y, bounds.Width - 32, 5);
             using var accentPath = RoundedRect(accentRect, 2);
             g.FillPath(accentBrush, accentPath);
 
-            panel.Region = new Region(path);
+            // Dispose la región anterior antes de asignar la nueva — evita GDI leak
+            var oldRegion = panel.Region;
+            panel.Region  = new Region(path);
+            oldRegion?.Dispose();
         }
 
         // ── Carrito ───────────────────────────────────────────────────────
@@ -256,11 +288,11 @@ namespace OmadaPOS.Views
                     item.ProductName,
                     item.Quantity.ToString(),
                     item.UnitPrice.ToString("N2"),
-                    item.Subtotal.ToString("N2")
+                    item.Total.ToString("N2")   // Total incluye tax — consistente con frmHome
                 }) { Tag = item.ProductId };
 
                 listViewCart.Items.Add(li);
-                totalGlobal += item.Subtotal;
+                totalGlobal += item.Total;      // Total con tax — el cliente paga este monto
             }
 
             UpdateTotals();

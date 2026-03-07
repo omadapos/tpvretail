@@ -50,7 +50,6 @@ namespace OmadaPOS.Views
             abecedarioControl1 = new OmadaPOS.Componentes.AbecedarioControl();
             tableLayoutPanelPayment = new TableLayoutPanel();
             tableLayoutPanel2 = new TableLayoutPanel();
-            watermarkOmadapos1 = new OmadaPOS.Controles.WatermarkOmadaPOS();
             keyPaymentControl1 = new OmadaPOS.Componentes.KeyPaymentControl();
             splitContainerScale = new SplitContainer();
             tableLayoutPanelPesado = new TableLayoutPanel();
@@ -93,7 +92,6 @@ namespace OmadaPOS.Views
             tableLayoutPanelCategoria.SuspendLayout();
             tabControlMenuCategories.SuspendLayout();
             tableLayoutPanelPayment.SuspendLayout();
-            tableLayoutPanel2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainerScale).BeginInit();
             splitContainerScale.Panel1.SuspendLayout();
             splitContainerScale.Panel2.SuspendLayout();
@@ -231,9 +229,9 @@ namespace OmadaPOS.Views
             roundedPanel1.Controls.Add(tableLayoutPanelTotal);
             roundedPanel1.Dock = DockStyle.Fill;
             roundedPanel1.Location = new Point(4, 608);
-            roundedPanel1.Margin = new Padding(4, 4, 4, 4);
+            roundedPanel1.Margin = new Padding(4);
             roundedPanel1.Name = "roundedPanel1";
-            roundedPanel1.Padding = new Padding(30, 30, 30, 30);
+            roundedPanel1.Padding = new Padding(30);
             roundedPanel1.Size = new Size(613, 121);
             roundedPanel1.TabIndex = 5;
             // 
@@ -373,16 +371,17 @@ namespace OmadaPOS.Views
             tabPage2.Location = new Point(4, 4);
             tabPage2.Margin = new Padding(0);
             tabPage2.Name = "tabPage2";
-            tabPage2.Padding = new Padding(22, 22, 22, 22);
+            tabPage2.Padding = new Padding(22);
             tabPage2.Size = new Size(814, 626);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "tabPage2";
             // 
             // abecedarioControl1
             // 
+            abecedarioControl1.BackColor = Color.FromArgb(15, 23, 42);
             abecedarioControl1.Dock = DockStyle.Fill;
             abecedarioControl1.Location = new Point(8, 733);
-            abecedarioControl1.Margin = new Padding(8, 8, 8, 8);
+            abecedarioControl1.Margin = new Padding(8);
             abecedarioControl1.Name = "abecedarioControl1";
             abecedarioControl1.Size = new Size(812, 80);
             abecedarioControl1.TabIndex = 1;
@@ -418,7 +417,6 @@ namespace OmadaPOS.Views
             tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32.4390259F));
             tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.90244F));
             tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanel2.Controls.Add(watermarkOmadapos1, 2, 0);
             tableLayoutPanel2.Dock = DockStyle.Fill;
             tableLayoutPanel2.Location = new Point(2, 2);
             tableLayoutPanel2.Margin = new Padding(2);
@@ -427,18 +425,6 @@ namespace OmadaPOS.Views
             tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             tableLayoutPanel2.Size = new Size(613, 36);
             tableLayoutPanel2.TabIndex = 11;
-            // 
-            // watermarkOmadapos1
-            // 
-            watermarkOmadapos1.BackColor = Color.Transparent;
-            watermarkOmadapos1.Dock = DockStyle.Fill;
-            watermarkOmadapos1.Enabled = false;
-            watermarkOmadapos1.Location = new Point(411, 4);
-            watermarkOmadapos1.Margin = new Padding(4, 4, 4, 4);
-            watermarkOmadapos1.Name = "watermarkOmadapos1";
-            watermarkOmadapos1.Size = new Size(198, 28);
-            watermarkOmadapos1.TabIndex = 13;
-            watermarkOmadapos1.Text = "watermarkOmadapos1";
             // 
             // keyPaymentControl1
             // 
@@ -460,7 +446,7 @@ namespace OmadaPOS.Views
             splitContainerScale.ForeColor = Color.Black;
             splitContainerScale.IsSplitterFixed = true;
             splitContainerScale.Location = new Point(8, 578);
-            splitContainerScale.Margin = new Padding(8, 8, 8, 8);
+            splitContainerScale.Margin = new Padding(8);
             splitContainerScale.Name = "splitContainerScale";
             // 
             // splitContainerScale.Panel1
@@ -692,7 +678,7 @@ namespace OmadaPOS.Views
             roundedPanel2.Location = new Point(2, 450);
             roundedPanel2.Margin = new Padding(2);
             roundedPanel2.Name = "roundedPanel2";
-            roundedPanel2.Padding = new Padding(8, 8, 8, 8);
+            roundedPanel2.Padding = new Padding(8);
             roundedPanel2.Size = new Size(613, 118);
             roundedPanel2.TabIndex = 12;
             // 
@@ -712,7 +698,7 @@ namespace OmadaPOS.Views
             tableLayoutPanel4.Location = new Point(8, 8);
             tableLayoutPanel4.Margin = new Padding(2);
             tableLayoutPanel4.Name = "tableLayoutPanel4";
-            tableLayoutPanel4.Padding = new Padding(3, 3, 3, 3);
+            tableLayoutPanel4.Padding = new Padding(3);
             tableLayoutPanel4.RowCount = 2;
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
@@ -762,7 +748,7 @@ namespace OmadaPOS.Views
             labelInputValue.Dock = DockStyle.Fill;
             labelInputValue.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
             labelInputValue.Location = new Point(424, 11);
-            labelInputValue.Margin = new Padding(8, 8, 8, 8);
+            labelInputValue.Margin = new Padding(8);
             labelInputValue.Name = "labelInputValue";
             labelInputValue.Size = new Size(162, 32);
             labelInputValue.TabIndex = 1;
@@ -939,7 +925,7 @@ namespace OmadaPOS.Views
             MaintableLayout.Controls.Add(tableLayoutPanelMain, 0, 1);
             MaintableLayout.Dock = DockStyle.Fill;
             MaintableLayout.Location = new Point(0, 0);
-            MaintableLayout.Margin = new Padding(4, 4, 4, 4);
+            MaintableLayout.Margin = new Padding(4);
             MaintableLayout.Name = "MaintableLayout";
             MaintableLayout.RowCount = 2;
             MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 5.882353F));
@@ -974,7 +960,6 @@ namespace OmadaPOS.Views
             tableLayoutPanelCategoria.ResumeLayout(false);
             tabControlMenuCategories.ResumeLayout(false);
             tableLayoutPanelPayment.ResumeLayout(false);
-            tableLayoutPanel2.ResumeLayout(false);
             splitContainerScale.Panel1.ResumeLayout(false);
             splitContainerScale.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainerScale).EndInit();
@@ -1045,7 +1030,6 @@ namespace OmadaPOS.Views
         private Button buttonLookup;
         private Button buttonClose;
         private Button buttonQsale;
-        private Controles.WatermarkOmadaPOS watermarkOmadapos1;
         private ListView listViewCart;
         private Componentes.RoundedPanel roundedPanel1;
         private Componentes.RoundedPanel roundedPanel2;

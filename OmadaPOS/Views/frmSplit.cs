@@ -294,7 +294,7 @@ namespace OmadaPOS.Views
                     return;
                 }
 
-                ((frmHome)Owner).ProcessPaymentMultipleAsync();
+                ((frmHome)Owner).ProcessPaymentMultiple();
                 this.Close();
             }
             catch (Exception ex)

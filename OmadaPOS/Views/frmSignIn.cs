@@ -155,23 +155,17 @@ public partial class frmSignIn
 
     private void EstilizarCardKeypad()
     {
-        // Card blanca con bordes redondeados simulados via panel wrapper
         tableLayoutPanel1.BackColor = AppColors.BackgroundSecondary;
-        tableLayoutPanel1.Padding = new Padding(14);
-        tableLayoutPanel1.Margin = new Padding(10, 8, 10, 8);
+        tableLayoutPanel1.Padding   = new Padding(14);
+        tableLayoutPanel1.Margin    = new Padding(10, 8, 10, 8);
 
-        // Borde superior verde de 4px como acento de card
+        // Línea de acento verde en el borde superior de la card
         tableLayoutPanel1.Paint += (s, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-
-            // Sombra interior sutil en el borde
-            using var borderPen = new Pen(AppColors.AccentGreen, 4);
-            g.DrawLine(borderPen, 0, 0, tableLayoutPanel1.Width, 0);
-
-            // Línea de separación entre PIN y keypad
-            using var sepPen = new Pen(AppColors.SurfaceMuted, 1);
+            using var pen = new Pen(AppColors.AccentGreen, 4);
+            g.DrawLine(pen, 0, 0, tableLayoutPanel1.Width, 0);
         };
     }
 
@@ -222,7 +216,9 @@ public partial class frmSignIn
     private async void buttonLogin_Click(object sender, EventArgs e)
     {
         string username = textBoxPhone.Text;
-        string password = "12345678";
+        // TODO: El servidor actualmente valida con una clave fija de sistema.
+        // Reemplazar por autenticación real (PIN individual por empleado) en la API.
+        const string password = "12345678";
 
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {

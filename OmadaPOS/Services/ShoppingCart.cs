@@ -38,10 +38,11 @@ public class ShoppingCart : IShoppingCart
     public IReadOnlyList<CartItem> Items => _items.AsReadOnly();
     
     public int ItemCount => _items.Count;
-    
-    public decimal Total => _items.Sum(item => item.Subtotal);
 
-    public string MachineGuid => _machineGuid;
+    // CRÍTICO: Total incluye impuesto (Subtotal + TaxAmount)
+    public decimal Total => _items.Sum(item => item.Total);
+
+    public string MachineGuid => _machineGuid ?? string.Empty;
 
     public event EventHandler? CartChanged;
 
@@ -74,36 +75,44 @@ public class ShoppingCart : IShoppingCart
     {
         if (item == null)
             throw new ArgumentNullException(nameof(item));
-
         if (item.Quantity <= 0)
             throw new ArgumentException("Quantity must be greater than zero", nameof(item));
 
         try
         {
+            CartItem? toUpdate = null;
+            CartItem? toAdd    = null;
+
+            // Mutación en memoria dentro del lock — rápido, sin I/O
             lock (_lockObject)
             {
-                var existingItem = _items.FirstOrDefault(i => i.ProductId == item.ProductId);
-                if (existingItem != null)
+                var existing = _items.FirstOrDefault(i => i.ProductId == item.ProductId);
+                if (existing != null)
                 {
-                    existingItem.Quantity += item.Quantity;
-                    _sqliteManager.UpdateCartItemQuantityAsync(existingItem.ProductId, existingItem.Quantity, _machineGuid)
-                        .GetAwaiter().GetResult();
+                    existing.Quantity += item.Quantity;
+                    toUpdate = existing;
                 }
                 else
                 {
-                    var newItem = item.Clone();
-                    _items.Add(newItem);
-                    _sqliteManager.SaveCartItemAsync(newItem, _machineGuid)
-                        .GetAwaiter().GetResult();
+                    toAdd = item.Clone();
+                    _items.Add(toAdd);
                 }
-
-                OnCartChanged();
-                return true;
             }
+
+            // Persistencia SQLite fuera del lock — fire-and-forget seguro
+            _ = Task.Run(async () =>
+            {
+                if (toUpdate != null)
+                    await _sqliteManager.UpdateCartItemQuantityAsync(toUpdate.ProductId, toUpdate.Quantity, _machineGuid);
+                else if (toAdd != null)
+                    await _sqliteManager.SaveCartItemAsync(toAdd, _machineGuid);
+            });
+
+            OnCartChanged();
+            return true;
         }
         catch (Exception)
         {
-            // Log error or handle appropriately
             return false;
         }
     }
@@ -115,32 +124,39 @@ public class ShoppingCart : IShoppingCart
 
         try
         {
+            CartItem? removed = null;
+            CartItem? updated = null;
+
             lock (_lockObject)
             {
                 var item = _items.FirstOrDefault(i => i.ProductId == productId);
-                if (item == null)
-                    return false;
+                if (item == null) return false;
 
                 if (quantity == 0)
                 {
                     _items.Remove(item);
-                    _sqliteManager.RemoveCartItemAsync(item.ProductId, _machineGuid)
-                        .GetAwaiter().GetResult();
+                    removed = item;
                 }
                 else
                 {
                     item.Quantity = quantity;
-                    _sqliteManager.UpdateCartItemQuantityAsync(item.ProductId, quantity, _machineGuid)
-                        .GetAwaiter().GetResult();
+                    updated = item;
                 }
-
-                OnCartChanged();
-                return true;
             }
+
+            _ = Task.Run(async () =>
+            {
+                if (removed != null)
+                    await _sqliteManager.RemoveCartItemAsync(removed.ProductId, _machineGuid);
+                else if (updated != null)
+                    await _sqliteManager.UpdateCartItemQuantityAsync(updated.ProductId, updated.Quantity, _machineGuid);
+            });
+
+            OnCartChanged();
+            return true;
         }
         catch (Exception)
         {
-            // Log error or handle appropriately
             return false;
         }
     }
@@ -149,23 +165,28 @@ public class ShoppingCart : IShoppingCart
     {
         try
         {
+            CartItem? removed = null;
+
             lock (_lockObject)
             {
                 var item = _items.FirstOrDefault(i => i.ProductId == productId);
-                if (item == null)
-                    return false;
+                if (item == null) return false;
 
                 _items.Remove(item);
-                _sqliteManager.RemoveCartItemAsync(item.ProductId, _machineGuid)
-                    .GetAwaiter().GetResult();
-
-                OnCartChanged();
-                return true;
+                removed = item;
             }
+
+            _ = Task.Run(async () =>
+            {
+                if (removed != null)
+                    await _sqliteManager.RemoveCartItemAsync(removed.ProductId, _machineGuid);
+            });
+
+            OnCartChanged();
+            return true;
         }
         catch (Exception)
         {
-            // Log error or handle appropriately
             return false;
         }
     }
@@ -175,17 +196,15 @@ public class ShoppingCart : IShoppingCart
         try
         {
             lock (_lockObject)
-            {
                 _items.Clear();
-                _sqliteManager.ClearCartAsync(_machineGuid)
-                    .GetAwaiter().GetResult();
 
-                OnCartChanged();
-            }
+            _ = Task.Run(async () => await _sqliteManager.ClearCartAsync(_machineGuid));
+
+            OnCartChanged();
         }
         catch (Exception)
         {
-            // Log error or handle appropriately
+            // Log error
         }
     }
 

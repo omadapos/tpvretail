@@ -2,66 +2,68 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 
 /// <summary>
-/// PremiumMarket Theme — Regla 60-30-10
-/// 60% Blanco/Gris claro  → fondos y superficies (neutro, limpio)
-/// 30% Azul marino profundo → headers, paneles, labels (autoridad, confianza)
-/// 10% Verde fresco          → acciones, confirmaciones, highlights (energía, frescura)
-/// Inspirado en supermercados premium: Stop & Shop, Market 32, Whole Foods
+/// Slate Emerald Theme — Regla 60-30-10
+/// 60% Gris-blanco frío  → fondos y superficies (limpio, aireado)
+/// 30% Slate profundo     → headers, paneles, estructura (autoridad, premium)
+/// 10% Emerald moderno    → acciones, confirmaciones, highlights (frescura digital)
+///
+/// Inspiración: Tailwind CSS slate/emerald — tendencia enterprise 2025-2026
+/// Referencias: Stripe Dashboard, Linear App, Vercel — adaptado a POS supermercado
 /// </summary>
 public static class AppColors
 {
     // ─────────────────────────────────────────────
-    // 60% — FONDOS Y SUPERFICIES (Blanco / Gris suave)
+    // 60% — FONDOS Y SUPERFICIES
     // ─────────────────────────────────────────────
-    public static Color BackgroundPrimary   = Color.FromArgb(247, 248, 250); // Gris blanquecino muy suave
-    public static Color BackgroundSecondary = Color.FromArgb(255, 255, 255); // Blanco puro — tarjetas/surfaces
-    public static Color SurfaceCard         = Color.FromArgb(255, 255, 255); // Blanco — áreas de contenido
-    public static Color SurfaceMuted        = Color.FromArgb(237, 240, 245); // Gris azulado muy claro — separadores
+    public static Color BackgroundPrimary   = Color.FromArgb(248, 250, 252); // slate-50  — base general
+    public static Color BackgroundSecondary = Color.FromArgb(255, 255, 255); // blanco puro — cards / surfaces
+    public static Color SurfaceCard         = Color.FromArgb(255, 255, 255); // blanco — áreas de contenido
+    public static Color SurfaceMuted        = Color.FromArgb(238, 242, 246); // gris-azulado muy suave — filas alternas, separadores
 
     // ─────────────────────────────────────────────
-    // 30% — AZUL MARINO (Headers, paneles, texto primario)
+    // 30% — SLATE (estructura, headers, navegación)
     // ─────────────────────────────────────────────
-    public static Color NavyDark   = Color.FromArgb(13,  31,  45);  // Marino casi negro — header principal
-    public static Color NavyBase   = Color.FromArgb(26,  58,  92);  // Marino medio — sub-headers, sidebar
-    public static Color NavyLight  = Color.FromArgb(44,  82,  130); // Marino claro — elementos activos
-    public static Color SlateBlue  = Color.FromArgb(74,  85,  104); // Slate — bordes, divisores
+    public static Color NavyDark   = Color.FromArgb(15,  23,  42);  // slate-900 — header principal, fondo oscuro
+    public static Color NavyBase   = Color.FromArgb(30,  58,  95);  // slate-800 warm — sub-headers, paneles
+    public static Color NavyLight  = Color.FromArgb(51,  88, 140);  // slate-700 — elementos activos, hover
+    public static Color SlateBlue  = Color.FromArgb(100, 116, 139); // slate-500 — bordes, texto secundario suave
 
     // ─────────────────────────────────────────────
-    // 10% — VERDE FRESCO (Acento principal — acción, éxito)
+    // 10% — EMERALD (acento principal — acción, éxito)
     // ─────────────────────────────────────────────
-    public static Color AccentGreen      = Color.FromArgb(0,   166,  80);  // Verde vibrante — CTA principal
-    public static Color AccentGreenLight = Color.FromArgb(72,  187, 120);  // Verde suave — hover/success
-    public static Color AccentGreenDark  = Color.FromArgb(0,   110,  53);  // Verde oscuro — pressed/activo
+    public static Color AccentGreen      = Color.FromArgb(5,  150, 105);  // emerald-600 — CTA principal (más sutil que verde puro)
+    public static Color AccentGreenLight = Color.FromArgb(52, 211, 153);  // emerald-400 — hover / success light
+    public static Color AccentGreenDark  = Color.FromArgb(4,  120,  87);  // emerald-700 — pressed / activo
 
     // ─────────────────────────────────────────────
     // COLORES FUNCIONALES SEMÁNTICOS
     // ─────────────────────────────────────────────
-    public static Color Success = Color.FromArgb(0,   166,  80);  // Verde — confirmación, OK
-    public static Color Danger  = Color.FromArgb(197,  48,  48);  // Rojo profundo — cancelar, eliminar
-    public static Color Warning = Color.FromArgb(221, 107,  32);  // Ámbar — advertencia
-    public static Color Info    = Color.FromArgb(43,  108, 176);  // Azul — información
+    public static Color Success = Color.FromArgb(5,  150, 105);  // emerald-600
+    public static Color Danger  = Color.FromArgb(220,  38,  38); // red-600 — más vivo y claro que el anterior
+    public static Color Warning = Color.FromArgb(217, 119,   6); // amber-600 — dorado, menos naranja
+    public static Color Info    = Color.FromArgb(37,  99,  235); // blue-600 — digital, moderno
 
     // ─────────────────────────────────────────────
-    // MÉTODOS DE PAGO (con identidad semántica)
+    // MÉTODOS DE PAGO
     // ─────────────────────────────────────────────
-    public static Color PaymentCash     = Color.FromArgb(0,   166,  80);  // Verde — efectivo
-    public static Color PaymentCredit   = Color.FromArgb(43,  108, 176);  // Azul — crédito
-    public static Color PaymentDebit    = Color.FromArgb(74,  85,  104);  // Slate — débito
-    public static Color PaymentEBT      = Color.FromArgb(192,  86,  33);  // Ámbar oscuro — EBT
-    public static Color PaymentGiftCard = Color.FromArgb(107,  70, 193);  // Púrpura — Gift Card
-    public static Color PaymentSplit    = Color.FromArgb(93,  173, 226);  // Azul claro — Split
+    public static Color PaymentCash     = Color.FromArgb(5,  150, 105);  // emerald-600 — efectivo
+    public static Color PaymentCredit   = Color.FromArgb(37,  99, 235);  // blue-600 — crédito
+    public static Color PaymentDebit    = Color.FromArgb(100, 116, 139); // slate-500 — débito (neutro)
+    public static Color PaymentEBT      = Color.FromArgb(180,  83,   9); // amber-800 — EBT (cálido)
+    public static Color PaymentGiftCard = Color.FromArgb(109,  40, 217); // violet-700 — Gift Card
+    public static Color PaymentSplit    = Color.FromArgb(6,  148, 162);  // cyan-600 — Split (diferenciador)
 
     // ─────────────────────────────────────────────
     // TEXTO
     // ─────────────────────────────────────────────
-    public static Color TextPrimary   = Color.FromArgb(26,  32,  44);   // Casi negro — texto principal
-    public static Color TextSecondary = Color.FromArgb(74,  85,  104);  // Gris oscuro — texto secundario
-    public static Color TextMuted     = Color.FromArgb(113, 128, 150);  // Gris suave — placeholder/hint
-    public static Color TextWhite     = Color.FromArgb(255, 255, 255);  // Blanco — texto sobre fondos oscuros
-    public static Color TextAccent    = Color.FromArgb(0,   166,  80);  // Verde — precio destacado, énfasis
+    public static Color TextPrimary   = Color.FromArgb(15,  23,  42);   // slate-900 — texto principal
+    public static Color TextSecondary = Color.FromArgb(71,  85, 105);   // slate-600 — texto secundario
+    public static Color TextMuted     = Color.FromArgb(148, 163, 184);  // slate-400 — placeholder / hint
+    public static Color TextWhite     = Color.FromArgb(248, 250, 252);  // slate-50  — texto sobre fondos oscuros
+    public static Color TextAccent    = Color.FromArgb(5,  150, 105);   // emerald-600 — precio, énfasis
 
     // ─────────────────────────────────────────────
-    // DEGRADADOS UTILITARIOS
+    // GRADIENTES UTILITARIOS
     // ─────────────────────────────────────────────
     public static LinearGradientBrush HeaderGradient(Rectangle bounds) =>
         new LinearGradientBrush(bounds, NavyDark, NavyBase, LinearGradientMode.Vertical);
@@ -70,7 +72,7 @@ public static class AppColors
         new LinearGradientBrush(bounds, AccentGreen, AccentGreenDark, LinearGradientMode.Vertical);
 
     public static LinearGradientBrush DangerGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, Danger, Color.FromArgb(155, 30, 30), LinearGradientMode.Vertical);
+        new LinearGradientBrush(bounds, Danger, Color.FromArgb(185, 28, 28), LinearGradientMode.Vertical);
 
     public static LinearGradientBrush SurfaceGradient(Rectangle bounds) =>
         new LinearGradientBrush(bounds, BackgroundSecondary, BackgroundPrimary, LinearGradientMode.Vertical);
