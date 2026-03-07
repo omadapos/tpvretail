@@ -19,7 +19,7 @@ namespace OmadaPOS.Views
         private void frmPopupQuantity_Load(object sender, EventArgs e)
         {
             AplicarEstiloVisual();
-            keyPadControl1.Setdata("");
+            keyPadControl1.Reset();
         }
 
         private void AplicarEstiloVisual()
@@ -49,7 +49,7 @@ namespace OmadaPOS.Views
 
         private void buttonOK_Click(object sender, EventArgs e)
         {
-            if (int.TryParse(keyPadControl1.Getdata(), out int quantity) && quantity > 0)
+            if (int.TryParse(keyPadControl1.TextValue, out int quantity) && quantity > 0)
             {
                 _homeInteractionService.RequestQuantityChange(quantity, productId);
                 this.Close();

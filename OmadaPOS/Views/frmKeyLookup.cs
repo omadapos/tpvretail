@@ -25,9 +25,6 @@ namespace OmadaPOS.Views
             this.BackColor = AppColors.BackgroundPrimary;
             tableLayoutPanel1.BackColor = AppColors.BackgroundPrimary;
 
-            keyPadControl1.Anchor   = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            keyPadControl1.AutoSize = false;
-
             PopupHeaderHelper.AddHeader(this,
                 color    : AppColors.Info,
                 icon     : "⌕",
@@ -44,7 +41,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                var code = keyPadControl1.Getdata();
+                var code = keyPadControl1.TextValue;
                 if (!string.IsNullOrEmpty(code))
                 {
                     await _homeInteractionService.RequestProductSearchAsync(code);

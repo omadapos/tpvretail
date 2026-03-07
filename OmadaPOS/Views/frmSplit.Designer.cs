@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmSplit
     {
@@ -297,7 +297,6 @@
             button7.Tag = "7";
             button7.Text = "7";
             button7.UseVisualStyleBackColor = true;
-            button7.Click += buttonKey_Click;
             // 
             // button8
             // 
@@ -310,7 +309,6 @@
             button8.Tag = "8";
             button8.Text = "8";
             button8.UseVisualStyleBackColor = true;
-            button8.Click += buttonKey_Click;
             // 
             // button9
             // 
@@ -323,7 +321,6 @@
             button9.Tag = "9";
             button9.Text = "9";
             button9.UseVisualStyleBackColor = true;
-            button9.Click += buttonKey_Click;
             // 
             // button4
             // 
@@ -336,7 +333,6 @@
             button4.Tag = "4";
             button4.Text = "4";
             button4.UseVisualStyleBackColor = true;
-            button4.Click += buttonKey_Click;
             // 
             // button5
             // 
@@ -349,7 +345,6 @@
             button5.Tag = "5";
             button5.Text = "5";
             button5.UseVisualStyleBackColor = true;
-            button5.Click += buttonKey_Click;
             // 
             // button6
             // 
@@ -362,7 +357,6 @@
             button6.Tag = "6";
             button6.Text = "6";
             button6.UseVisualStyleBackColor = true;
-            button6.Click += buttonKey_Click;
             // 
             // button1
             // 
@@ -375,7 +369,6 @@
             button1.Tag = "1";
             button1.Text = "1";
             button1.UseVisualStyleBackColor = true;
-            button1.Click += buttonKey_Click;
             // 
             // button2
             // 
@@ -388,7 +381,6 @@
             button2.Tag = "2";
             button2.Text = "2";
             button2.UseVisualStyleBackColor = true;
-            button2.Click += buttonKey_Click;
             // 
             // button3
             // 
@@ -401,7 +393,6 @@
             button3.Tag = "3";
             button3.Text = "3";
             button3.UseVisualStyleBackColor = true;
-            button3.Click += buttonKey_Click;
             // 
             // button00
             // 
@@ -414,7 +405,6 @@
             button00.Tag = "00";
             button00.Text = "00";
             button00.UseVisualStyleBackColor = true;
-            button00.Click += buttonKey_Click;
             // 
             // button0
             // 
@@ -427,7 +417,6 @@
             button0.Tag = "0";
             button0.Text = "0";
             button0.UseVisualStyleBackColor = true;
-            button0.Click += buttonKey_Click;
             // 
             // buttonClear
             // 
@@ -440,7 +429,6 @@
             buttonClear.Tag = "Clear";
             buttonClear.Text = "Clear";
             buttonClear.UseVisualStyleBackColor = true;
-            buttonClear.Click += buttonKey_Click;
             // 
             // tableLayoutPanel5
             // 
@@ -644,7 +632,6 @@
             button20usd.Tag = "2000";
             button20usd.Text = "$ 20";
             button20usd.UseVisualStyleBackColor = true;
-            button20usd.Click += buttonKey_Click;
             // 
             // button10usd
             // 
@@ -658,7 +645,6 @@
             button10usd.Tag = "1000";
             button10usd.Text = "$ 10";
             button10usd.UseVisualStyleBackColor = true;
-            button10usd.Click += buttonKey_Click;
             // 
             // button50usd
             // 
@@ -672,7 +658,6 @@
             button50usd.Tag = "5000";
             button50usd.Text = "$ 50";
             button50usd.UseVisualStyleBackColor = true;
-            button50usd.Click += buttonKey_Click;
             // 
             // button100usd
             // 
@@ -686,7 +671,6 @@
             button100usd.Tag = "10000";
             button100usd.Text = "$ 100";
             button100usd.UseVisualStyleBackColor = true;
-            button100usd.Click += buttonKey_Click;
             // 
             // buttonEbtBalance
             // 

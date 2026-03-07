@@ -47,7 +47,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                decimal dueValue = keyPadMoneyControl1.GetValue();
+                decimal dueValue = keyPadMoneyControl1.ValueDecimal;
                 if (dueValue == 0)
                 {
                     MessageBox.Show("Por favor ingrese un precio válido.", "Precio requerido",

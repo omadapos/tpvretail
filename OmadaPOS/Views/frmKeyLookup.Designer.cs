@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmKeyLookup: Form
     {
@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            keyPadControl1 = new OmadaPOS.Componentes.KeyPadControl();
+            keyPadControl1 = new OmadaPOS.Componentes.NumericPadControl(OmadaPOS.Componentes.NumericPadControl.PadMode.Integer);
             buttonOK = new Button();
             buttonCancel = new Button();
             tableLayoutPanel1 = new TableLayoutPanel();
@@ -39,14 +39,8 @@
             // 
             // keyPadControl1
             // 
-            keyPadControl1.Anchor = AnchorStyles.None;
-            keyPadControl1.AutoSize = true;
-            keyPadControl1.BackColor = Color.White;
-            keyPadControl1.Font = new Font("Microsoft Sans Serif", 9.75F);
-            keyPadControl1.Location = new Point(279, 66);
-            keyPadControl1.Margin = new Padding(1, 0, 1, 0);
-            keyPadControl1.Name = "keyPadControl1";
-            keyPadControl1.Size = new Size(450, 450);
+            keyPadControl1.Dock     = DockStyle.Fill;
+            keyPadControl1.Name     = "keyPadControl1";
             keyPadControl1.TabIndex = 0;
             // 
             // buttonOK
@@ -134,7 +128,7 @@
 
         #endregion
 
-        private Componentes.KeyPadControl keyPadControl1;
+        private Componentes.NumericPadControl keyPadControl1;
         private Button buttonOK;
         private Button buttonCancel;
         private TableLayoutPanel tableLayoutPanel1;

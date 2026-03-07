@@ -21,10 +21,12 @@ namespace OmadaPOS.Views
         private PaymentPanelControl? _paymentPanelControl;
         private UserSessionControl? _userSessionControl;
 
+        // Initialized in code so the WinForms Designer cannot remove it on regeneration.
+        private NumericPadControl keyPaymentControl1 = null!;
+
         int orderId = 0;
 
         decimal totalGlobal = 0;
-        int inputValue = 0;
         decimal changeValue = 0;
         bool bDesc = false;
         double weight = 0.0;
@@ -95,6 +97,14 @@ namespace OmadaPOS.Views
 
         private void InicializarControlesUI()
         {
+            // Create the payment numpad in code so the Designer cannot overwrite it.
+            keyPaymentControl1 = new NumericPadControl(NumericPadControl.PadMode.MoneyWithBills)
+            {
+                Dock = DockStyle.Fill,
+                Name = "keyPaymentControl1"
+            };
+            tableLayoutPanelPayment.Controls.Add(keyPaymentControl1, 0, 1);
+
             _scanInputControl = ScanInputControl.Attach(tableLayoutPanel1, textBoxUPC);
             _userSessionControl = UserSessionControl.Attach(this, MaintableLayout, tableLayoutPanel1, labelCashier);
             _userSessionControl.SettingsRequested += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
@@ -137,6 +147,8 @@ namespace OmadaPOS.Views
                 labelPesaProduct,
                 lblScalStatusDesc,
                 pictureBoxPesado);
+
+            keyPaymentControl1.ValueChanged += (_, _) => DisplayTotales();
         }
 
         private void ConfigureUI()
@@ -536,54 +548,18 @@ namespace OmadaPOS.Views
             }
         }
 
-        private void KeyPaymentControl1_KeyPaymentClicked(object sender, string tag)
-        {
-            switch (tag)
-            {
-                case "0":
-                case "00":
-                case "1":
-                case "2":
-                case "3":
-                case "4":
-                case "5":
-                case "6":
-                case "7":
-                case "8":
-                case "9":
-                    if (int.TryParse(inputValue.ToString() + tag, out int parsedDigit))
-                        inputValue = parsedDigit;
-
-                    DisplayTotales();
-                    break;
-
-                case "1000":
-                case "2000":
-                case "5000":
-                case "10000":
-                    if (int.TryParse(tag, out int parsedBill))
-                        inputValue = parsedBill;
-
-                    DisplayTotales();
-                    break;
-
-                default: // C
-                    ClearTotales();
-                    break;
-            }
-        }
-
         private void DisplayTotales()
         {
-            changeValue = (inputValue / 100m) - totalGlobal;
+            var tendered  = keyPaymentControl1.ValueDecimal;
+            changeValue   = tendered - totalGlobal;
             var safeChange = changeValue > 0 ? changeValue : 0.0m;
 
-            _paymentPanelControl?.UpdatePaymentValues(inputValue / 100.0m, safeChange);
+            _paymentPanelControl?.UpdatePaymentValues(tendered, safeChange);
         }
 
         private void ClearTotales(bool all = false)
         {
-            inputValue = 0;
+            keyPaymentControl1.Reset();
             changeValue = 0;
 
             _cartTotalsControl?.ResetTotals(includeGrandTotal: all);
@@ -771,7 +747,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, inputValue, changeValue, bDesc);
+                var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, keyPaymentControl1.ValueCents, changeValue, bDesc);
 
                 if (!result.IsValidAmount)
                 {

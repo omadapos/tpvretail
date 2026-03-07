@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Views
+namespace OmadaPOS.Views
 {
     partial class frmProductNoExist: Form
     {
@@ -41,7 +41,7 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             panel1 = new Panel();
             tableLayoutPanel2 = new TableLayoutPanel();
-            keyPadMoneyControl1 = new OmadaPOS.Componentes.KeyPadMoneyControl();
+            keyPadMoneyControl1 = new OmadaPOS.Componentes.NumericPadControl(OmadaPOS.Componentes.NumericPadControl.PadMode.Money);
             ((System.ComponentModel.ISupportInitialize)picThumb).BeginInit();
             tableLayoutPanel1.SuspendLayout();
             panel1.SuspendLayout();
@@ -194,11 +194,8 @@
             // 
             // keyPadMoneyControl1
             // 
-            keyPadMoneyControl1.Dock = DockStyle.Fill;
-            keyPadMoneyControl1.Location = new Point(940, 2);
-            keyPadMoneyControl1.Margin = new Padding(4, 2, 4, 2);
-            keyPadMoneyControl1.Name = "keyPadMoneyControl1";
-            keyPadMoneyControl1.Size = new Size(928, 929);
+            keyPadMoneyControl1.Dock     = DockStyle.Fill;
+            keyPadMoneyControl1.Name     = "keyPadMoneyControl1";
             keyPadMoneyControl1.TabIndex = 10;
             // 
             // frmProductNoExist
@@ -239,6 +236,6 @@
         private TableLayoutPanel tableLayoutPanel1;
         private Panel panel1;
         private TableLayoutPanel tableLayoutPanel2;
-        private Componentes.KeyPadMoneyControl keyPadMoneyControl1;
+        private Componentes.NumericPadControl keyPadMoneyControl1;
     }
 }

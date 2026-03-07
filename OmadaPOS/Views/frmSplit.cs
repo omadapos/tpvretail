@@ -23,13 +23,13 @@ namespace OmadaPOS.Views
         // Una lambda anónima no puede desuscribirse si no se guarda la referencia.
         private EventHandler? _cartChangedHandler;
 
-        int inputValue = 0;
         decimal totalGlobal = 0;
         decimal remainingAmount = 0;
         decimal due = 0;
         int totalItemPayments = 0;
 
         private RoundedPanel panelSplitPay;
+        private NumericPadControl _numPad = null!;
 
         public frmSplit(
             IShoppingCart shoppingCart,
@@ -61,7 +61,7 @@ namespace OmadaPOS.Views
             // ── Cerrar ────────────────────────────────────────────────
             ButtonVariants.Danger(buttonClose,            fontSize: 18f);
 
-            // ── Teclado numérico ──────────────────────────────────────
+            // ── Clear del teclado inline (ya no se usa, ocultamos) ───
             ButtonVariants.Keypad(buttonClear,            fontSize: 18f);
 
             _shoppingCart           = shoppingCart;
@@ -108,7 +108,21 @@ namespace OmadaPOS.Views
             };
             this.Controls.Add(panelSplitPay);
 
-            ConfigureNumericButtons(AppColors.NavyBase);
+            // ── Reemplazar tableLayoutPanel4 con NumericPadControl unificado ──
+            _numPad = new NumericPadControl(NumericPadControl.PadMode.MoneyWithBills)
+            {
+                Dock = DockStyle.Fill
+            };
+            _numPad.ValueChanged += (_, _) => DisplayTotales();
+
+            tableLayoutPanel3.Controls.Remove(tableLayoutPanel4);
+            tableLayoutPanel3.Controls.Add(_numPad, 0, 1);
+
+            // Ocultar fila de billetes inline (ahora incluidos en NumericPadControl)
+            tableLayoutPanel5.Visible = false;
+
+            // Estilizar botón "Remaining"
+            ElegantButtonStyles.Style(buttonRemain, ElegantButtonStyles.SplitBlueLight, fontSize: 22f);
         }
 
         private void ConfigureCartListView()
@@ -196,11 +210,9 @@ namespace OmadaPOS.Views
 
         private void DisplayTotales()
         {
-            // due = remainingAmount - (inputValue / 100.0m);
-
-            labelDueValue.Text = due.ToString("C");
-            labelChargedValue.Text = (inputValue / 100.0m).ToString("C");
-            buttonRemain.Text = remainingAmount.ToString("C");
+            labelDueValue.Text     = due.ToString("C");
+            labelChargedValue.Text = _numPad.ValueDecimal.ToString("C");
+            buttonRemain.Text      = remainingAmount.ToString("C");
         }
 
         private async void PaymentButton_Click(object sender, EventArgs e)
@@ -210,7 +222,7 @@ namespace OmadaPOS.Views
                 try
                 {
                     string paymentType = button.Tag?.ToString() ?? "Unknown";
-                    decimal paymentAmount = inputValue / 100.0m;
+                    decimal paymentAmount = _numPad.ValueDecimal;
 
                     if (paymentAmount <= 0 || totalGlobal == 0)
                     {
@@ -292,8 +304,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                inputValue = (int)(remainingAmount * 100);
-                DisplayTotales();
+                _numPad.ValueCents = (int)(remainingAmount * 100);
             }
             catch (Exception ex)
             {
@@ -323,60 +334,12 @@ namespace OmadaPOS.Views
             }
         }
 
-        private void buttonKey_Click(object sender, EventArgs e)
-        {
-            if (sender is Button button)
-            {
-                var tag = button.Tag?.ToString();
-                switch (tag)
-                {
-                    case "0":
-                    case "00":
-                    case "1":
-                    case "2":
-                    case "3":
-                    case "4":
-                    case "5":
-                    case "6":
-                    case "7":
-                    case "8":
-                    case "9":
-                        try
-                        {
-                            string numTemp = inputValue.ToString();
-                            numTemp += tag;
-                            int valNum = int.Parse(numTemp);
-                            inputValue = valNum;
-                        }
-                        catch { }
-                        DisplayTotales();
-                        break;
-
-                    case "1000":
-                    case "2000":
-                    case "5000":
-                    case "10000":
-                        try
-                        {
-                            int valNum = int.Parse(tag);
-                            inputValue = valNum;
-                        }
-                        catch { }
-                        DisplayTotales();
-                        break;
-
-                    default: // C
-                        ClearTotales();
-                        break;
-                }
-            }
-        }
 
         private void ClearTotales()
         {
-            inputValue = 0;
+            _numPad.Reset();
             labelChargedValue.Text = "0.00";
-            labelDueValue.Text = "0.00";
+            labelDueValue.Text     = "0.00";
         }
 
         private void buttonClose_Click(object sender, EventArgs e)
@@ -419,22 +382,7 @@ namespace OmadaPOS.Views
             }
         }
 
-        private void ConfigureNumericButtons(Color numberButtonColor)
-        {
-            // Dígitos del teclado — Keypad navy
-            var numericButtons = new[] { button0, button00, button1, button2, button3,
-                                          button4, button5, button6, button7, button8, button9 };
-            foreach (var btn in numericButtons)
-                ElegantButtonStyles.Style(btn, ElegantButtonStyles.Keypad, fontSize: 30f);
-
-            // Billetes y monto restante — verde efectivo, tamaño consistente con frmHome
-            var moneyButtons = new[] { button10usd, button20usd, button50usd, button100usd };
-            foreach (var btn in moneyButtons)
-                ElegantButtonStyles.Style(btn, ElegantButtonStyles.CashGreen, fontSize: 24f);
-
-            // Monto restante — azul split (semánticamente: "lo que falta por pagar")
-            ElegantButtonStyles.Style(buttonRemain, ElegantButtonStyles.SplitBlueLight, fontSize: 22f);
-        }
+        
 
         private void buttonCalculateEBT_Click(object sender, EventArgs e)
         {

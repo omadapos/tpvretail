@@ -6,7 +6,7 @@ public class PaymentPanelControl : UserControl
 {
     private readonly TableLayoutPanel _paymentPanel;
     private readonly TableLayoutPanel _paymentHeader;
-    private readonly KeyPaymentControl _keyPaymentControl;
+    private readonly NumericPadControl _keyPaymentControl;
     private readonly RoundedPanel _summaryPanel;
     private readonly TableLayoutPanel _summaryLayout;
     private readonly Label _labelTender;
@@ -24,7 +24,7 @@ public class PaymentPanelControl : UserControl
     private PaymentPanelControl(
         TableLayoutPanel paymentPanel,
         TableLayoutPanel paymentHeader,
-        KeyPaymentControl keyPaymentControl,
+        NumericPadControl keyPaymentControl,
         RoundedPanel summaryPanel,
         TableLayoutPanel summaryLayout,
         Label labelTender,
@@ -69,7 +69,7 @@ public class PaymentPanelControl : UserControl
         TableLayoutPanel mainLayout,
         TableLayoutPanel paymentPanel,
         TableLayoutPanel paymentHeader,
-        KeyPaymentControl keyPaymentControl,
+        NumericPadControl keyPaymentControl,
         RoundedPanel summaryPanel,
         TableLayoutPanel summaryLayout,
         Label labelTender,

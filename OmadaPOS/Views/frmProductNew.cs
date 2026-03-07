@@ -46,7 +46,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                decimal valor = keyPadMoneyControl1.GetValue();
+                decimal valor = keyPadMoneyControl1.ValueDecimal;
                 if (valor > 0)
                 {
                     await _homeInteractionService.RequestCustomProductAsync(bTax, valor);

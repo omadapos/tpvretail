@@ -33,7 +33,7 @@ namespace OmadaPOS.Views
             buttonCancel = new Button();
             buttonOk = new Button();
             tableLayoutPanel2 = new TableLayoutPanel();
-            keyPadMoneyControl1 = new OmadaPOS.Componentes.KeyPadMoneyControl();
+            keyPadMoneyControl1 = new OmadaPOS.Componentes.NumericPadControl(OmadaPOS.Componentes.NumericPadControl.PadMode.Money);
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
             SuspendLayout();
@@ -96,11 +96,8 @@ namespace OmadaPOS.Views
             // 
             // keyPadMoneyControl1
             // 
-            keyPadMoneyControl1.Dock = DockStyle.Fill;
-            keyPadMoneyControl1.Location = new Point(4, 2);
-            keyPadMoneyControl1.Margin = new Padding(4, 2, 4, 2);
-            keyPadMoneyControl1.Name = "keyPadMoneyControl1";
-            keyPadMoneyControl1.Size = new Size(1864, 1240);
+            keyPadMoneyControl1.Dock     = DockStyle.Fill;
+            keyPadMoneyControl1.Name     = "keyPadMoneyControl1";
             keyPadMoneyControl1.TabIndex = 15;
             // 
             // frmProductNew
@@ -128,6 +125,6 @@ namespace OmadaPOS.Views
         private Button buttonCancel;
         private Button buttonOk;
         private TableLayoutPanel tableLayoutPanel2;
-        private Componentes.KeyPadMoneyControl keyPadMoneyControl1;
+        private Componentes.NumericPadControl keyPadMoneyControl1;
     }
 }

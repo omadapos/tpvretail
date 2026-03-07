@@ -34,7 +34,7 @@ namespace OmadaPOS.Views
             tableLayoutPanel1 = new TableLayoutPanel();
             tableLayoutPanel2 = new TableLayoutPanel();
             buttonCancel = new Button();
-            keyPadControl1 = new OmadaPOS.Componentes.KeyPadControl();
+            keyPadControl1 = new OmadaPOS.Componentes.NumericPadControl(OmadaPOS.Componentes.NumericPadControl.PadMode.Integer);
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
             SuspendLayout();
@@ -98,14 +98,8 @@ namespace OmadaPOS.Views
             // 
             // keyPadControl1
             // 
-            keyPadControl1.Anchor = AnchorStyles.None;
-            keyPadControl1.AutoSize = true;
-            keyPadControl1.BackColor = Color.FromArgb(247, 248, 250);
-            keyPadControl1.ForeColor = Color.FromArgb(26, 32, 44);
-            keyPadControl1.Location = new Point(21, 19);
-            keyPadControl1.Margin = new Padding(2, 1, 2, 1);
-            keyPadControl1.Name = "keyPadControl1";
-            keyPadControl1.Size = new Size(965, 545);
+            keyPadControl1.Dock     = DockStyle.Fill;
+            keyPadControl1.Name     = "keyPadControl1";
             keyPadControl1.TabIndex = 11;
             // 
             // frmPopupQuantity
@@ -134,6 +128,6 @@ namespace OmadaPOS.Views
         private TableLayoutPanel tableLayoutPanel1;
         private TableLayoutPanel tableLayoutPanel2;
         private Button buttonCancel;
-        private Componentes.KeyPadControl keyPadControl1;
+        private Componentes.NumericPadControl keyPadControl1;
     }
 }
