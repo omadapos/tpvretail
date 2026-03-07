@@ -1,365 +1,294 @@
 namespace OmadaPOS.Views
 {
-    partial class frmSignIn: Form
+    partial class frmSignIn : Form
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
-            {
                 components.Dispose();
-            }
             base.Dispose(disposing);
         }
 
-        #region Windows Form Designer generated code
-
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmSignIn));
-            tableLayoutPanelMain = new TableLayoutPanel();
-            tableLayoutPanel1 = new TableLayoutPanel();
-            button9 = new Button();
-            button6 = new Button();
-            button1 = new Button();
-            button2 = new Button();
-            button8 = new Button();
-            button5 = new Button();
-            button4 = new Button();
-            button3 = new Button();
-            button0 = new Button();
-            button7 = new Button();
-            buttonClear = new Button();
-            buttonLogin = new Button();
-            textBoxPhone = new TextBox();
-            labelId = new Label();
-            watermarkOmadapos1 = new OmadaPOS.Controles.WatermarkOmadaPOS();
-            tableLayoutPanelMain.SuspendLayout();
-            tableLayoutPanel1.SuspendLayout();
+            pnlHeader    = new Panel();
+            lblLogo      = new Label();
+            lblClock     = new Label();
+            pnlFooter    = new Panel();
+            labelId      = new Label();
+            pnlBackground = new Panel();
+            pnlCard      = new Panel();
+            pnlCardTop   = new Panel();
+            lblTitle     = new Label();
+            pnlPinDots   = new Panel();
+            lblError     = new Label();
+            tlpKeypad    = new TableLayoutPanel();
+            button7      = new Button();
+            button8      = new Button();
+            button9      = new Button();
+            button4      = new Button();
+            button5      = new Button();
+            button6      = new Button();
+            button1      = new Button();
+            button2      = new Button();
+            button3      = new Button();
+            buttonClear  = new Button();
+            button0      = new Button();
+            buttonLogin  = new Button();
+
+            pnlHeader.SuspendLayout();
+            pnlFooter.SuspendLayout();
+            pnlBackground.SuspendLayout();
+            pnlCard.SuspendLayout();
+            pnlCardTop.SuspendLayout();
+            tlpKeypad.SuspendLayout();
             SuspendLayout();
-            // 
-            // tableLayoutPanelMain
-            // 
-            tableLayoutPanelMain.BackColor = Color.Transparent;
-            tableLayoutPanelMain.CellBorderStyle = TableLayoutPanelCellBorderStyle.None;
-            tableLayoutPanelMain.ColumnCount = 3;
-            tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 31.9277115F));
-            tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 39.2493057F));
-            tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28.8693237F));
-            tableLayoutPanelMain.Controls.Add(tableLayoutPanel1, 1, 1);
-            tableLayoutPanelMain.Controls.Add(textBoxPhone, 1, 0);
-            tableLayoutPanelMain.Controls.Add(labelId, 2, 3);
-            tableLayoutPanelMain.Controls.Add(watermarkOmadapos1, 0, 2);
-            tableLayoutPanelMain.Dock = DockStyle.Fill;
-            tableLayoutPanelMain.Location = new Point(0, 0);
-            tableLayoutPanelMain.Margin = new Padding(2, 1, 2, 1);
-            tableLayoutPanelMain.Name = "tableLayoutPanelMain";
-            tableLayoutPanelMain.RowCount = 4;
-            tableLayoutPanelMain.RowStyles.Add(new RowStyle(SizeType.Percent, 21.0912914F));
-            tableLayoutPanelMain.RowStyles.Add(new RowStyle(SizeType.Percent, 78.90871F));
-            tableLayoutPanelMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 107F));
-            tableLayoutPanelMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
-            tableLayoutPanelMain.Size = new Size(1008, 729);
-            tableLayoutPanelMain.TabIndex = 0;
-            // 
-            // tableLayoutPanel1
-            // 
-            tableLayoutPanel1.ColumnCount = 3;
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanel1.Controls.Add(button9, 2, 0);
-            tableLayoutPanel1.Controls.Add(button6, 2, 1);
-            tableLayoutPanel1.Controls.Add(button1, 0, 2);
-            tableLayoutPanel1.Controls.Add(button2, 1, 2);
-            tableLayoutPanel1.Controls.Add(button8, 1, 0);
-            tableLayoutPanel1.Controls.Add(button5, 1, 1);
-            tableLayoutPanel1.Controls.Add(button4, 0, 1);
-            tableLayoutPanel1.Controls.Add(button3, 2, 2);
-            tableLayoutPanel1.Controls.Add(button0, 1, 3);
-            tableLayoutPanel1.Controls.Add(button7, 0, 0);
-            tableLayoutPanel1.Controls.Add(buttonClear, 0, 3);
-            tableLayoutPanel1.Controls.Add(buttonLogin, 2, 3);
-            tableLayoutPanel1.Dock = DockStyle.Fill;
-            tableLayoutPanel1.Location = new Point(323, 120);
-            tableLayoutPanel1.Margin = new Padding(2, 1, 2, 1);
-            tableLayoutPanel1.Name = "tableLayoutPanel1";
-            tableLayoutPanel1.RowCount = 4;
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tableLayoutPanel1.Size = new Size(391, 444);
-            tableLayoutPanel1.TabIndex = 1;
-            // 
-            // button9
-            // 
-            button9.Dock = DockStyle.Fill;
-            button9.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button9.ForeColor = SystemColors.ActiveCaptionText;
-            button9.Location = new Point(262, 2);
-            button9.Margin = new Padding(2);
-            button9.Name = "button9";
-            button9.Size = new Size(127, 107);
-            button9.TabIndex = 8;
-            button9.Tag = "9";
-            button9.Text = "9";
-            button9.UseVisualStyleBackColor = true;
-            button9.Click += buttonKey_Click;
-            // 
-            // button6
-            // 
-            button6.Dock = DockStyle.Fill;
-            button6.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button6.ForeColor = SystemColors.ActiveCaptionText;
-            button6.Location = new Point(262, 113);
-            button6.Margin = new Padding(2);
-            button6.Name = "button6";
-            button6.Size = new Size(127, 107);
-            button6.TabIndex = 5;
-            button6.Tag = "6";
-            button6.Text = "6";
-            button6.UseVisualStyleBackColor = true;
-            button6.Click += buttonKey_Click;
-            // 
-            // button1
-            // 
-            button1.Dock = DockStyle.Fill;
-            button1.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button1.ForeColor = SystemColors.ActiveCaptionText;
-            button1.Location = new Point(2, 224);
-            button1.Margin = new Padding(2);
-            button1.Name = "button1";
-            button1.Size = new Size(126, 107);
-            button1.TabIndex = 0;
-            button1.Tag = "1";
-            button1.Text = "1";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += buttonKey_Click;
-            // 
-            // button2
-            // 
-            button2.Dock = DockStyle.Fill;
-            button2.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button2.ForeColor = SystemColors.ActiveCaptionText;
-            button2.Location = new Point(132, 224);
-            button2.Margin = new Padding(2);
-            button2.Name = "button2";
-            button2.Size = new Size(126, 107);
-            button2.TabIndex = 1;
-            button2.Tag = "2";
-            button2.Text = "2";
-            button2.UseVisualStyleBackColor = true;
-            button2.Click += buttonKey_Click;
-            // 
-            // button8
-            // 
-            button8.Dock = DockStyle.Fill;
-            button8.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button8.ForeColor = SystemColors.ActiveCaptionText;
-            button8.Location = new Point(132, 2);
-            button8.Margin = new Padding(2);
-            button8.Name = "button8";
-            button8.Size = new Size(126, 107);
-            button8.TabIndex = 7;
-            button8.Tag = "8";
-            button8.Text = "8";
-            button8.UseVisualStyleBackColor = true;
-            button8.Click += buttonKey_Click;
-            // 
-            // button5
-            // 
-            button5.Dock = DockStyle.Fill;
-            button5.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button5.ForeColor = SystemColors.ActiveCaptionText;
-            button5.Location = new Point(132, 113);
-            button5.Margin = new Padding(2);
-            button5.Name = "button5";
-            button5.Size = new Size(126, 107);
-            button5.TabIndex = 4;
-            button5.Tag = "5";
-            button5.Text = "5";
-            button5.UseVisualStyleBackColor = true;
-            button5.Click += buttonKey_Click;
-            // 
-            // button4
-            // 
-            button4.Dock = DockStyle.Fill;
-            button4.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button4.ForeColor = SystemColors.ActiveCaptionText;
-            button4.Location = new Point(2, 113);
-            button4.Margin = new Padding(2);
-            button4.Name = "button4";
-            button4.Size = new Size(126, 107);
-            button4.TabIndex = 3;
-            button4.Tag = "4";
-            button4.Text = "4";
-            button4.UseVisualStyleBackColor = true;
-            button4.Click += buttonKey_Click;
-            // 
-            // button3
-            // 
-            button3.Dock = DockStyle.Fill;
-            button3.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button3.ForeColor = SystemColors.ActiveCaptionText;
-            button3.Location = new Point(262, 224);
-            button3.Margin = new Padding(2);
-            button3.Name = "button3";
-            button3.Size = new Size(127, 107);
-            button3.TabIndex = 2;
-            button3.Tag = "3";
-            button3.Text = "3";
-            button3.UseVisualStyleBackColor = true;
-            button3.Click += buttonKey_Click;
-            // 
-            // button0
-            // 
-            button0.Dock = DockStyle.Fill;
-            button0.Location = new Point(132, 335);
-            button0.Margin = new Padding(2);
-            button0.Name = "button0";
-            button0.Size = new Size(126, 107);
-            button0.TabIndex = 9;
-            button0.Tag = "0";
-            button0.Text = "0";
-            button0.UseVisualStyleBackColor = true;
-            button0.Click += buttonKey_Click;
-            // 
-            // button7
-            // 
-            button7.Dock = DockStyle.Fill;
-            button7.Font = new Font("Microsoft Sans Serif", 8.1F);
-            button7.ForeColor = SystemColors.ActiveCaptionText;
-            button7.Location = new Point(2, 2);
-            button7.Margin = new Padding(2);
-            button7.Name = "button7";
-            button7.Size = new Size(126, 107);
-            button7.TabIndex = 6;
-            button7.Tag = "7";
-            button7.Text = "7";
-            button7.UseVisualStyleBackColor = true;
-            button7.Click += buttonKey_Click;
-            // 
-            // buttonClear
-            // 
-            buttonClear.Dock = DockStyle.Fill;
-            buttonClear.Location = new Point(3, 336);
-            buttonClear.Name = "buttonClear";
-            buttonClear.Size = new Size(124, 105);
-            buttonClear.TabIndex = 12;
-            buttonClear.Text = "Clear";
-            buttonClear.UseVisualStyleBackColor = true;
-            buttonClear.Click += buttonClear_Click;
-            // 
-            // buttonLogin
-            // 
-            buttonLogin.Dock = DockStyle.Fill;
-            buttonLogin.Location = new Point(263, 336);
-            buttonLogin.Name = "buttonLogin";
-            buttonLogin.Size = new Size(125, 105);
-            buttonLogin.TabIndex = 13;
-            buttonLogin.Text = "Login";
-            buttonLogin.UseVisualStyleBackColor = true;
-            buttonLogin.Click += buttonLogin_Click;
-            // 
-            // textBoxPhone
-            // 
-            textBoxPhone.BackColor = Color.FromArgb(13, 31, 45);
-            textBoxPhone.BorderStyle = BorderStyle.None;
-            textBoxPhone.Dock = DockStyle.Bottom;
-            textBoxPhone.Font = new Font("Calibri", 36F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            textBoxPhone.ForeColor = Color.FromArgb(0, 166, 80);
-            textBoxPhone.ImeMode = ImeMode.NoControl;
-            textBoxPhone.Location = new Point(326, 55);
-            textBoxPhone.Margin = new Padding(5);
-            textBoxPhone.MaxLength = 20;
-            textBoxPhone.Name = "textBoxPhone";
-            textBoxPhone.PasswordChar = '*';
-            textBoxPhone.PlaceholderText = "ENTER PIN";
-            textBoxPhone.ReadOnly = true;
-            textBoxPhone.Size = new Size(385, 59);
-            textBoxPhone.TabIndex = 1;
-            textBoxPhone.TextAlign = HorizontalAlignment.Center;
-            // 
-            // labelId
-            // 
-            labelId.AutoSize = true;
-            labelId.BackColor = Color.Transparent;
-            labelId.Dock = DockStyle.Fill;
-            labelId.Font = new Font("Consolas", 20.1F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelId.ForeColor = Color.FromArgb(113, 128, 150);
-            labelId.Location = new Point(718, 672);
-            labelId.Margin = new Padding(2, 0, 2, 0);
-            labelId.Name = "labelId";
-            labelId.Size = new Size(288, 57);
-            labelId.TabIndex = 3;
+
+            // ═══════════════════════════════════════════════════════════
+            // HEADER — dark strip 56px
+            // ═══════════════════════════════════════════════════════════
+            pnlHeader.Dock      = DockStyle.Top;
+            pnlHeader.Height    = 56;
+            pnlHeader.BackColor = Color.FromArgb(15, 23, 42);
+            pnlHeader.Controls.Add(lblClock);
+            pnlHeader.Controls.Add(lblLogo);
+            pnlHeader.Name      = "pnlHeader";
+            pnlHeader.Paint    += PnlHeader_Paint;
+
+            lblLogo.Text      = "● Omada POS";
+            lblLogo.Font      = new Font("Segoe UI", 14F, FontStyle.Bold);
+            lblLogo.ForeColor = Color.FromArgb(248, 250, 252);
+            lblLogo.AutoSize  = true;
+            lblLogo.Location  = new Point(24, 16);
+            lblLogo.BackColor = Color.Transparent;
+            lblLogo.Name      = "lblLogo";
+
+            lblClock.Font      = new Font("Consolas", 14F, FontStyle.Regular);
+            lblClock.ForeColor = Color.FromArgb(52, 211, 153);
+            lblClock.AutoSize  = true;
+            lblClock.Anchor    = AnchorStyles.Top | AnchorStyles.Right;
+            lblClock.Location  = new Point(1230, 18);
+            lblClock.BackColor = Color.Transparent;
+            lblClock.Name      = "lblClock";
+            lblClock.Text      = "00:00 AM";
+
+            // ═══════════════════════════════════════════════════════════
+            // FOOTER — terminal ID strip 34px
+            // ═══════════════════════════════════════════════════════════
+            pnlFooter.Dock      = DockStyle.Bottom;
+            pnlFooter.Height    = 34;
+            pnlFooter.BackColor = Color.FromArgb(15, 23, 42);
+            pnlFooter.Controls.Add(labelId);
+            pnlFooter.Name      = "pnlFooter";
+
+            labelId.Dock      = DockStyle.Fill;
+            labelId.Font      = new Font("Consolas", 10F, FontStyle.Regular);
+            labelId.ForeColor = Color.FromArgb(71, 85, 105);
             labelId.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // watermarkOmadapos1
-            // 
-            watermarkOmadapos1.BackColor = Color.Transparent;
-            watermarkOmadapos1.Dock = DockStyle.Fill;
-            watermarkOmadapos1.Enabled = false;
-            watermarkOmadapos1.Font = new Font("Nirmala UI", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            watermarkOmadapos1.Location = new Point(3, 568);
-            watermarkOmadapos1.Name = "watermarkOmadapos1";
-            watermarkOmadapos1.Size = new Size(315, 101);
-            watermarkOmadapos1.TabIndex = 4;
-            watermarkOmadapos1.Text = "watermarkOmadapos1";
-            // 
-            // frmSignIn
-            // 
+            labelId.BackColor = Color.Transparent;
+            labelId.Name      = "labelId";
+
+            // ═══════════════════════════════════════════════════════════
+            // BACKGROUND — dark fill, hosts the centered card
+            // ═══════════════════════════════════════════════════════════
+            pnlBackground.Dock      = DockStyle.Fill;
+            pnlBackground.BackColor = Color.FromArgb(15, 23, 42);
+            pnlBackground.Controls.Add(pnlCard);
+            pnlBackground.Name      = "pnlBackground";
+            pnlBackground.Resize   += PnlBackground_Resize;
+
+            // ═══════════════════════════════════════════════════════════
+            // CARD — white centered card 400 × 560
+            // ═══════════════════════════════════════════════════════════
+            pnlCard.Size      = new Size(400, 560);
+            pnlCard.BackColor = Color.White;
+            pnlCard.Controls.Add(tlpKeypad);
+            pnlCard.Controls.Add(pnlCardTop);
+            pnlCard.Name      = "pnlCard";
+            pnlCard.Paint    += PnlCard_Paint;
+
+            // ── Card top: title + PIN dots + error ─────────────────────
+            pnlCardTop.Dock      = DockStyle.Top;
+            pnlCardTop.Height    = 168;
+            pnlCardTop.BackColor = Color.White;
+            pnlCardTop.Controls.Add(lblError);
+            pnlCardTop.Controls.Add(pnlPinDots);
+            pnlCardTop.Controls.Add(lblTitle);
+            pnlCardTop.Name      = "pnlCardTop";
+
+            lblTitle.Text      = "Enter Employee PIN";
+            lblTitle.Font      = new Font("Segoe UI", 12F, FontStyle.Regular);
+            lblTitle.ForeColor = Color.FromArgb(100, 116, 139);
+            lblTitle.Dock      = DockStyle.Top;
+            lblTitle.Height    = 52;
+            lblTitle.TextAlign = ContentAlignment.BottomCenter;
+            lblTitle.BackColor = Color.White;
+            lblTitle.Name      = "lblTitle";
+
+            pnlPinDots.Dock      = DockStyle.Top;
+            pnlPinDots.Height    = 72;
+            pnlPinDots.BackColor = Color.White;
+            pnlPinDots.Name      = "pnlPinDots";
+            pnlPinDots.Paint    += PnlPinDots_Paint;
+
+            lblError.Dock      = DockStyle.Top;
+            lblError.Height    = 44;
+            lblError.Font      = new Font("Segoe UI", 11F, FontStyle.Regular);
+            lblError.ForeColor = Color.FromArgb(220, 38, 38);
+            lblError.TextAlign = ContentAlignment.MiddleCenter;
+            lblError.BackColor = Color.White;
+            lblError.Visible   = false;
+            lblError.Name      = "lblError";
+
+            // ═══════════════════════════════════════════════════════════
+            // KEYPAD — 3 cols × 4 rows fills remaining card height
+            // ═══════════════════════════════════════════════════════════
+            tlpKeypad.Dock        = DockStyle.Fill;
+            tlpKeypad.ColumnCount = 3;
+            tlpKeypad.RowCount    = 4;
+            tlpKeypad.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            tlpKeypad.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            tlpKeypad.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34F));
+            tlpKeypad.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+            tlpKeypad.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+            tlpKeypad.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+            tlpKeypad.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+            tlpKeypad.Padding   = new Padding(16, 8, 16, 16);
+            tlpKeypad.BackColor = Color.White;
+            tlpKeypad.Name      = "tlpKeypad";
+            tlpKeypad.Controls.Add(button7, 0, 0);
+            tlpKeypad.Controls.Add(button8, 1, 0);
+            tlpKeypad.Controls.Add(button9, 2, 0);
+            tlpKeypad.Controls.Add(button4, 0, 1);
+            tlpKeypad.Controls.Add(button5, 1, 1);
+            tlpKeypad.Controls.Add(button6, 2, 1);
+            tlpKeypad.Controls.Add(button1, 0, 2);
+            tlpKeypad.Controls.Add(button2, 1, 2);
+            tlpKeypad.Controls.Add(button3, 2, 2);
+            tlpKeypad.Controls.Add(buttonClear, 0, 3);
+            tlpKeypad.Controls.Add(button0, 1, 3);
+            tlpKeypad.Controls.Add(buttonLogin, 2, 3);
+
+            // ── Number buttons: navy bg, white text ────────────────────
+            ConfigureNumButton(button7, "7", 0);
+            ConfigureNumButton(button8, "8", 1);
+            ConfigureNumButton(button9, "9", 2);
+            ConfigureNumButton(button4, "4", 3);
+            ConfigureNumButton(button5, "5", 4);
+            ConfigureNumButton(button6, "6", 5);
+            ConfigureNumButton(button1, "1", 6);
+            ConfigureNumButton(button2, "2", 7);
+            ConfigureNumButton(button3, "3", 8);
+            ConfigureNumButton(button0, "0", 9);
+
+            // ── Clear — amber ───────────────────────────────────────────
+            buttonClear.Dock      = DockStyle.Fill;
+            buttonClear.Margin    = new Padding(4);
+            buttonClear.Text      = "⌫";
+            buttonClear.Font      = new Font("Segoe UI", 22F, FontStyle.Regular);
+            buttonClear.ForeColor = Color.White;
+            buttonClear.BackColor = Color.FromArgb(180, 83, 9);
+            buttonClear.FlatStyle = FlatStyle.Flat;
+            buttonClear.FlatAppearance.BorderSize         = 0;
+            buttonClear.FlatAppearance.MouseOverBackColor = Color.FromArgb(217, 119, 6);
+            buttonClear.FlatAppearance.MouseDownBackColor = Color.FromArgb(146, 64, 14);
+            buttonClear.Cursor    = Cursors.Hand;
+            buttonClear.TabIndex  = 10;
+            buttonClear.Name      = "buttonClear";
+            buttonClear.Click    += ButtonClear_Click;
+
+            // ── Login — emerald ─────────────────────────────────────────
+            buttonLogin.Dock      = DockStyle.Fill;
+            buttonLogin.Margin    = new Padding(4);
+            buttonLogin.Text      = "▶";
+            buttonLogin.Font      = new Font("Segoe UI", 22F, FontStyle.Regular);
+            buttonLogin.ForeColor = Color.White;
+            buttonLogin.BackColor = Color.FromArgb(5, 150, 105);
+            buttonLogin.FlatStyle = FlatStyle.Flat;
+            buttonLogin.FlatAppearance.BorderSize         = 0;
+            buttonLogin.FlatAppearance.MouseOverBackColor = Color.FromArgb(16, 185, 129);
+            buttonLogin.FlatAppearance.MouseDownBackColor = Color.FromArgb(4, 120, 87);
+            buttonLogin.Cursor    = Cursors.Hand;
+            buttonLogin.TabIndex  = 11;
+            buttonLogin.Name      = "buttonLogin";
+            buttonLogin.Click    += ButtonLogin_Click;
+
+            // ═══════════════════════════════════════════════════════════
+            // FORM
+            // ═══════════════════════════════════════════════════════════
             AutoScaleDimensions = new SizeF(96F, 96F);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            BackColor = Color.FromArgb(13, 31, 45);
-            ClientSize = new Size(1008, 729);
-            Controls.Add(tableLayoutPanelMain);
-            Icon = (Icon)resources.GetObject("$this.Icon");
-            Margin = new Padding(2, 1, 2, 1);
-            MaximizeBox = false;
-            MinimizeBox = false;
-            Name = "frmSignIn";
-            StartPosition = FormStartPosition.CenterScreen;
-            Text = "Login OmadaPOS ";
-            WindowState = FormWindowState.Maximized;
-            Load += frmSignIn_Load;
-            tableLayoutPanelMain.ResumeLayout(false);
-            tableLayoutPanelMain.PerformLayout();
-            tableLayoutPanel1.ResumeLayout(false);
+            AutoScaleMode       = AutoScaleMode.Dpi;
+            BackColor           = Color.FromArgb(15, 23, 42);
+            ClientSize          = new Size(1366, 768);
+            FormBorderStyle     = FormBorderStyle.None;
+            WindowState         = FormWindowState.Maximized;
+            Name                = "frmSignIn";
+            Text                = "Omada POS — Sign In";
+            Controls.Add(pnlBackground);
+            Controls.Add(pnlFooter);
+            Controls.Add(pnlHeader);
+            Load += FrmSignIn_Load;
+
+            pnlHeader.ResumeLayout(false);
+            pnlHeader.PerformLayout();
+            pnlFooter.ResumeLayout(false);
+            pnlBackground.ResumeLayout(false);
+            pnlCard.ResumeLayout(false);
+            pnlCardTop.ResumeLayout(false);
+            tlpKeypad.ResumeLayout(false);
             ResumeLayout(false);
         }
 
-        #endregion
+        private static void ConfigureNumButton(Button b, string digit, int tabIndex)
+        {
+            b.Dock      = DockStyle.Fill;
+            b.Margin    = new Padding(4);
+            b.Text      = digit;
+            b.Tag       = digit;
+            b.Font      = new Font("Segoe UI", 26F, FontStyle.Bold);
+            b.ForeColor = Color.FromArgb(248, 250, 252);
+            b.BackColor = Color.FromArgb(15, 23, 42);
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderSize         = 0;
+            b.FlatAppearance.MouseOverBackColor = Color.FromArgb(30, 58, 95);
+            b.FlatAppearance.MouseDownBackColor = Color.FromArgb(51, 88, 140);
+            b.Cursor    = Cursors.Hand;
+            b.TabIndex  = tabIndex;
+            b.Name      = $"button{digit}";
+            b.Click    += (s, e) =>
+            {
+                if (s is Button btn && btn.FindForm() is frmSignIn frm)
+                    frm.AppendDigit(digit);
+            };
+        }
 
-        private TableLayoutPanel tableLayoutPanelMain;
-        private TableLayoutPanel tableLayoutPanel1;
-       
-        private TextBox textBoxPhone;
-        private Button button1;
-        private Button button0;
-        private Button button9;
-        private Button button8;
-        private Button button7;
-        private Button button6;
-        private Button button5;
-        private Button button4;
-        private Button button3;
-        private Button button2;
-        private Label labelId;
-        private Controles.WatermarkOmadaPOS watermarkOmadapos1;
-        private Button buttonClear;
-        private Button buttonLogin;
+        #region Fields
+        private Panel            pnlHeader;
+        private Label            lblLogo;
+        private Label            lblClock;
+        private Panel            pnlFooter;
+        private Label            labelId;
+        private Panel            pnlBackground;
+        private Panel            pnlCard;
+        private Panel            pnlCardTop;
+        private Label            lblTitle;
+        private Panel            pnlPinDots;
+        private Label            lblError;
+        private TableLayoutPanel tlpKeypad;
+        private Button           button1;
+        private Button           button0;
+        private Button           button9;
+        private Button           button8;
+        private Button           button7;
+        private Button           button6;
+        private Button           button5;
+        private Button           button4;
+        private Button           button3;
+        private Button           button2;
+        private Button           buttonClear;
+        private Button           buttonLogin;
+        #endregion
     }
 }

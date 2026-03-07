@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
+using OmadaPOS.Services.Navigation;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
@@ -9,268 +9,250 @@ namespace OmadaPOS.Views;
 
 public partial class frmSignIn
 {
-    private readonly IUserService userService;
-    private bool isPhoneFocus = true;
+    // ─────────────────────────────────────────────────────────────────
+    //  State
+    // ─────────────────────────────────────────────────────────────────
+    private readonly IUserService  _userService;
+    private readonly IWindowService _windowService;
+    private string _pin = string.Empty;
+    private System.Windows.Forms.Timer? _clock;
+    private bool _loginInProgress;
 
-    public frmSignIn()
+    // ─────────────────────────────────────────────────────────────────
+    //  Constructor
+    // ─────────────────────────────────────────────────────────────────
+    public frmSignIn(IUserService userService, IWindowService windowService)
     {
         InitializeComponent();
-        userService = Program.GetService<IUserService>();
-    }
-
-    private void frmSignIn_Load(object sender, EventArgs e)
-    {
-        this.StartPosition = FormStartPosition.CenterScreen;
-
-        textBoxPhone.GotFocus += (s, ev) => isPhoneFocus = true;
-        textBoxPhone.Leave    += (s, ev) => textBoxPhone.Focus();
-
-        string? windowsId = WindowsIdProvider.GetMachineGuid();
-        if (!string.IsNullOrEmpty(windowsId))
-            labelId.Text = windowsId;
-
-        AplicarDisenoLogin();
+        _userService   = userService;
+        _windowService = windowService;
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  DISEÑO PREMIUM MARKET — POS Supermarket Login
+    //  Load
     // ─────────────────────────────────────────────────────────────────
-    private void AplicarDisenoLogin()
+    private void FrmSignIn_Load(object sender, EventArgs e)
     {
-        // ── Fondo general (30% Navy) ──────────────────────────────
-        this.BackColor = AppColors.NavyDark;
-        tableLayoutPanelMain.BackColor = Color.Transparent;
+        // Terminal ID in footer
+        string? guid = WindowsIdProvider.GetMachineGuid();
+        labelId.Text = string.IsNullOrEmpty(guid) ? "Terminal ID: N/A" : $"Terminal: {guid}";
 
-        // ── Branding lateral izquierdo ────────────────────────────
-        AgregarPanelBranding();
+        // Clock
+        _clock = new System.Windows.Forms.Timer { Interval = 1000 };
+        _clock.Tick += (_, _) => UpdateClock();
+        _clock.Start();
+        UpdateClock();
 
-        // ── Card central del keypad ───────────────────────────────
-        EstilizarCardKeypad();
-
-        // ── Display PIN ───────────────────────────────────────────
-        EstilizarDisplayPin();
-
-        // ── Botones numéricos ─────────────────────────────────────
-        var numButtons = new[] { button1, button2, button3, button4,
-                                  button5, button6, button7, button8, button9, button0 };
-        foreach (var btn in numButtons)
-            ElegantButtonStyles.Style(btn, AppColors.NavyBase, AppColors.TextWhite, radius: 10, fontSize: 34f);
-
-        // Clear — Ámbar (advertencia)
-        ElegantButtonStyles.Style(buttonClear, AppColors.Warning, AppColors.TextWhite, radius: 10, fontSize: 22f);
-        buttonClear.Text = "⌫  CLEAR";
-
-        // Login — Verde acento (acción principal)
-        ElegantButtonStyles.Style(buttonLogin, AppColors.AccentGreen, AppColors.TextWhite, radius: 10, fontSize: 22f);
-        buttonLogin.Text = "LOGIN  ▶";
-
-        // ── Label ID (terminal) ───────────────────────────────────
-        labelId.ForeColor = AppColors.TextMuted;
-        labelId.Font = new Font("Consolas", 11F, FontStyle.Regular);
-        labelId.BackColor = Color.Transparent;
+        // Center card
+        CenterCard();
     }
 
-    private void AgregarPanelBranding()
+    protected override void OnFormClosed(FormClosedEventArgs e)
     {
-        // Panel contenedor del branding en columna 0
-        var panelBrand = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = Color.Transparent,
-            Margin = new Padding(20, 0, 10, 0)
-        };
-
-        // Logo / nombre del sistema
-        var lblNombre = new Label
-        {
-            Text = "Omada",
-            Font = new Font("Montserrat", 48F, FontStyle.Bold),
-            ForeColor = AppColors.TextWhite,
-            AutoSize = false,
-            Dock = DockStyle.None,
-            TextAlign = ContentAlignment.BottomLeft,
-            BackColor = Color.Transparent,
-            Location = new Point(0, 0)
-        };
-
-        var lblPos = new Label
-        {
-            Text = "POS",
-            Font = new Font("Montserrat", 48F, FontStyle.Bold),
-            ForeColor = AppColors.AccentGreen,
-            AutoSize = false,
-            Dock = DockStyle.None,
-            TextAlign = ContentAlignment.TopLeft,
-            BackColor = Color.Transparent,
-            Location = new Point(0, 60)
-        };
-
-        var lblTagline = new Label
-        {
-            Text = "Point of Sale System",
-            Font = new Font("Segoe UI", 14F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(160, 200, 220),
-            AutoSize = false,
-            Dock = DockStyle.None,
-            TextAlign = ContentAlignment.TopLeft,
-            BackColor = Color.Transparent,
-            Location = new Point(4, 130),
-            Size = new Size(350, 30)
-        };
-
-        // Línea decorativa verde
-        var lblLinea = new Label
-        {
-            Text = "",
-            BackColor = AppColors.AccentGreen,
-            AutoSize = false,
-            Dock = DockStyle.None,
-            Location = new Point(0, 170),
-            Size = new Size(80, 4)
-        };
-
-        // Subtítulo instrucción
-        var lblInstruccion = new Label
-        {
-            Text = "Use your PIN or\nemployee ID to sign in.",
-            Font = new Font("Segoe UI", 13F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(140, 180, 210),
-            AutoSize = false,
-            Dock = DockStyle.None,
-            TextAlign = ContentAlignment.TopLeft,
-            BackColor = Color.Transparent,
-            Location = new Point(0, 190),
-            Size = new Size(350, 70)
-        };
-
-        panelBrand.Controls.Add(lblNombre);
-        panelBrand.Controls.Add(lblPos);
-        panelBrand.Controls.Add(lblTagline);
-        panelBrand.Controls.Add(lblLinea);
-        panelBrand.Controls.Add(lblInstruccion);
-
-        // Agregar a columna 0, fila 1 (misma fila que el keypad)
-        tableLayoutPanelMain.Controls.Add(panelBrand, 0, 1);
-    }
-
-    private void EstilizarCardKeypad()
-    {
-        tableLayoutPanel1.BackColor = AppColors.BackgroundSecondary;
-        tableLayoutPanel1.Padding   = new Padding(14);
-        tableLayoutPanel1.Margin    = new Padding(10, 8, 10, 8);
-
-        // Línea de acento verde en el borde superior de la card
-        tableLayoutPanel1.Paint += (s, e) =>
-        {
-            var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var pen = new Pen(AppColors.AccentGreen, 4);
-            g.DrawLine(pen, 0, 0, tableLayoutPanel1.Width, 0);
-        };
-    }
-
-    private void EstilizarDisplayPin()
-    {
-        // Panel contenedor del PIN para darle fondo oscuro y aspecto de display
-        var panelPin = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = AppColors.NavyDark,
-            Margin = new Padding(0),
-            Padding = new Padding(8, 4, 8, 4)
-        };
-
-        // Reubicar el textbox dentro del panel de PIN
-        tableLayoutPanelMain.Controls.Remove(textBoxPhone);
-        panelPin.Controls.Add(textBoxPhone);
-
-        textBoxPhone.Dock = DockStyle.Fill;
-        textBoxPhone.BackColor = AppColors.NavyDark;
-        textBoxPhone.ForeColor = AppColors.AccentGreen;
-        textBoxPhone.Font = new Font("Consolas", 40F, FontStyle.Bold);
-        textBoxPhone.BorderStyle = BorderStyle.None;
-        textBoxPhone.TextAlign = HorizontalAlignment.Center;
-
-        // Línea verde inferior como cursor visual
-        panelPin.Paint += (s, e) =>
-        {
-            using var pen = new Pen(AppColors.AccentGreen, 3);
-            e.Graphics.DrawLine(pen, 12, panelPin.Height - 4, panelPin.Width - 12, panelPin.Height - 4);
-        };
-
-        tableLayoutPanelMain.Controls.Add(panelPin, 1, 0);
+        _clock?.Stop();
+        _clock?.Dispose();
+        base.OnFormClosed(e);
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  EVENTOS — lógica sin cambios
+    //  Clock
     // ─────────────────────────────────────────────────────────────────
-    private void buttonKey_Click(object sender, EventArgs e)
+    private void UpdateClock()
     {
-        if (sender is Button btn && int.TryParse(btn.Tag?.ToString(), out int _))
+        if (lblClock.IsHandleCreated)
+            lblClock.Text = DateTime.Now.ToString("hh:mm tt");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  Card centering
+    // ─────────────────────────────────────────────────────────────────
+    private void PnlBackground_Resize(object? sender, EventArgs e) => CenterCard();
+
+    private void CenterCard()
+    {
+        pnlCard.Location = new Point(
+            (pnlBackground.Width  - pnlCard.Width)  / 2,
+            (pnlBackground.Height - pnlCard.Height) / 2);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  PIN management
+    // ─────────────────────────────────────────────────────────────────
+    internal void AppendDigit(string digit)
+    {
+        if (_pin.Length >= 20 || _loginInProgress) return;
+        _pin += digit;
+        pnlPinDots.Invalidate();
+        HideError();
+    }
+
+    private void ClearPin()
+    {
+        _pin = string.Empty;
+        pnlPinDots.Invalidate();
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  Button events
+    // ─────────────────────────────────────────────────────────────────
+    private void ButtonClear_Click(object sender, EventArgs e)
+    {
+        if (_loginInProgress) return;
+
+        if (_pin.Length > 0)
         {
-            if (isPhoneFocus)
-                textBoxPhone.Text += btn.Tag;
+            // Single press: delete last digit; hold Clear clears all (handled below)
+            _pin = _pin[..^1];
+            pnlPinDots.Invalidate();
         }
+
+        HideError();
     }
 
-    private async void buttonLogin_Click(object sender, EventArgs e)
+    private async void ButtonLogin_Click(object sender, EventArgs e)
     {
-        string username = textBoxPhone.Text;
-        // TODO: El servidor actualmente valida con una clave fija de sistema.
-        // Reemplazar por autenticación real (PIN individual por empleado) en la API.
-        const string password = "12345678";
+        if (_loginInProgress) return;
+        await DoLoginAsync();
+    }
 
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+    // ─────────────────────────────────────────────────────────────────
+    //  Login logic
+    // ─────────────────────────────────────────────────────────────────
+    private async Task DoLoginAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_pin))
         {
-            MessageBox.Show("Please enter values in all fields.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowError("Please enter your PIN or Employee ID.");
             return;
         }
 
+        _loginInProgress = true;
+        buttonLogin.Enabled = false;
+        Cursor = Cursors.WaitCursor;
+
         try
         {
-            Cursor = Cursors.WaitCursor;
-
-            var loginRequest = new LoginRequest
+            var request = new LoginRequest
             {
-                Email    = username,
-                Password = password,
+                Email     = _pin,
+                Password  = "12345678",
                 WindowsId = labelId.Text,
             };
 
-            LoginResponse response = await userService.Login(loginRequest);
+            LoginResponse response = await _userService.Login(request);
 
             if (!string.IsNullOrEmpty(response.Token))
             {
                 SessionManager.Token    = response.Token;
                 SessionManager.BranchId = response.BranchId;
-                SessionManager.UserName = username;
+                SessionManager.UserName = _pin;
                 SessionManager.Name     = response.Name;
                 SessionManager.AdminId  = response.AdminId;
                 SessionManager.Phone    = response.Phone;
 
                 Hide();
-
-                var homeForm = Program.ServiceProvider?.GetService<frmHome>();
-                homeForm?.Show();
+                _windowService.OpenHome();
             }
             else
             {
-                MessageBox.Show("Login error!!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowError("Invalid PIN. Please try again.");
+                ClearPin();
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Login error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowError($"Connection error: {ex.Message}");
+            ClearPin();
         }
         finally
         {
-            Cursor = Cursors.Arrow;
+            _loginInProgress    = false;
+            buttonLogin.Enabled = true;
+            Cursor = Cursors.Default;
         }
     }
 
-    private void buttonClear_Click(object sender, EventArgs e)
+    // ─────────────────────────────────────────────────────────────────
+    //  Inline error feedback
+    // ─────────────────────────────────────────────────────────────────
+    private CancellationTokenSource? _errorCts;
+
+    private async void ShowError(string message)
     {
-        if (isPhoneFocus)
-            textBoxPhone.Clear();
+        _errorCts?.Cancel();
+        _errorCts = new CancellationTokenSource();
+        var token = _errorCts.Token;
+
+        lblError.Text    = message;
+        lblError.Visible = true;
+
+        try
+        {
+            await Task.Delay(3500, token);
+            if (!token.IsCancellationRequested)
+                lblError.Visible = false;
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    private void HideError()
+    {
+        _errorCts?.Cancel();
+        lblError.Visible = false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  Custom Paint — Header accent line
+    // ─────────────────────────────────────────────────────────────────
+    private void PnlHeader_Paint(object? sender, PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        using var pen = new Pen(Color.FromArgb(5, 150, 105), 2f);
+        g.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  Custom Paint — Card top emerald border
+    // ─────────────────────────────────────────────────────────────────
+    private void PnlCard_Paint(object? sender, PaintEventArgs e)
+    {
+        using var pen = new Pen(Color.FromArgb(5, 150, 105), 3f);
+        e.Graphics.DrawLine(pen, 0, 0, pnlCard.Width, 0);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  Custom Paint — PIN dots
+    // ─────────────────────────────────────────────────────────────────
+    private void PnlPinDots_Paint(object? sender, PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode     = SmoothingMode.AntiAlias;
+        g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
+        const int MaxDots   = 12;
+        const float DotSize = 13f;
+        const float Gap     = 14f;
+
+        float totalW = MaxDots * DotSize + (MaxDots - 1) * Gap;
+        float startX = (pnlPinDots.Width - totalW) / 2f;
+        float y      = (pnlPinDots.Height - DotSize) / 2f - 4f;
+
+        for (int i = 0; i < MaxDots; i++)
+        {
+            float x = startX + i * (DotSize + Gap);
+            bool  filled = i < _pin.Length;
+
+            Color dotColor = filled
+                ? Color.FromArgb(15, 23, 42)
+                : Color.FromArgb(203, 213, 225);
+
+            using var brush = new SolidBrush(dotColor);
+            g.FillEllipse(brush, x, y, DotSize, DotSize);
+        }
+
+        // Underline accent
+        float lineY = y + DotSize + 10f;
+        using var linePen = new Pen(Color.FromArgb(5, 150, 105), 2f);
+        g.DrawLine(linePen, startX - 4, lineY, startX + totalW + 4, lineY);
     }
 }

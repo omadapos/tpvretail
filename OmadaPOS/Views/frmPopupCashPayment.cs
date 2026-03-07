@@ -47,29 +47,36 @@ namespace OmadaPOS.Views
 
         private async void buttonPrint_Click(object sender, EventArgs e)
         {
-            var order = await orderService.GetOrderById(orderId);
-
-            var orderDetails = await orderService.GetOrderDetailsByOrderId(orderId);
-
-            // Asegurar que ambos, order y orderDetails, no son null antes de proceder
-            if (order == null || orderDetails == null)
+            try
             {
-                MessageBox.Show("No se pudo obtener la información del pedido.");
-                return;
+                buttonPrint.Enabled = false;
+                var order        = await orderService.GetOrderById(orderId);
+                var orderDetails = await orderService.GetOrderDetailsByOrderId(orderId);
+
+                if (order == null || orderDetails == null)
+                {
+                    MessageBox.Show("No se pudo obtener la información del pedido.", "Aviso",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var branchInfo = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
+                if (branchInfo != null)
+                {
+                    var ticket = new Ticket(orderId, order.Consecutivo, order, orderDetails, SessionManager.Name,
+                        null, branchInfo.Address, branchInfo.FooterMsg);
+                    ticket.Print();
+                    this.Close();
+                }
             }
-
-            var imagePrint = Properties.Resources.print_resize;
-
-            var branchInfo = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
-
-            if (branchInfo != null)
+            catch (Exception ex)
             {
-                var ticket = new Ticket(orderId, order.Consecutivo, order, orderDetails, SessionManager.Name,
-                    null, branchInfo.Address, branchInfo.FooterMsg);
-
-                ticket.Print();
-
-                this.Close();
+                MessageBox.Show($"Error al imprimir el recibo:\n{ex.Message}", "Error de Impresión",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                buttonPrint.Enabled = true;
             }
         }
 

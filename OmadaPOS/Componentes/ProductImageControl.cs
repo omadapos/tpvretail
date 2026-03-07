@@ -25,6 +25,11 @@ namespace OmadaPOS.Componentes
 
         private bool _isHovered;
 
+        // Región redondeada de la tarjeta — se crea una sola vez en Load y se
+        // reutiliza. Trackeada explícitamente para poder disponer el objeto GDI
+        // anterior antes de asignar uno nuevo y en Dispose().
+        private Region? _cardRegion;
+
         // ── Controles internos ────────────────────────────────────────────
         private PictureBox?      pictureBoxImage;
         private Label?           labelTitle;
@@ -163,10 +168,28 @@ namespace OmadaPOS.Componentes
             this.Load += ProductImageControl_Load;
         }
 
+        // ── Región redondeada — se crea una vez, no en cada Paint ────────
+        private void ApplyCardRegion()
+        {
+            if (panelCard == null) return;
+
+            var bounds = new Rectangle(2, 2, panelCard.Width - 5, panelCard.Height - 5);
+            using var path     = CreateRoundedPath(bounds, CornerRadius);
+            var       newRegion = new Region(path);
+
+            // Disponer la región anterior ANTES de asignar la nueva.
+            // Control.Region no hace Dispose automático del objeto anterior.
+            var oldRegion = panelCard.Region;
+            panelCard.Region = newRegion;
+            oldRegion?.Dispose();
+
+            _cardRegion = newRegion;
+        }
+
         // ── Dibujar tarjeta: bordes redondeados + sombra suave ───────────
         private void PanelCard_Paint(object sender, PaintEventArgs e)
         {
-            var g      = e.Graphics;
+            var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
             var bounds = new Rectangle(2, 2, panelCard!.Width - 5, panelCard.Height - 5);
@@ -181,19 +204,18 @@ namespace OmadaPOS.Componentes
                 g.FillPath(shadowBrush, shadowPath);
             }
 
-            // Fondo de la tarjeta
-            using var cardPath   = CreateRoundedPath(bounds, CornerRadius);
-            using var cardBrush  = new SolidBrush(CardBackground);
+            // Fondo + borde — solo dibujo visual, sin tocar Region aquí.
+            using var cardPath  = CreateRoundedPath(bounds, CornerRadius);
+            using var cardBrush = new SolidBrush(CardBackground);
             g.FillPath(cardBrush, cardPath);
 
-            // Borde — cambia color en hover
             var borderColor = _isHovered ? BorderHover : BorderNormal;
             var borderWidth = _isHovered ? 2f : 1f;
             using var borderPen = new Pen(borderColor, borderWidth);
             g.DrawPath(borderPen, cardPath);
 
-            // Recortar región para que los hijos respeten esquinas
-            panelCard.Region = new Region(cardPath);
+            // La Region ya fue aplicada en Load (ApplyCardRegion).
+            // No se asigna Region aquí para evitar el GDI leak por pintura repetida.
         }
 
         // ── Hover ────────────────────────────────────────────────────────
@@ -236,10 +258,23 @@ namespace OmadaPOS.Componentes
             if (!string.IsNullOrEmpty(url))
                 pictureBoxImage.ImageLocation = url;
 
-            // Tooltip con nombre completo si se trunca
-            var tip = new ToolTip();
-            tip.SetToolTip(labelTitle, _product.Name);
-            tip.SetToolTip(pictureBoxImage, _product.Name);
+            // Aplicar región redondeada una sola vez al cargar el control.
+            // El tamaño de la tarjeta es fijo (CardW × CardH), por lo que
+            // no es necesario recalcularla en cada repaint.
+            ApplyCardRegion();
+        }
+
+        // ── Liberación de recursos GDI ────────────────────────────────────
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Disponer la Region GDI explícitamente — WinForms NO la libera
+                // automáticamente al hacer Dispose() del control.
+                _cardRegion?.Dispose();
+                _cardRegion = null;
+            }
+            base.Dispose(disposing);
         }
 
         // ── Estado disponible / agotado — API pública sin cambios ────────

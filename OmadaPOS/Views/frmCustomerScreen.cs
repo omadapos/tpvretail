@@ -17,12 +17,12 @@ namespace OmadaPOS.Views
         private System.Windows.Forms.Timer? timerCarrousel;
         private System.Windows.Forms.Timer? clockTimer;
 
-        public frmCustomerScreen()
+        public frmCustomerScreen(IBannerService bannerService, IShoppingCart shoppingCart)
         {
             InitializeComponent();
 
-            bannerService = Program.GetService<IBannerService>();
-            _shoppingCart = Program.GetService<IShoppingCart>();
+            this.bannerService = bannerService;
+            _shoppingCart      = shoppingCart;
             _shoppingCart.CartChanged += ShoppingCart_CartChanged;
 
             // Diseño profesional — debe aplicarse antes de mostrar controles
@@ -55,57 +55,57 @@ namespace OmadaPOS.Views
             // ── Header bienvenida (label1) ────────────────────────────────
             label1.BackColor  = AppColors.NavyBase;
             label1.ForeColor  = AppColors.TextWhite;
-            label1.Font       = new Font("Montserrat", 30F, FontStyle.Bold);
+            label1.Font       = AppTypography.Welcome;
             label1.TextAlign  = ContentAlignment.MiddleCenter;
-            label1.Margin     = new Padding(0);
+            label1.Margin     = AppSpacing.None;
             label1.Text       = "✦  WELCOME  —  DAILY STOP  ✦";
 
             // ── Columna izquierda — Lista ─────────────────────────────────
             tableLayoutPanelLeft.BackColor = AppColors.BackgroundPrimary;
-            tableLayoutPanelLeft.Padding   = new Padding(10, 10, 10, 0);
-            tableLayoutPanelLeft.Margin    = new Padding(0);
+            tableLayoutPanelLeft.Padding   = new Padding(AppSpacing.SM, AppSpacing.SM, AppSpacing.SM, 0);
+            tableLayoutPanelLeft.Margin    = AppSpacing.None;
 
-            listViewCart.BackColor = Color.White;
+            listViewCart.BackColor = AppColors.BackgroundSecondary;
             listViewCart.ForeColor = AppColors.TextPrimary;
-            listViewCart.Font      = new Font("Segoe UI", 18F, FontStyle.Regular);
+            listViewCart.Font      = AppTypography.HeaderIcon;
             listViewCart.GridLines = false;
 
             // ── Banner (columna derecha) ───────────────────────────────────
             tableLayoutPanel2.BackColor = AppColors.NavyDark;
-            tableLayoutPanel2.Padding   = new Padding(10);
-            tableLayoutPanel2.Margin    = new Padding(0);
+            tableLayoutPanel2.Padding   = AppSpacing.Compact;
+            tableLayoutPanel2.Margin    = AppSpacing.None;
             pictureBoxBanner.BackColor  = AppColors.NavyDark;
             pictureBoxBanner.SizeMode   = PictureBoxSizeMode.StretchImage;
 
             // ── Panel de totales ──────────────────────────────────────────
             // BackColor del panel se dibuja via panel1_Paint (rediseñado abajo)
-            panel1.Margin  = new Padding(10, 10, 5, 10);
+            panel1.Margin  = new Padding(AppSpacing.SM, AppSpacing.SM, 5, AppSpacing.SM);
 
-            label2.Font      = new Font("Segoe UI", 20F, FontStyle.Bold);
+            label2.Font      = AppTypography.SectionTitle;
             label2.ForeColor = AppColors.TextMuted;
             label2.BackColor = Color.Transparent;
             label2.Text      = "TOTAL";
 
-            labelTotal.Font      = new Font("Montserrat", 56F, FontStyle.Bold);
+            labelTotal.Font      = AppTypography.AmountHero;
             labelTotal.ForeColor = AppColors.AccentGreen;
             labelTotal.BackColor = Color.Transparent;
             labelTotal.Text      = "$0.00";
 
-            label3.Font      = new Font("Segoe UI", 18F, FontStyle.Bold);
+            label3.Font      = AppTypography.HeaderIcon;
             label3.ForeColor = AppColors.TextMuted;
             label3.BackColor = Color.Transparent;
             label3.Text      = "WEIGHT";
 
-            labelWeight.Font      = new Font("Montserrat", 32F, FontStyle.Bold);
+            labelWeight.Font      = AppTypography.WeightHero;
             labelWeight.ForeColor = AppColors.Warning;
             labelWeight.BackColor = Color.Transparent;
 
             // ── Panel del reloj (panel3) ──────────────────────────────────
             panel3.BackColor = AppColors.NavyBase;
-            panel3.Margin    = new Padding(5, 10, 10, 10);
+            panel3.Margin    = new Padding(5, AppSpacing.SM, AppSpacing.SM, AppSpacing.SM);
             panel3.Paint    += Panel3_Paint;
 
-            labelHour.Font      = new Font("Montserrat", 26F, FontStyle.Bold);
+            labelHour.Font      = AppTypography.Clock;
             labelHour.ForeColor = AppColors.TextWhite;
             labelHour.BackColor = Color.Transparent;
             labelHour.TextAlign = ContentAlignment.MiddleCenter;
@@ -139,11 +139,11 @@ namespace OmadaPOS.Views
                 using var bgBrush = new SolidBrush(AppColors.NavyBase);
                 g.FillRectangle(bgBrush, e.Bounds);
 
-                using var sep = new Pen(Color.FromArgb(60, 255, 255, 255), 1);
-                g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4,
-                                e.Bounds.Right - 1, e.Bounds.Bottom - 4);
+            using var sep = new Pen(AppBorders.SeparatorOnDark, AppBorders.Thin);
+            g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4,
+                            e.Bounds.Right - 1, e.Bounds.Bottom - 4);
 
-                using var hFont  = new Font("Segoe UI", 14F, FontStyle.Bold);
+            var       hFont  = AppTypography.ColumnHeader;   // static shared — do NOT dispose
                 using var tBrush = new SolidBrush(AppColors.TextWhite);
                 using var sf     = new StringFormat
                 {
@@ -267,7 +267,17 @@ namespace OmadaPOS.Views
         }
 
         // ── Carrito ───────────────────────────────────────────────────────
-        private async void LoadCart() => await _shoppingCart.LoadCartAsync();
+        private async void LoadCart()
+        {
+            try
+            {
+                await _shoppingCart.LoadCartAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CustomerScreen.LoadCart failed: {ex.Message}");
+            }
+        }
 
         private void ShoppingCart_CartChanged(object? sender, EventArgs e)
         {
@@ -366,9 +376,21 @@ namespace OmadaPOS.Views
         // ── Cierre limpio ─────────────────────────────────────────────────
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            timerCarrousel?.Stop();
-            clockTimer?.Stop();
+            // Desuscribir de IShoppingCart (Singleton) — sin esto la instancia
+            // nunca es recolectada por el GC (memory leak acumulativo).
+            _shoppingCart.CartChanged -= ShoppingCart_CartChanged;
+
             SharedData.WeightUnitChanged -= OnWeightUnitChanged;
+
+            // Stop + Dispose libera el handle Win32 del timer, no solo detiene el tick.
+            timerCarrousel?.Stop();
+            timerCarrousel?.Dispose();
+            timerCarrousel = null;
+
+            clockTimer?.Stop();
+            clockTimer?.Dispose();
+            clockTimer = null;
+
             base.OnFormClosing(e);
         }
 

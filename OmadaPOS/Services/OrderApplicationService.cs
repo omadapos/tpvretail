@@ -1,4 +1,4 @@
-using OmadaPOS.Domain;
+using OmadaPOS.Domain.Services;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Models;
@@ -33,12 +33,19 @@ public interface IOrderApplicationService
 }
 
 /// <summary>
-/// Constructs the order payload that is sent to the API.
-/// Previously this logic lived inside frmHome.Process() and frmHome.ProcessMultiple()
-/// as ~190 lines of duplicated calculation code.
+/// Constructs the order payload sent to the API.
+/// All pricing is delegated to <see cref="IPricingEngine"/> — this class
+/// never performs calculations directly.
 /// </summary>
 public class OrderApplicationService : IOrderApplicationService
 {
+    private readonly IPricingEngine _pricing;
+
+    public OrderApplicationService(IPricingEngine pricingEngine)
+    {
+        _pricing = pricingEngine ?? throw new ArgumentNullException(nameof(pricingEngine));
+    }
+
     public PlaceOrderModel? BuildOrderModel(
         IReadOnlyList<CartItem> items,
         decimal changeValue,
@@ -47,31 +54,31 @@ public class OrderApplicationService : IOrderApplicationService
         decimal balance,
         bool applyDiscount)
     {
-        var totals = CartCalculator.Calculate(items, applyDiscount);
+        var totals = _pricing.ComputeCartTotals(items, applyDiscount);
 
         if (totals.Total <= 0)
             return null;
 
         return new PlaceOrderModel
         {
-            SubTotal = (double)totals.SubTotal,
-            Order_Amount = (double)totals.Total,
-            Total_Tax_Amount = (double)totals.TotalTax,
-            Total_Desc_Amount = (double)totals.TotalDesc,
-            Order_Note = "",
-            Order_Status = "confirmed",
-            Order_Type = "delivery",
-            Payment_Method = paymentMethod,
-            Branch_Id = SessionManager.BranchId ?? 0,
-            Table_Id = 1,
-            Number_Of_People = 1,
-            Payment_Status = "paid",
-            Customer_Id = Constants.CUSTOMERID,
-            Cart = totals.CartModels,
-            Devuelta = (double)changeValue,
-            Terminal = terminal,
-            UserName = SessionManager.UserName,
-            Balance = balance
+            SubTotal             = (double)totals.SubTotal,
+            Order_Amount         = (double)totals.Total,
+            Total_Tax_Amount     = (double)totals.TotalTax,
+            Total_Desc_Amount    = (double)totals.TotalDiscount,
+            Order_Note           = string.Empty,
+            Order_Status         = "confirmed",
+            Order_Type           = "delivery",
+            Payment_Method       = paymentMethod,
+            Branch_Id            = SessionManager.BranchId ?? 0,
+            Table_Id             = 1,
+            Number_Of_People     = 1,
+            Payment_Status       = "paid",
+            Customer_Id          = Constants.CUSTOMERID,
+            Cart                 = totals.CartModels,
+            Devuelta             = (double)changeValue,
+            Terminal             = terminal,
+            UserName             = SessionManager.UserName,
+            Balance              = balance
         };
     }
 
@@ -83,32 +90,32 @@ public class OrderApplicationService : IOrderApplicationService
         decimal balance,
         bool applyDiscount)
     {
-        var totals = CartCalculator.Calculate(items, applyDiscount);
+        var totals = _pricing.ComputeCartTotals(items, applyDiscount);
 
         if (totals.Total <= 0)
             return null;
 
         return new PlaceOrderMultipleModel
         {
-            SubTotal = (double)totals.SubTotal,
-            Order_Amount = (double)totals.Total,
-            Total_Tax_Amount = (double)totals.TotalTax,
-            Total_Desc_Amount = (double)totals.TotalDesc,
-            Order_Note = "",
-            Order_Status = "confirmed",
-            Order_Type = "delivery",
-            Payment_Method = "Multiple",
-            Branch_Id = SessionManager.BranchId ?? 0,
-            Table_Id = 1,
-            Number_Of_People = 1,
-            Payment_Status = "paid",
-            Customer_Id = Constants.CUSTOMERID,
-            Cart = totals.CartModels,
-            Devuelta = (double)changeValue,
-            Terminal = terminal,
-            Payments = payments,
-            UserName = SessionManager.UserName,
-            Balance = balance
+            SubTotal             = (double)totals.SubTotal,
+            Order_Amount         = (double)totals.Total,
+            Total_Tax_Amount     = (double)totals.TotalTax,
+            Total_Desc_Amount    = (double)totals.TotalDiscount,
+            Order_Note           = string.Empty,
+            Order_Status         = "confirmed",
+            Order_Type           = "delivery",
+            Payment_Method       = "Multiple",
+            Branch_Id            = SessionManager.BranchId ?? 0,
+            Table_Id             = 1,
+            Number_Of_People     = 1,
+            Payment_Status       = "paid",
+            Customer_Id          = Constants.CUSTOMERID,
+            Cart                 = totals.CartModels,
+            Devuelta             = (double)changeValue,
+            Terminal             = terminal,
+            Payments             = payments,
+            UserName             = SessionManager.UserName,
+            Balance              = balance
         };
     }
 }

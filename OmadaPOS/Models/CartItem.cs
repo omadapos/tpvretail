@@ -1,66 +1,76 @@
-﻿namespace OmadaPOS.Models;
+namespace OmadaPOS.Models;
 
+/// <summary>
+/// Immutable data record for a single shopping-cart line.
+/// Contains only raw product data; all price calculations are
+/// performed by <see cref="OmadaPOS.Domain.Services.PricingEngine"/>.
+///
+/// Subtotal, TaxAmount and Total are populated by PricingEngine.ApplyPricing()
+/// and should never be set manually from outside the domain layer.
+/// </summary>
 public class CartItem
 {
-    public int Number { get; set; }
-    public int ProductId { get; set; }
-    public string ProductName { get; set; } = string.Empty;
-    public double Quantity { get; set; }
-    public double Weight { get; set; }
-    public decimal UnitPrice { get; set; }
-    public double Tax { get; set; }
-    public DateTime Date { get; set; } = DateTime.Now;
-    public string? PromotionName { get; set; }
-    public double PromotionValue { get; set; }
-    public decimal PromotionLimit { get; set; }
-    public bool IsEBT { get; set; }
-    public string? UPC { get; set; }
-    public string? Image { get; set; }
-    public double? Peso { get; set; }
+    // ─── Product data ─────────────────────────────────────────────────────────
 
-    public decimal Subtotal
+    public int     Number      { get; set; }
+    public int     ProductId   { get; set; }
+    public string  ProductName { get; set; } = string.Empty;
+    public double  Quantity    { get; set; }
+    public double  Weight      { get; set; }
+    public decimal UnitPrice   { get; set; }
+    /// <summary>Tax rate as a percentage (e.g. 7 means 7%).</summary>
+    public double  Tax         { get; set; }
+    public DateTime Date       { get; set; } = DateTime.Now;
+
+    // ─── Promotion data ───────────────────────────────────────────────────────
+
+    /// <summary>Promotion type identifier. Currently only "Price" is supported.</summary>
+    public string?  PromotionName  { get; set; }
+    /// <summary>Quantity threshold for the promotion (e.g. 2 in "2 for $5").</summary>
+    public double   PromotionValue { get; set; }
+    /// <summary>Promotion price (e.g. 5 in "2 for $5").</summary>
+    public decimal  PromotionLimit { get; set; }
+
+    // ─── Extra attributes ────────────────────────────────────────────────────
+
+    public bool    IsEBT  { get; set; }
+    public string? UPC    { get; set; }
+    public string? Image  { get; set; }
+    /// <summary>Weight in kg for scale-sold items. When set and > 0, overrides Quantity in price calculations.</summary>
+    public double? Peso   { get; set; }
+
+    // ─── Computed pricing — set by PricingEngine, never inline ───────────────
+
+    /// <summary>Line subtotal before tax, with any promotions applied.</summary>
+    public decimal Subtotal  { get; set; }
+
+    /// <summary>Tax amount for this line (Subtotal × Tax%).</summary>
+    public decimal TaxAmount { get; set; }
+
+    /// <summary>Line total including tax (Subtotal + TaxAmount).</summary>
+    public decimal Total     { get; set; }
+
+    // ─── Utility ─────────────────────────────────────────────────────────────
+
+    public CartItem Clone() => new()
     {
-        get
-        {
-            decimal total = UnitPrice * (decimal)Quantity;
-            
-            if (!string.IsNullOrEmpty(PromotionName))
-            {
-                if (PromotionName.Equals("Price", StringComparison.OrdinalIgnoreCase))
-                {
-                    int promotionTimes = (int)(Quantity / PromotionValue);
-                    int remainingItems = (int)(Quantity % PromotionValue);
-                    
-                    total = (promotionTimes * PromotionLimit) + (remainingItems * UnitPrice);
-                }
-            }
-            
-            return total;
-        }
-    }
-
-    public decimal TaxAmount => Subtotal * (decimal)(Tax / 100.0);
-    public decimal Total => Subtotal + TaxAmount;
-
-    public CartItem Clone()
-    {
-        return new CartItem
-        {
-            Number = this.Number,
-            ProductId = this.ProductId,
-            ProductName = this.ProductName,
-            Quantity = this.Quantity,
-            Weight = this.Weight,
-            UnitPrice = this.UnitPrice,
-            Tax = this.Tax,
-            Date = this.Date,
-            PromotionName = this.PromotionName,
-            PromotionValue = this.PromotionValue,
-            PromotionLimit = this.PromotionLimit,
-            IsEBT = this.IsEBT,
-            UPC = this.UPC,
-            Image = this.Image,
-            Peso = this.Peso
-        };
-    }
+        Number         = Number,
+        ProductId      = ProductId,
+        ProductName    = ProductName,
+        Quantity       = Quantity,
+        Weight         = Weight,
+        UnitPrice      = UnitPrice,
+        Tax            = Tax,
+        Date           = Date,
+        PromotionName  = PromotionName,
+        PromotionValue = PromotionValue,
+        PromotionLimit = PromotionLimit,
+        IsEBT          = IsEBT,
+        UPC            = UPC,
+        Image          = Image,
+        Peso           = Peso,
+        Subtotal       = Subtotal,
+        TaxAmount      = TaxAmount,
+        Total          = Total
+    };
 }

@@ -4,6 +4,8 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Windows.Forms;
 
+namespace OmadaPOS.Presentation.Styling;
+
 public static class ElegantButtonStyles
 {
     // ─────────────────────────────────────────────

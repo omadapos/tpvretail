@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using OmadaPOS.Domain.Services;
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Models;
 
@@ -7,20 +9,16 @@ public interface IShoppingCart
 {
     IReadOnlyList<CartItem> Items { get; }
 
-    int ItemCount { get; }
-
-    decimal Total { get; }
-
-    string MachineGuid { get; }
+    int     ItemCount  { get; }
+    decimal Subtotal   { get; }
+    decimal TotalTax   { get; }
+    decimal Total      { get; }
+    string  MachineGuid { get; }
 
     bool AddItem(CartItem item);
-
     bool UpdateQuantity(int productId, int quantity);
-
     bool RemoveItem(int productId);
-
     void Clear();
-
     CartItem? GetItem(int productId);
 
     event EventHandler? CartChanged;
@@ -30,76 +28,78 @@ public interface IShoppingCart
 
 public class ShoppingCart : IShoppingCart
 {
-    private readonly List<CartItem> _items = new();
-    private readonly object _lockObject = new();
-    private readonly ISqliteManager _sqliteManager;
-    private readonly string? _machineGuid;
+    private readonly List<CartItem>     _items      = new();
+    private readonly object             _lock       = new();
+    private readonly ISqliteManager     _sqliteManager;
+    private readonly IPricingEngine     _pricing;
+    private readonly ILogger<ShoppingCart> _logger;
+    private readonly string?            _machineGuid;
 
     public IReadOnlyList<CartItem> Items => _items.AsReadOnly();
-    
-    public int ItemCount => _items.Count;
 
-    // CRÍTICO: Total incluye impuesto (Subtotal + TaxAmount)
-    public decimal Total => _items.Sum(item => item.Total);
-
-    public string MachineGuid => _machineGuid ?? string.Empty;
+    public int     ItemCount   => _items.Count;
+    public decimal Subtotal    => _items.Sum(i => i.Subtotal);
+    public decimal TotalTax    => _items.Sum(i => i.TaxAmount);
+    /// <summary>Cart grand total (subtotal + tax). Always consistent with what PricingEngine computed.</summary>
+    public decimal Total       => _items.Sum(i => i.Total);
+    public string  MachineGuid => _machineGuid ?? string.Empty;
 
     public event EventHandler? CartChanged;
 
-    public ShoppingCart(ISqliteManager sqliteManager)
+    public ShoppingCart(ISqliteManager sqliteManager, IPricingEngine pricingEngine, ILogger<ShoppingCart> logger)
     {
         _sqliteManager = sqliteManager ?? throw new ArgumentNullException(nameof(sqliteManager));
-        _machineGuid = WindowsIdProvider.GetMachineGuid();
+        _pricing       = pricingEngine ?? throw new ArgumentNullException(nameof(pricingEngine));
+        _logger        = logger        ?? throw new ArgumentNullException(nameof(logger));
+        _machineGuid   = WindowsIdProvider.GetMachineGuid();
     }
+
+    // ─── Load ─────────────────────────────────────────────────────────────────
 
     public async Task LoadCartAsync()
     {
-        try
+        var items = await _sqliteManager.GetCartItemsAsync(_machineGuid);
+        lock (_lock)
         {
-            var items = await _sqliteManager.GetCartItemsAsync(_machineGuid);
-            lock (_lockObject)
+            _items.Clear();
+            foreach (var item in items)
             {
-                _items.Clear();
-                _items.AddRange(items);
+                _pricing.ApplyPricing(item);
+                _items.Add(item);
             }
-            OnCartChanged();
         }
-        catch (Exception)
-        {
-            // Log error or handle appropriately
-            throw;
-        }
+        OnCartChanged();
     }
+
+    // ─── AddItem ──────────────────────────────────────────────────────────────
 
     public bool AddItem(CartItem item)
     {
-        if (item == null)
-            throw new ArgumentNullException(nameof(item));
-        if (item.Quantity <= 0)
-            throw new ArgumentException("Quantity must be greater than zero", nameof(item));
+        if (item == null)         throw new ArgumentNullException(nameof(item));
+        if (item.Quantity <= 0)   throw new ArgumentException("Quantity must be greater than zero.", nameof(item));
 
         try
         {
             CartItem? toUpdate = null;
             CartItem? toAdd    = null;
 
-            // Mutación en memoria dentro del lock — rápido, sin I/O
-            lock (_lockObject)
+            lock (_lock)
             {
                 var existing = _items.FirstOrDefault(i => i.ProductId == item.ProductId);
                 if (existing != null)
                 {
                     existing.Quantity += item.Quantity;
+                    _pricing.ApplyPricing(existing);
                     toUpdate = existing;
                 }
                 else
                 {
+                    _pricing.ApplyPricing(item);
                     toAdd = item.Clone();
                     _items.Add(toAdd);
                 }
             }
 
-            // Persistencia SQLite fuera del lock — fire-and-forget seguro
             _ = Task.Run(async () =>
             {
                 if (toUpdate != null)
@@ -111,23 +111,25 @@ public class ShoppingCart : IShoppingCart
             OnCartChanged();
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "ShoppingCart.AddItem failed for ProductId={ProductId}", item.ProductId);
             return false;
         }
     }
 
+    // ─── UpdateQuantity ───────────────────────────────────────────────────────
+
     public bool UpdateQuantity(int productId, int quantity)
     {
-        if (quantity < 0)
-            throw new ArgumentException("Quantity cannot be negative", nameof(quantity));
+        if (quantity < 0) throw new ArgumentException("Quantity cannot be negative.", nameof(quantity));
 
         try
         {
             CartItem? removed = null;
             CartItem? updated = null;
 
-            lock (_lockObject)
+            lock (_lock)
             {
                 var item = _items.FirstOrDefault(i => i.ProductId == productId);
                 if (item == null) return false;
@@ -140,6 +142,7 @@ public class ShoppingCart : IShoppingCart
                 else
                 {
                     item.Quantity = quantity;
+                    _pricing.ApplyPricing(item);
                     updated = item;
                 }
             }
@@ -155,11 +158,14 @@ public class ShoppingCart : IShoppingCart
             OnCartChanged();
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "ShoppingCart.UpdateQuantity failed for ProductId={ProductId}", productId);
             return false;
         }
     }
+
+    // ─── RemoveItem ───────────────────────────────────────────────────────────
 
     public bool RemoveItem(int productId)
     {
@@ -167,7 +173,7 @@ public class ShoppingCart : IShoppingCart
         {
             CartItem? removed = null;
 
-            lock (_lockObject)
+            lock (_lock)
             {
                 var item = _items.FirstOrDefault(i => i.ProductId == productId);
                 if (item == null) return false;
@@ -185,40 +191,41 @@ public class ShoppingCart : IShoppingCart
             OnCartChanged();
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "ShoppingCart.RemoveItem failed for ProductId={ProductId}", productId);
             return false;
         }
     }
+
+    // ─── Clear ────────────────────────────────────────────────────────────────
 
     public void Clear()
     {
         try
         {
-            lock (_lockObject)
+            lock (_lock)
                 _items.Clear();
 
             _ = Task.Run(async () => await _sqliteManager.ClearCartAsync(_machineGuid));
 
             OnCartChanged();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Log error
+            _logger.LogError(ex, "ShoppingCart.Clear failed");
         }
     }
+
+    // ─── GetItem ──────────────────────────────────────────────────────────────
 
     public CartItem? GetItem(int productId)
     {
-        lock (_lockObject)
-        {
+        lock (_lock)
             return _items.FirstOrDefault(i => i.ProductId == productId)?.Clone();
-        }
     }
 
-    protected virtual void OnCartChanged()
-    {
-        CartChanged?.Invoke(this, EventArgs.Empty);
-    }
+    // ─── Events ───────────────────────────────────────────────────────────────
+
+    protected virtual void OnCartChanged() => CartChanged?.Invoke(this, EventArgs.Empty);
 }
-

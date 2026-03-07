@@ -1,16 +1,19 @@
 using OmadaPOS.Libreria.Services;
+using OmadaPOS.Services.Navigation;
 
 namespace OmadaPOS.Views
 {
     public partial class frmCheckPrice : Form
     {
         private readonly ICategoryService _categoryService;
+        private readonly IWindowService _windowService;
 
-        public frmCheckPrice()
+        public frmCheckPrice(ICategoryService categoryService, IWindowService windowService)
         {
             InitializeComponent();
 
-            _categoryService = Program.GetService<ICategoryService>();
+            _categoryService = categoryService;
+            _windowService   = windowService;
 
             this.Load += frmCheckPrice_Load;
         }
@@ -23,94 +26,32 @@ namespace OmadaPOS.Views
 
         private void AplicarEstiloVisual()
         {
-            ConfigurarTamano(anchoPorc: 0.40, altoPorc: 0.65);
+            PopupHeaderHelper.ConfigureSize(this, widthPct: 0.40, heightPct: 0.65);
 
             this.BackColor = AppColors.BackgroundPrimary;
             tableLayoutPanel1.BackColor = AppColors.BackgroundPrimary;
 
-            // ── Header contextual — Azul info (consulta de precio) ──
-            AgregarHeader();
+            PopupHeaderHelper.AddHeader(this,
+                color    : AppColors.Info,
+                icon     : "$",
+                title    : "Check Price",
+                subtitle : "Scan or enter UPC to look up the price");
 
-            // ── Labels de resultado ──
-            labelName.Font      = new Font("Montserrat", 22F, FontStyle.Bold);
+            labelName.Font      = AppTypography.SectionTitle;
             labelName.ForeColor = AppColors.TextPrimary;
             labelName.BackColor = AppColors.BackgroundPrimary;
 
-            labelPrice.Font      = new Font("Montserrat", 40F, FontStyle.Bold);
+            labelPrice.Font      = AppTypography.AmountHero;
             labelPrice.ForeColor = AppColors.AccentGreen;
             labelPrice.BackColor = AppColors.BackgroundPrimary;
 
-            // ── TextBox de escaneo ──
             textUPC.BackColor   = AppColors.NavyDark;
             textUPC.ForeColor   = AppColors.AccentGreen;
-            textUPC.Font        = new Font("Consolas", 18F, FontStyle.Bold);
+            textUPC.Font        = AppTypography.ScanInput;
             textUPC.BorderStyle = BorderStyle.None;
 
-            // ── Botón OK — NavyBase (cerrar/dismissal, no destructivo) ──
             ElegantButtonStyles.Style(buttonOK, AppColors.NavyBase, AppColors.TextWhite, fontSize: 22f);
             buttonOK.Text = "✔  CLOSE";
-        }
-
-        private void AgregarHeader()
-        {
-            var panel = new Panel
-            {
-                Dock      = DockStyle.Top,
-                Height    = 70,
-                BackColor = AppColors.Info,
-            };
-
-            var lblIcono = new Label
-            {
-                Text      = "$",
-                Font      = new Font("Montserrat", 24F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(220, 255, 255, 255),
-                AutoSize  = true,
-                Location  = new Point(16, 12),
-                BackColor = Color.Transparent
-            };
-
-            var lblTitulo = new Label
-            {
-                Text      = "Check Price",
-                Font      = new Font("Montserrat", 16F, FontStyle.Bold),
-                ForeColor = Color.White,
-                AutoSize  = true,
-                Location  = new Point(52, 10),
-                BackColor = Color.Transparent
-            };
-
-            var lblSub = new Label
-            {
-                Text      = "Scan or enter UPC to look up the price",
-                Font      = new Font("Segoe UI", 10F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(200, 255, 255, 255),
-                AutoSize  = true,
-                Location  = new Point(53, 38),
-                BackColor = Color.Transparent
-            };
-
-            panel.Paint += (s, e) =>
-            {
-                using var pen = new Pen(AppColors.AccentGreen, 3);
-                e.Graphics.DrawLine(pen, 0, panel.Height - 3, panel.Width, panel.Height - 3);
-            };
-
-            panel.Controls.Add(lblIcono);
-            panel.Controls.Add(lblTitulo);
-            panel.Controls.Add(lblSub);
-            this.Controls.Add(panel);
-            panel.BringToFront();
-        }
-
-        private void ConfigurarTamano(double anchoPorc, double altoPorc)
-        {
-            var screen    = Screen.PrimaryScreen!.WorkingArea;
-            this.Width    = (int)(screen.Width  * anchoPorc);
-            this.Height   = (int)(screen.Height * altoPorc);
-            this.Location = new Point(
-                screen.X + (screen.Width  - this.Width)  / 2,
-                screen.Y + (screen.Height - this.Height) / 2);
         }
 
         private void buttonOK_Click(object sender, EventArgs e) => this.Close();
@@ -140,20 +81,26 @@ namespace OmadaPOS.Views
                             textUPC.Text    = "";
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        var frm = new frmError("Error reading codebar");
-                        frm.ShowDialog(this);
+                        _windowService.OpenError(ex.Message);
                     }
                 }
                 else
                 {
-                    var product = await _categoryService.LoadProductByUPC_Promotion(upc);
-                    if (product != null)
+                    try
                     {
-                        labelName.Text  = product.Name;
-                        labelPrice.Text = (product.Price ?? 0m).ToString("C");
-                        textUPC.Text    = "";
+                        var plu = await _categoryService.LoadProductByUPC_Promotion(upc);
+                        if (plu != null)
+                        {
+                            labelName.Text  = plu.Name;
+                            labelPrice.Text = plu.Price?.ToString("C") ?? "—";
+                            textUPC.Text    = "";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _windowService.OpenError(ex.Message);
                     }
                 }
             }

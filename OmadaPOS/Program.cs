@@ -1,4 +1,7 @@
+using OmadaPOS.Domain.Services;
 using OmadaPOS.Services;
+using OmadaPOS.Services.Navigation;
+using OmadaPOS.Services.POS;
 using OmadaPOS.Views;
 using OmadaPOS.Libreria.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +18,9 @@ internal static class Program
 
         // Configuración básica de logging
         services.AddLogging();
+
+        // Motor de cálculo de precios — fuente única de verdad para subtotal, tax y total
+        services.AddSingleton<IPricingEngine, PricingEngine>();
 
         // Registrar SqliteManager como Singleton
         services.AddSingleton<ISqliteManager, SqliteManager>();
@@ -36,10 +42,33 @@ internal static class Program
 
         services.AddScoped<IOrderApplicationService, OrderApplicationService>();
         services.AddScoped<IProductApplicationService, ProductApplicationService>();
+        services.AddScoped<IHomeInitializationService, HomeInitializationService>();
+        services.AddScoped<IBarcodeSaleService, BarcodeSaleService>();
+        services.AddScoped<IPaymentCoordinatorService, PaymentCoordinatorService>();
+        services.AddScoped<IHomeHoldCartService, HoldCartService>();
+        services.AddScoped<ICashDrawerService, CashDrawerService>();
+        services.AddSingleton<IWindowService, WindowService>();
+        services.AddSingleton<IHomeInteractionService, HomeInteractionService>();
 
         services.AddSingleton<HttpClient>();
          
         services.AddTransient<frmHome>();
+        services.AddTransient<frmSignIn>();
+        services.AddTransient<frmSplit>();
+        services.AddTransient<frmHold>();
+        services.AddTransient<frmCheckPrice>();
+        services.AddTransient<frmProductNew>();
+        services.AddTransient<frmCustomerScreen>();
+        services.AddTransient<frmSetting>();
+        services.AddTransient<frmCierreDiario>();
+        services.AddTransient<frmPopupQuantity>();
+        services.AddTransient<frmPopupCashPayment>();
+        services.AddTransient<frmGiftCard>();
+        services.AddTransient<frmPaymentStatus>();
+        services.AddTransient<frmPrintInvoice>();
+        services.AddTransient<frmProductNoExist>();
+        services.AddTransient<frmKeyLookup>();
+        services.AddTransient<frmError>();
 
         services.AddSingleton<ZebraScannerService>();
 
@@ -78,6 +107,6 @@ internal static class Program
             return;
         }
 
-        Application.Run(new frmSignIn());
+        Application.Run(ServiceProvider.GetRequiredService<frmSignIn>());
     }
 }

@@ -26,9 +26,10 @@ public partial class KeyPaymentControl : UserControl
 
     private void ApplyStyles()
     {
-        // Fondo oscuro — coincide con la columna de pagos (NavyDark)
-        this.BackColor                  = AppColors.NavyDark;
-        tableLayoutPanelMoney.BackColor = AppColors.NavyDark;
+        // Fondo claro — coincide con la columna de pagos
+        var payBg = Color.FromArgb(248, 249, 252);
+        this.BackColor                  = payBg;
+        tableLayoutPanelMoney.BackColor = payBg;
         tableLayoutPanelMoney.Padding   = new Padding(4);
 
         // ── Dígitos — Navy (teclado numérico) ────────────────────────────

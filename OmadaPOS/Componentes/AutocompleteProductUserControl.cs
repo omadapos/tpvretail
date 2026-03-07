@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Libreria.Services;
+using OmadaPOS.Libreria.Services;
 using OmadaPOS.Models;
 
 namespace OmadaPOS.Componentes
@@ -20,27 +20,34 @@ namespace OmadaPOS.Componentes
 
         private async void textBoxSearch_TextChanged(object sender, EventArgs e)
         {
-            var text = textBoxSearch.Text.Trim();
-
-            if (text.Length >= 3)
+            try
             {
-                _currentSuggestions = await _categoryService.Autocomplete(text) ?? [];
+                var text = textBoxSearch.Text.Trim();
 
-                AutoCompleteStringCollection autoCompleteCollection = new AutoCompleteStringCollection();
-                autoCompleteCollection?.AddRange(_currentSuggestions
-                    .Where(p => !string.IsNullOrEmpty(p.Name))
-                    .Select(p => p.Name)
-                    .ToArray());
+                if (text.Length >= 3)
+                {
+                    _currentSuggestions = await _categoryService.Autocomplete(text) ?? [];
 
-                textBoxSearch.AutoCompleteCustomSource = autoCompleteCollection;
-                textBoxSearch.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-                textBoxSearch.AutoCompleteSource = AutoCompleteSource.CustomSource;
+                    var autoCompleteCollection = new AutoCompleteStringCollection();
+                    autoCompleteCollection.AddRange(_currentSuggestions
+                        .Where(p => !string.IsNullOrEmpty(p.Name))
+                        .Select(p => p.Name)
+                        .ToArray()!);
+
+                    textBoxSearch.AutoCompleteCustomSource = autoCompleteCollection;
+                    textBoxSearch.AutoCompleteMode         = AutoCompleteMode.SuggestAppend;
+                    textBoxSearch.AutoCompleteSource       = AutoCompleteSource.CustomSource;
+                }
+                else
+                {
+                    _currentSuggestions?.Clear();
+                    textBoxSearch.AutoCompleteCustomSource = new AutoCompleteStringCollection();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _currentSuggestions.Clear();
-                // Limpiar sugerencias si el texto es muy corto
-                textBoxSearch.AutoCompleteCustomSource = new AutoCompleteStringCollection();
+                _currentSuggestions = [];
+                System.Diagnostics.Debug.WriteLine($"Autocomplete error: {ex.Message}");
             }
         }
 

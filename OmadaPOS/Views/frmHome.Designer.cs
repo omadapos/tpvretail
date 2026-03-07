@@ -51,6 +51,14 @@ namespace OmadaPOS.Views
             tableLayoutPanelPayment = new TableLayoutPanel();
             tableLayoutPanel2 = new TableLayoutPanel();
             keyPaymentControl1 = new OmadaPOS.Componentes.KeyPaymentControl();
+            roundedPanel2 = new OmadaPOS.Componentes.RoundedPanel();
+            tableLayoutPanel4 = new TableLayoutPanel();
+            buttonQsale = new Button();
+            buttonLookup = new Button();
+            label5 = new Label();
+            labelInputValue = new Label();
+            label4 = new Label();
+            labelChangeValue = new Label();
             splitContainerScale = new SplitContainer();
             tableLayoutPanelPesado = new TableLayoutPanel();
             labelWeight = new Label();
@@ -66,24 +74,15 @@ namespace OmadaPOS.Views
             buttonGiftCard = new Button();
             buttonPayCash = new Button();
             buttonSplit = new Button();
-            roundedPanel2 = new OmadaPOS.Componentes.RoundedPanel();
-            tableLayoutPanel4 = new TableLayoutPanel();
-            buttonQsale = new Button();
-            buttonLookup = new Button();
-            label5 = new Label();
-            labelInputValue = new Label();
-            label4 = new Label();
-            labelChangeValue = new Label();
             labelCashier = new Button();
             buttonClose = new Button();
             labelProductName = new Label();
             tableLayoutPanel1 = new TableLayoutPanel();
             ButtonSettings = new Button();
             buttonInvoice = new Button();
-            DualScreenButton = new Button();
             textBoxUPC = new TextBox();
-            buttonCheckPrice = new Button();
             MaintableLayout = new TableLayoutPanel();
+            pnlProductStrip = new Panel();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelCart.SuspendLayout();
             tableLayoutPanelButtonCart.SuspendLayout();
@@ -92,6 +91,8 @@ namespace OmadaPOS.Views
             tableLayoutPanelCategoria.SuspendLayout();
             tabControlMenuCategories.SuspendLayout();
             tableLayoutPanelPayment.SuspendLayout();
+            roundedPanel2.SuspendLayout();
+            tableLayoutPanel4.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)splitContainerScale).BeginInit();
             splitContainerScale.Panel1.SuspendLayout();
             splitContainerScale.Panel2.SuspendLayout();
@@ -99,10 +100,9 @@ namespace OmadaPOS.Views
             tableLayoutPanelPesado.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBoxPesado).BeginInit();
             tableLayoutPanel3.SuspendLayout();
-            roundedPanel2.SuspendLayout();
-            tableLayoutPanel4.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
             MaintableLayout.SuspendLayout();
+            pnlProductStrip.SuspendLayout();
             SuspendLayout();
             // 
             // tableLayoutPanelMain
@@ -225,14 +225,14 @@ namespace OmadaPOS.Views
             // 
             // roundedPanel1
             // 
-            roundedPanel1.BackColor = Color.WhiteSmoke;
+            roundedPanel1.BackColor = Color.Transparent;
             roundedPanel1.Controls.Add(tableLayoutPanelTotal);
             roundedPanel1.Dock = DockStyle.Fill;
-            roundedPanel1.Location = new Point(4, 608);
-            roundedPanel1.Margin = new Padding(4);
+            roundedPanel1.Location = new Point(3, 606);
+            roundedPanel1.Margin = new Padding(3, 2, 3, 2);
             roundedPanel1.Name = "roundedPanel1";
-            roundedPanel1.Padding = new Padding(30);
-            roundedPanel1.Size = new Size(613, 121);
+            roundedPanel1.Padding = new Padding(20);
+            roundedPanel1.Size = new Size(615, 125);
             roundedPanel1.TabIndex = 5;
             // 
             // tableLayoutPanelTotal
@@ -248,14 +248,14 @@ namespace OmadaPOS.Views
             tableLayoutPanelTotal.Controls.Add(labelTotalTax, 1, 1);
             tableLayoutPanelTotal.Controls.Add(labelTotalValue, 1, 2);
             tableLayoutPanelTotal.Dock = DockStyle.Fill;
-            tableLayoutPanelTotal.Location = new Point(30, 30);
+            tableLayoutPanelTotal.Location = new Point(20, 20);
             tableLayoutPanelTotal.Margin = new Padding(3, 2, 3, 2);
             tableLayoutPanelTotal.Name = "tableLayoutPanelTotal";
             tableLayoutPanelTotal.RowCount = 3;
             tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
             tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
             tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanelTotal.Size = new Size(553, 61);
+            tableLayoutPanelTotal.Size = new Size(575, 85);
             tableLayoutPanelTotal.TabIndex = 2;
             // 
             // label1
@@ -265,7 +265,7 @@ namespace OmadaPOS.Views
             label1.Font = new Font("Microsoft Sans Serif", 20.1F, FontStyle.Regular, GraphicsUnit.Point, 0);
             label1.Location = new Point(3, 0);
             label1.Name = "label1";
-            label1.Size = new Size(270, 20);
+            label1.Size = new Size(281, 28);
             label1.TabIndex = 0;
             label1.Text = "Subtotal";
             label1.TextAlign = ContentAlignment.MiddleLeft;
@@ -275,9 +275,9 @@ namespace OmadaPOS.Views
             label2.AutoSize = true;
             label2.Dock = DockStyle.Fill;
             label2.Font = new Font("Microsoft Sans Serif", 20.1F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            label2.Location = new Point(3, 20);
+            label2.Location = new Point(3, 28);
             label2.Name = "label2";
-            label2.Size = new Size(270, 20);
+            label2.Size = new Size(281, 28);
             label2.TabIndex = 1;
             label2.Text = "Tax";
             label2.TextAlign = ContentAlignment.MiddleLeft;
@@ -288,9 +288,9 @@ namespace OmadaPOS.Views
             label3.Dock = DockStyle.Fill;
             label3.FlatStyle = FlatStyle.Flat;
             label3.Font = new Font("Microsoft Sans Serif", 20.1F, FontStyle.Bold);
-            label3.Location = new Point(3, 40);
+            label3.Location = new Point(3, 56);
             label3.Name = "label3";
-            label3.Size = new Size(270, 21);
+            label3.Size = new Size(281, 29);
             label3.TabIndex = 2;
             label3.Text = "Total";
             label3.TextAlign = ContentAlignment.MiddleLeft;
@@ -300,9 +300,9 @@ namespace OmadaPOS.Views
             labelSubTotal.AutoSize = true;
             labelSubTotal.Dock = DockStyle.Fill;
             labelSubTotal.Font = new Font("Cascadia Mono", 15.75F, FontStyle.Bold);
-            labelSubTotal.Location = new Point(279, 0);
+            labelSubTotal.Location = new Point(290, 0);
             labelSubTotal.Name = "labelSubTotal";
-            labelSubTotal.Size = new Size(271, 20);
+            labelSubTotal.Size = new Size(282, 28);
             labelSubTotal.TabIndex = 3;
             labelSubTotal.Text = "0.00";
             labelSubTotal.TextAlign = ContentAlignment.MiddleRight;
@@ -313,9 +313,9 @@ namespace OmadaPOS.Views
             labelTotalTax.BackColor = Color.Transparent;
             labelTotalTax.Dock = DockStyle.Fill;
             labelTotalTax.Font = new Font("Cascadia Mono", 15.75F, FontStyle.Bold);
-            labelTotalTax.Location = new Point(279, 20);
+            labelTotalTax.Location = new Point(290, 28);
             labelTotalTax.Name = "labelTotalTax";
-            labelTotalTax.Size = new Size(271, 20);
+            labelTotalTax.Size = new Size(282, 28);
             labelTotalTax.TabIndex = 4;
             labelTotalTax.Text = "0.00";
             labelTotalTax.TextAlign = ContentAlignment.MiddleRight;
@@ -325,9 +325,9 @@ namespace OmadaPOS.Views
             labelTotalValue.AutoSize = true;
             labelTotalValue.Dock = DockStyle.Fill;
             labelTotalValue.Font = new Font("Cascadia Mono", 15.75F, FontStyle.Bold);
-            labelTotalValue.Location = new Point(279, 40);
+            labelTotalValue.Location = new Point(290, 56);
             labelTotalValue.Name = "labelTotalValue";
-            labelTotalValue.Size = new Size(271, 21);
+            labelTotalValue.Size = new Size(282, 29);
             labelTotalValue.TabIndex = 5;
             labelTotalValue.Text = "0.00";
             labelTotalValue.TextAlign = ContentAlignment.MiddleRight;
@@ -380,10 +380,10 @@ namespace OmadaPOS.Views
             // 
             abecedarioControl1.BackColor = Color.FromArgb(15, 23, 42);
             abecedarioControl1.Dock = DockStyle.Fill;
-            abecedarioControl1.Location = new Point(8, 733);
-            abecedarioControl1.Margin = new Padding(8);
+            abecedarioControl1.Location = new Point(3, 727);
+            abecedarioControl1.Margin = new Padding(3, 2, 3, 2);
             abecedarioControl1.Name = "abecedarioControl1";
-            abecedarioControl1.Size = new Size(812, 80);
+            abecedarioControl1.Size = new Size(822, 92);
             abecedarioControl1.TabIndex = 1;
             abecedarioControl1.LetraClicked += AbecedarioControl1_LetraClicked;
             // 
@@ -394,9 +394,9 @@ namespace OmadaPOS.Views
             tableLayoutPanelPayment.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanelPayment.Controls.Add(tableLayoutPanel2, 0, 0);
             tableLayoutPanelPayment.Controls.Add(keyPaymentControl1, 0, 1);
+            tableLayoutPanelPayment.Controls.Add(roundedPanel2, 0, 2);
             tableLayoutPanelPayment.Controls.Add(splitContainerScale, 0, 3);
             tableLayoutPanelPayment.Controls.Add(tableLayoutPanel3, 0, 4);
-            tableLayoutPanelPayment.Controls.Add(roundedPanel2, 0, 2);
             tableLayoutPanelPayment.Dock = DockStyle.Fill;
             tableLayoutPanelPayment.Location = new Point(1451, 2);
             tableLayoutPanelPayment.Margin = new Padding(2);
@@ -413,9 +413,10 @@ namespace OmadaPOS.Views
             // tableLayoutPanel2
             // 
             tableLayoutPanel2.BackColor = Color.WhiteSmoke;
-            tableLayoutPanel2.ColumnCount = 3;
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32.4390259F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.90244F));
+            tableLayoutPanel2.ColumnCount = 4;
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 21.9482517F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22.5484657F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22.1699524F));
             tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333321F));
             tableLayoutPanel2.Dock = DockStyle.Fill;
             tableLayoutPanel2.Location = new Point(2, 2);
@@ -428,16 +429,126 @@ namespace OmadaPOS.Views
             // 
             // keyPaymentControl1
             // 
-            keyPaymentControl1.BackColor = Color.WhiteSmoke;
+            keyPaymentControl1.BackColor = Color.FromArgb(248, 249, 252);
             keyPaymentControl1.Dock = DockStyle.Fill;
-            keyPaymentControl1.Font = new Font("Microsoft Sans Serif", 20.1F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            keyPaymentControl1.ForeColor = SystemColors.ActiveBorder;
-            keyPaymentControl1.Location = new Point(0, 40);
-            keyPaymentControl1.Margin = new Padding(0);
+            keyPaymentControl1.Location = new Point(3, 42);
+            keyPaymentControl1.Margin = new Padding(3, 2, 3, 2);
             keyPaymentControl1.Name = "keyPaymentControl1";
-            keyPaymentControl1.Size = new Size(617, 408);
-            keyPaymentControl1.TabIndex = 8;
+            keyPaymentControl1.Size = new Size(611, 404);
+            keyPaymentControl1.TabIndex = 10;
             keyPaymentControl1.KeyPaymentClicked += KeyPaymentControl1_KeyPaymentClicked;
+            // 
+            // roundedPanel2
+            // 
+            roundedPanel2.BackColor = Color.Transparent;
+            roundedPanel2.Controls.Add(tableLayoutPanel4);
+            roundedPanel2.Dock = DockStyle.Fill;
+            roundedPanel2.Location = new Point(3, 450);
+            roundedPanel2.Margin = new Padding(3, 2, 3, 2);
+            roundedPanel2.Name = "roundedPanel2";
+            roundedPanel2.Padding = new Padding(20);
+            roundedPanel2.Size = new Size(611, 118);
+            roundedPanel2.TabIndex = 6;
+            // 
+            // tableLayoutPanel4
+            // 
+            tableLayoutPanel4.ColumnCount = 3;
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            tableLayoutPanel4.Controls.Add(buttonQsale, 0, 0);
+            tableLayoutPanel4.Controls.Add(buttonLookup, 0, 1);
+            tableLayoutPanel4.Controls.Add(label5, 1, 1);
+            tableLayoutPanel4.Controls.Add(labelInputValue, 2, 0);
+            tableLayoutPanel4.Controls.Add(label4, 1, 0);
+            tableLayoutPanel4.Controls.Add(labelChangeValue, 2, 1);
+            tableLayoutPanel4.Dock = DockStyle.Fill;
+            tableLayoutPanel4.Location = new Point(20, 20);
+            tableLayoutPanel4.Margin = new Padding(2);
+            tableLayoutPanel4.Name = "tableLayoutPanel4";
+            tableLayoutPanel4.Padding = new Padding(3);
+            tableLayoutPanel4.RowCount = 2;
+            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableLayoutPanel4.Size = new Size(571, 78);
+            tableLayoutPanel4.TabIndex = 0;
+            // 
+            // buttonQsale
+            // 
+            buttonQsale.Dock = DockStyle.Fill;
+            buttonQsale.Location = new Point(5, 5);
+            buttonQsale.Margin = new Padding(2);
+            buttonQsale.Name = "buttonQsale";
+            buttonQsale.Size = new Size(222, 32);
+            buttonQsale.TabIndex = 7;
+            buttonQsale.Text = "Quick Sale";
+            buttonQsale.UseVisualStyleBackColor = true;
+            buttonQsale.Click += buttonProductNoTax_Click;
+            // 
+            // buttonLookup
+            // 
+            buttonLookup.Dock = DockStyle.Fill;
+            buttonLookup.Location = new Point(5, 41);
+            buttonLookup.Margin = new Padding(2);
+            buttonLookup.Name = "buttonLookup";
+            buttonLookup.Size = new Size(222, 32);
+            buttonLookup.TabIndex = 5;
+            buttonLookup.Text = "LookUp UPC";
+            buttonLookup.UseVisualStyleBackColor = false;
+            buttonLookup.Click += buttonLookup_Click;
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Dock = DockStyle.Fill;
+            label5.FlatStyle = FlatStyle.Flat;
+            label5.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
+            label5.Location = new Point(232, 39);
+            label5.Name = "label5";
+            label5.Size = new Size(163, 36);
+            label5.TabIndex = 2;
+            label5.Text = "Due";
+            label5.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // labelInputValue
+            // 
+            labelInputValue.AutoSize = true;
+            labelInputValue.Dock = DockStyle.Fill;
+            labelInputValue.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
+            labelInputValue.Location = new Point(406, 11);
+            labelInputValue.Margin = new Padding(8);
+            labelInputValue.Name = "labelInputValue";
+            labelInputValue.Size = new Size(154, 20);
+            labelInputValue.TabIndex = 1;
+            labelInputValue.Text = "0.00";
+            labelInputValue.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // label4
+            // 
+            label4.AutoSize = true;
+            label4.Dock = DockStyle.Fill;
+            label4.FlatStyle = FlatStyle.Flat;
+            label4.Font = new Font("Microsoft Sans Serif", 27.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            label4.Location = new Point(231, 5);
+            label4.Margin = new Padding(2);
+            label4.Name = "label4";
+            label4.Size = new Size(165, 32);
+            label4.TabIndex = 0;
+            label4.Text = "Tender";
+            label4.TextAlign = ContentAlignment.MiddleCenter;
+            // 
+            // labelChangeValue
+            // 
+            labelChangeValue.AutoSize = true;
+            labelChangeValue.Dock = DockStyle.Fill;
+            labelChangeValue.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
+            labelChangeValue.ForeColor = Color.DarkBlue;
+            labelChangeValue.Location = new Point(401, 39);
+            labelChangeValue.Name = "labelChangeValue";
+            labelChangeValue.Size = new Size(164, 36);
+            labelChangeValue.TabIndex = 3;
+            labelChangeValue.Text = "0.00";
+            labelChangeValue.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // splitContainerScale
             // 
@@ -670,118 +781,6 @@ namespace OmadaPOS.Views
             buttonSplit.UseVisualStyleBackColor = true;
             buttonSplit.Click += buttonSplit_Click;
             // 
-            // roundedPanel2
-            // 
-            roundedPanel2.BackColor = Color.Transparent;
-            roundedPanel2.Controls.Add(tableLayoutPanel4);
-            roundedPanel2.Dock = DockStyle.Fill;
-            roundedPanel2.Location = new Point(2, 450);
-            roundedPanel2.Margin = new Padding(2);
-            roundedPanel2.Name = "roundedPanel2";
-            roundedPanel2.Padding = new Padding(8);
-            roundedPanel2.Size = new Size(613, 118);
-            roundedPanel2.TabIndex = 12;
-            // 
-            // tableLayoutPanel4
-            // 
-            tableLayoutPanel4.ColumnCount = 3;
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            tableLayoutPanel4.Controls.Add(buttonQsale, 0, 0);
-            tableLayoutPanel4.Controls.Add(buttonLookup, 0, 1);
-            tableLayoutPanel4.Controls.Add(label5, 1, 1);
-            tableLayoutPanel4.Controls.Add(labelInputValue, 2, 0);
-            tableLayoutPanel4.Controls.Add(label4, 1, 0);
-            tableLayoutPanel4.Controls.Add(labelChangeValue, 2, 1);
-            tableLayoutPanel4.Dock = DockStyle.Fill;
-            tableLayoutPanel4.Location = new Point(8, 8);
-            tableLayoutPanel4.Margin = new Padding(2);
-            tableLayoutPanel4.Name = "tableLayoutPanel4";
-            tableLayoutPanel4.Padding = new Padding(3);
-            tableLayoutPanel4.RowCount = 2;
-            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel4.Size = new Size(597, 102);
-            tableLayoutPanel4.TabIndex = 0;
-            // 
-            // buttonQsale
-            // 
-            buttonQsale.Dock = DockStyle.Fill;
-            buttonQsale.Location = new Point(5, 5);
-            buttonQsale.Margin = new Padding(2);
-            buttonQsale.Name = "buttonQsale";
-            buttonQsale.Size = new Size(232, 44);
-            buttonQsale.TabIndex = 7;
-            buttonQsale.Text = "Quick Sale";
-            buttonQsale.UseVisualStyleBackColor = true;
-            buttonQsale.Click += buttonProductNoTax_Click;
-            // 
-            // buttonLookup
-            // 
-            buttonLookup.Dock = DockStyle.Fill;
-            buttonLookup.Location = new Point(5, 53);
-            buttonLookup.Margin = new Padding(2);
-            buttonLookup.Name = "buttonLookup";
-            buttonLookup.Size = new Size(232, 44);
-            buttonLookup.TabIndex = 5;
-            buttonLookup.Text = "LookUp UPC";
-            buttonLookup.UseVisualStyleBackColor = false;
-            buttonLookup.Click += buttonLookup_Click;
-            // 
-            // label5
-            // 
-            label5.AutoSize = true;
-            label5.Dock = DockStyle.Fill;
-            label5.FlatStyle = FlatStyle.Flat;
-            label5.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
-            label5.Location = new Point(242, 51);
-            label5.Name = "label5";
-            label5.Size = new Size(171, 48);
-            label5.TabIndex = 2;
-            label5.Text = "Due";
-            label5.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // labelInputValue
-            // 
-            labelInputValue.AutoSize = true;
-            labelInputValue.Dock = DockStyle.Fill;
-            labelInputValue.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
-            labelInputValue.Location = new Point(424, 11);
-            labelInputValue.Margin = new Padding(8);
-            labelInputValue.Name = "labelInputValue";
-            labelInputValue.Size = new Size(162, 32);
-            labelInputValue.TabIndex = 1;
-            labelInputValue.Text = "0.00";
-            labelInputValue.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // label4
-            // 
-            label4.AutoSize = true;
-            label4.Dock = DockStyle.Fill;
-            label4.FlatStyle = FlatStyle.Flat;
-            label4.Font = new Font("Microsoft Sans Serif", 27.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label4.Location = new Point(241, 5);
-            label4.Margin = new Padding(2);
-            label4.Name = "label4";
-            label4.Size = new Size(173, 44);
-            label4.TabIndex = 0;
-            label4.Text = "Tender";
-            label4.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // labelChangeValue
-            // 
-            labelChangeValue.AutoSize = true;
-            labelChangeValue.Dock = DockStyle.Fill;
-            labelChangeValue.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
-            labelChangeValue.ForeColor = Color.DarkBlue;
-            labelChangeValue.Location = new Point(419, 51);
-            labelChangeValue.Name = "labelChangeValue";
-            labelChangeValue.Size = new Size(172, 48);
-            labelChangeValue.TabIndex = 3;
-            labelChangeValue.Text = "0.00";
-            labelChangeValue.TextAlign = ContentAlignment.MiddleCenter;
-            // 
             // labelCashier
             // 
             labelCashier.BackColor = Color.Transparent;
@@ -810,39 +809,42 @@ namespace OmadaPOS.Views
             buttonClose.UseVisualStyleBackColor = true;
             buttonClose.Click += buttonLogout_Click;
             // 
+            // pnlProductStrip
+            // 
+            pnlProductStrip.BackColor = Color.FromArgb(248, 250, 252);
+            pnlProductStrip.Controls.Add(labelProductName);
+            pnlProductStrip.Dock = DockStyle.Fill;
+            pnlProductStrip.Margin = new Padding(0);
+            pnlProductStrip.Name = "pnlProductStrip";
+            pnlProductStrip.Padding = new Padding(0);
+            // 
             // labelProductName
             // 
-            labelProductName.Anchor = AnchorStyles.None;
-            labelProductName.AutoSize = true;
-            labelProductName.Font = new Font("Microsoft Sans Serif", 20.25F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelProductName.ForeColor = Color.Black;
-            labelProductName.Location = new Point(160, 2);
-            labelProductName.Margin = new Padding(2);
+            labelProductName.Dock = DockStyle.Fill;
+            labelProductName.Font = new Font("Segoe UI", 12F, FontStyle.Regular);
+            labelProductName.ForeColor = Color.FromArgb(71, 85, 105);
+            labelProductName.Margin = new Padding(0);
             labelProductName.Name = "labelProductName";
-            labelProductName.Size = new Size(295, 43);
+            labelProductName.Padding = new Padding(16, 0, 0, 0);
             labelProductName.TabIndex = 2;
-            labelProductName.Text = "Product Name";
+            labelProductName.Text = "Ready to scan...";
+            labelProductName.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // tableLayoutPanel1
             // 
-            tableLayoutPanel1.BackColor = Color.WhiteSmoke;
-            tableLayoutPanel1.ColumnCount = 8;
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.2003174F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.8395844F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9.998238F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9.998238F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9.855072F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10.072464F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10.144928F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 215F));
-            tableLayoutPanel1.Controls.Add(ButtonSettings, 5, 0);
-            tableLayoutPanel1.Controls.Add(labelProductName, 0, 0);
-            tableLayoutPanel1.Controls.Add(buttonClose, 7, 0);
-            tableLayoutPanel1.Controls.Add(buttonInvoice, 3, 0);
-            tableLayoutPanel1.Controls.Add(DualScreenButton, 4, 0);
+            tableLayoutPanel1.BackColor = Color.FromArgb(15, 23, 42);
+            tableLayoutPanel1.ColumnCount = 6;
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200F));
+            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
             tableLayoutPanel1.Controls.Add(textBoxUPC, 1, 0);
-            tableLayoutPanel1.Controls.Add(labelCashier, 6, 0);
-            tableLayoutPanel1.Controls.Add(buttonCheckPrice, 2, 0);
+            tableLayoutPanel1.Controls.Add(buttonInvoice, 2, 0);
+            tableLayoutPanel1.Controls.Add(ButtonSettings, 3, 0);
+            tableLayoutPanel1.Controls.Add(labelCashier, 4, 0);
+            tableLayoutPanel1.Controls.Add(buttonClose, 5, 0);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.Location = new Point(3, 2);
             tableLayoutPanel1.Margin = new Padding(3, 2, 3, 2);
@@ -876,18 +878,6 @@ namespace OmadaPOS.Views
             buttonInvoice.UseVisualStyleBackColor = true;
             buttonInvoice.Click += buttonInvoice_Click;
             // 
-            // DualScreenButton
-            // 
-            DualScreenButton.Dock = DockStyle.Fill;
-            DualScreenButton.Location = new Point(1299, 2);
-            DualScreenButton.Margin = new Padding(2);
-            DualScreenButton.Name = "DualScreenButton";
-            DualScreenButton.Size = new Size(178, 43);
-            DualScreenButton.TabIndex = 10;
-            DualScreenButton.Text = "Dual Screen";
-            DualScreenButton.UseVisualStyleBackColor = true;
-            DualScreenButton.Click += buttonDualScreen_Click;
-            // 
             // textBoxUPC
             // 
             textBoxUPC.Anchor = AnchorStyles.None;
@@ -904,32 +894,22 @@ namespace OmadaPOS.Views
             textBoxUPC.TextAlign = HorizontalAlignment.Center;
             textBoxUPC.TextChanged += textBoxUPC_TextChanged;
             // 
-            // buttonCheckPrice
-            // 
-            buttonCheckPrice.Dock = DockStyle.Fill;
-            buttonCheckPrice.Location = new Point(930, 3);
-            buttonCheckPrice.Name = "buttonCheckPrice";
-            buttonCheckPrice.Size = new Size(179, 41);
-            buttonCheckPrice.TabIndex = 12;
-            buttonCheckPrice.Text = "Check Price";
-            buttonCheckPrice.UseVisualStyleBackColor = true;
-            buttonCheckPrice.Visible = false;
-            buttonCheckPrice.Click += buttonCheckPrice_Click;
-            // 
             // MaintableLayout
             // 
             MaintableLayout.BackColor = Color.White;
             MaintableLayout.ColumnCount = 1;
-            MaintableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            MaintableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             MaintableLayout.Controls.Add(tableLayoutPanel1, 0, 0);
-            MaintableLayout.Controls.Add(tableLayoutPanelMain, 0, 1);
+            MaintableLayout.Controls.Add(pnlProductStrip, 0, 1);
+            MaintableLayout.Controls.Add(tableLayoutPanelMain, 0, 2);
             MaintableLayout.Dock = DockStyle.Fill;
             MaintableLayout.Location = new Point(0, 0);
-            MaintableLayout.Margin = new Padding(4);
+            MaintableLayout.Margin = new Padding(0);
             MaintableLayout.Name = "MaintableLayout";
-            MaintableLayout.RowCount = 2;
-            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 5.882353F));
-            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 94.1176453F));
+            MaintableLayout.RowCount = 3;
+            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
+            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             MaintableLayout.Size = new Size(2076, 876);
             MaintableLayout.TabIndex = 1;
             // 
@@ -960,6 +940,9 @@ namespace OmadaPOS.Views
             tableLayoutPanelCategoria.ResumeLayout(false);
             tabControlMenuCategories.ResumeLayout(false);
             tableLayoutPanelPayment.ResumeLayout(false);
+            roundedPanel2.ResumeLayout(false);
+            tableLayoutPanel4.ResumeLayout(false);
+            tableLayoutPanel4.PerformLayout();
             splitContainerScale.Panel1.ResumeLayout(false);
             splitContainerScale.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainerScale).EndInit();
@@ -968,11 +951,9 @@ namespace OmadaPOS.Views
             tableLayoutPanelPesado.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBoxPesado).EndInit();
             tableLayoutPanel3.ResumeLayout(false);
-            roundedPanel2.ResumeLayout(false);
-            tableLayoutPanel4.ResumeLayout(false);
-            tableLayoutPanel4.PerformLayout();
             tableLayoutPanel1.ResumeLayout(false);
             tableLayoutPanel1.PerformLayout();
+            pnlProductStrip.ResumeLayout(false);
             MaintableLayout.ResumeLayout(false);
             ResumeLayout(false);
         }
@@ -1025,8 +1006,8 @@ namespace OmadaPOS.Views
         private TextBox textBoxUPC;
         private TableLayoutPanel tableLayoutPanel2;
         private Button buttonInvoice;
-        private Button DualScreenButton;
         private Button ButtonSettings;
+        private Panel pnlProductStrip;
         private Button buttonLookup;
         private Button buttonClose;
         private Button buttonQsale;
@@ -1034,6 +1015,5 @@ namespace OmadaPOS.Views
         private Componentes.RoundedPanel roundedPanel1;
         private Componentes.RoundedPanel roundedPanel2;
         private TableLayoutPanel tableLayoutPanel4;
-        private Button buttonCheckPrice;
     }
 }

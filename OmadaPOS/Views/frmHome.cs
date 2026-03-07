@@ -1,13 +1,12 @@
-using Newtonsoft.Json;
 using OmadaPOS.Componentes;
-using OmadaPOS.Domain;
-using OmadaPOS.Impresora;
-using OmadaPOS.Libreria.Extensions;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Models;
+using OmadaPOS.Presentation.Controls;
 using OmadaPOS.Services;
+using OmadaPOS.Services.Navigation;
+using OmadaPOS.Services.POS;
 
 namespace OmadaPOS.Views
 {
@@ -15,9 +14,12 @@ namespace OmadaPOS.Views
     {
         private readonly ZebraScannerService? _zebraScannerService;
 
-        // Flyout panel del usuario (Settings / Logout / Daily Close)
-        private Panel? _panelUserMenu;
-        private bool   _userMenuVisible = false;
+        private POSHeaderControl? _posHeaderControl;
+        private ScanInputControl? _scanInputControl;
+        private CartListViewControl? _cartListViewControl;
+        private CartTotalsControl? _cartTotalsControl;
+        private PaymentPanelControl? _paymentPanelControl;
+        private UserSessionControl? _userSessionControl;
 
         int orderId = 0;
 
@@ -34,32 +36,52 @@ namespace OmadaPOS.Views
         public List<ProductModel> Products { get; } = new();
 
         private readonly IShoppingCart _shoppingCart;
-        private readonly ICategoryService _categoryService;
-        private readonly IOrderService _orderService;
         private readonly IUserService _userService;
-        private readonly IAdminSettingService _adminSettingService;
-        private readonly IPaymentService _paymentService;
         private readonly IPaymentSplitService _paymentSplitService;
-        private readonly IOrderApplicationService _orderApplicationService;
-        private readonly IProductApplicationService _productApplicationService;
-        private readonly IHoldService _holdService;
+        private readonly IHomeInitializationService _homeInitializationService;
+        private readonly IBarcodeSaleService _barcodeSaleService;
+        private readonly IPaymentCoordinatorService _paymentCoordinatorService;
+        private readonly IHomeHoldCartService _homeHoldCartService;
+        private readonly ICashDrawerService _cashDrawerService;
+        private readonly IWindowService _windowService;
+        private readonly IHomeInteractionService _homeInteractionService;
 
-        public frmHome(ZebraScannerService zebraScannerService)
+        public frmHome(
+            ZebraScannerService zebraScannerService,
+            IShoppingCart shoppingCart,
+            IUserService userService,
+            IPaymentSplitService paymentSplitService,
+            IHomeInitializationService homeInitializationService,
+            IBarcodeSaleService barcodeSaleService,
+            IPaymentCoordinatorService paymentCoordinatorService,
+            IHomeHoldCartService homeHoldCartService,
+            ICashDrawerService cashDrawerService,
+            IWindowService windowService,
+            IHomeInteractionService homeInteractionService)
         {
             InitializeComponent();
 
-            _categoryService = Program.GetService<ICategoryService>();
-            _orderService = Program.GetService<IOrderService>();
-            _userService = Program.GetService<IUserService>();
-            _adminSettingService = Program.GetService<IAdminSettingService>();
-            _paymentService = Program.GetService<IPaymentService>();
-            _paymentSplitService = Program.GetService<IPaymentSplitService>();
-            _orderApplicationService = Program.GetService<IOrderApplicationService>();
-            _productApplicationService = Program.GetService<IProductApplicationService>();
-            _holdService = Program.GetService<IHoldService>();
+            InicializarControlesUI();
 
-            _shoppingCart = Program.GetService<IShoppingCart>();
+            _userService = userService;
+            _paymentSplitService = paymentSplitService;
+            _homeInitializationService = homeInitializationService;
+            _barcodeSaleService = barcodeSaleService;
+            _paymentCoordinatorService = paymentCoordinatorService;
+            _homeHoldCartService = homeHoldCartService;
+            _cashDrawerService = cashDrawerService;
+            _windowService = windowService;
+            _homeInteractionService = homeInteractionService;
+
+            _shoppingCart = shoppingCart;
             _shoppingCart.CartChanged += ShoppingCart_CartChanged;
+            _homeInteractionService.RegisterHandlers(
+                ChangeQuantity,
+                AddCustomProductAsync,
+                SearchProductAsync,
+                ProcessPaymentMultipleAsync,
+                UpdateCartDisplay);
+            _homeInteractionService.RegisterGiftCardHandler(GiftCardPayAsync);
 
             ConfigureUI();
             ConfigureListView();
@@ -72,27 +94,78 @@ namespace OmadaPOS.Views
             lblScalStatusDesc.Text = zebraScannerService.Initialize();
         }
 
+        private void InicializarControlesUI()
+        {
+            _scanInputControl = ScanInputControl.Attach(tableLayoutPanel1, textBoxUPC);
+            _userSessionControl = UserSessionControl.Attach(this, MaintableLayout, tableLayoutPanel1, labelCashier);
+            _userSessionControl.SettingsRequested += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
+            _userSessionControl.DailyCloseRequested += (_, _) => labelCashier_ClickInternal();
+            _userSessionControl.LogoutRequested += async (_, _) => await EjecutarLogout();
+
+            _posHeaderControl = POSHeaderControl.Attach(
+                MaintableLayout,
+                tableLayoutPanel1,
+                buttonInvoice,
+                ButtonSettings,
+                buttonClose);
+
+            _cartListViewControl = CartListViewControl.Attach(tableLayoutPanelCart, listViewCart);
+            _cartTotalsControl = CartTotalsControl.Attach(
+                tableLayoutPanelCart,
+                roundedPanel1,
+                label1,
+                label2,
+                label3,
+                labelSubTotal,
+                labelTotalTax,
+                labelTotalValue);
+
+            _paymentPanelControl = PaymentPanelControl.Attach(
+                tableLayoutPanelMain,
+                tableLayoutPanelPayment,
+                tableLayoutPanel2,
+                keyPaymentControl1,
+                roundedPanel2,
+                tableLayoutPanel4,
+                label4,
+                label5,
+                labelInputValue,
+                labelChangeValue,
+                tableLayoutPanel3,
+                splitContainerScale,
+                tableLayoutPanelPesado,
+                labelWeight,
+                labelPesaProduct,
+                lblScalStatusDesc,
+                pictureBoxPesado);
+        }
+
         private void ConfigureUI()
         {
             // ═══════════════════════════════════════════════════════════
             // GRUPO 1 — Barra superior (header)
             // ═══════════════════════════════════════════════════════════
-            ElegantButtonStyles.Style(buttonInvoice,    ElegantButtonStyles.Keypad,    fontSize: 16f);
-            ElegantButtonStyles.Style(DualScreenButton, ElegantButtonStyles.Keypad,    fontSize: 16f);
-            ElegantButtonStyles.Style(ButtonSettings,   ElegantButtonStyles.Keypad,    fontSize: 16f);
-            ElegantButtonStyles.Style(labelCashier,     ElegantButtonStyles.Keypad,    fontSize: 16f);
-            ElegantButtonStyles.Style(buttonClose,      ElegantButtonStyles.AlertRed,  fontSize: 16f);
-            ElegantButtonStyles.Style(buttonCheckPrice, ElegantButtonStyles.Keypad,    fontSize: 16f);
+            // Botones compactos del header — ícono solo, tooltip para accesibilidad
+            ElegantButtonStyles.Style(buttonInvoice,  ElegantButtonStyles.Keypad,   fontSize: 20f);
+            ElegantButtonStyles.Style(labelCashier,   ElegantButtonStyles.Keypad,   fontSize: 16f);
+            ElegantButtonStyles.Style(buttonClose,    ElegantButtonStyles.AlertRed, fontSize: 20f);
+            ElegantButtonStyles.Style(ButtonSettings, ElegantButtonStyles.Keypad,   fontSize: 16f);
 
-            buttonInvoice.Text    = "🖨  PRINT";
-            DualScreenButton.Text = "🖥  DUAL";
-            ButtonSettings.Text   = "⚙  CONFIG";
-            buttonClose.Text      = "⏻  EXIT";
-            buttonCheckPrice.Text = "💲  PRICE";
+            // Textos iniciales — POSHeaderControl.ApplyTheme() los redefine con íconos
+            buttonInvoice.Text  = "🖨";
+            ButtonSettings.Text = "⚙";
+            buttonClose.Text    = "⏻";
+
+            // Tooltips accesibles para botones de ícono
+            var toolTip = new ToolTip { ShowAlways = true };
+            components ??= new System.ComponentModel.Container();
+            components.Add(toolTip);
+            toolTip.SetToolTip(buttonInvoice,  "Reimprimir último recibo");
+            toolTip.SetToolTip(ButtonSettings, "Configuración");
+            toolTip.SetToolTip(buttonClose,    "Salir / Cerrar sesión");
 
             // ═══════════════════════════════════════════════════════════
-            // GRUPO 2 — Acciones del carrito (texto + icono ya se asigna
-            //           en EstilizarColumnaCarrito via AplicarEstiloVisual)
+            // GRUPO 2 — Acciones del carrito
             // ═══════════════════════════════════════════════════════════
             ElegantButtonStyles.Style(buttonCancelOrder,    ElegantButtonStyles.AlertRed,    fontSize: 16f);
             ElegantButtonStyles.Style(buttonChangeQuantity, ElegantButtonStyles.WarningOrange, fontSize: 16f);
@@ -206,71 +279,7 @@ namespace OmadaPOS.Views
         }
 
         private void ConfigureListView()
-        {
-            listViewCart.View = View.Details;
-            listViewCart.FullRowSelect = true;
-            listViewCart.GridLines = true;
-            listViewCart.MultiSelect = false;
-
-            listViewCart.Columns.Add("#", 80);
-            listViewCart.Columns.Add("Product", 200);
-            listViewCart.Columns.Add("Quantity", 80);
-            listViewCart.Columns.Add("Price", 100);
-            listViewCart.Columns.Add("Subtotal", 100);
-
-            listViewCart.BackColor = Color.White;
-            listViewCart.Font      = new Font("Segoe UI", 13F, FontStyle.Regular);
-
-            foreach (ColumnHeader column in listViewCart.Columns)
-            {
-                column.TextAlign = HorizontalAlignment.Center;
-            }
-            listViewCart.OwnerDraw = true;
-            listViewCart.DrawColumnHeader += (s, e) =>
-            {
-                var g = e.Graphics;
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-                using var bgBrush   = new SolidBrush(AppColors.NavyBase);
-                g.FillRectangle(bgBrush, e.Bounds);
-
-                using var sep = new Pen(Color.FromArgb(60, 255, 255, 255), 1);
-                g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4,
-                                e.Bounds.Right - 1, e.Bounds.Bottom - 4);
-
-                using var headerFont = new Font("Segoe UI", 12F, FontStyle.Bold);
-                using var textBrush  = new SolidBrush(AppColors.TextWhite);
-                using var sf         = new StringFormat
-                {
-                    Alignment     = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center,
-                    Trimming      = StringTrimming.EllipsisCharacter
-                };
-                var textRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y,
-                                             e.Bounds.Width - 8, e.Bounds.Height);
-                g.DrawString(e.Header.Text, headerFont, textBrush, textRect, sf);
-            };
-            listViewCart.DrawItem    += (s, e) => e.DrawDefault = true;
-            listViewCart.DrawSubItem += (s, e) => e.DrawDefault = true;
-
-            AdjustListViewColumns();
-            listViewCart.Resize += (s, e) => AdjustListViewColumns();
-        }
-
-        private void AdjustListViewColumns()
-        {
-            int totalWidth = listViewCart.ClientSize.Width;
-            int columnCount = listViewCart.Columns.Count;
-            if (columnCount == 0) return;
-
-            int columnWidth = totalWidth / columnCount;
-            int lastColumnWidth = totalWidth - (columnWidth * (columnCount - 1));
-
-            for (int i = 0; i < columnCount; i++)
-            {
-                listViewCart.Columns[i].Width = (i == columnCount - 1) ? lastColumnWidth : columnWidth;
-            }
-        }
+            => _cartListViewControl?.Configure();
 
         private void ShoppingCart_CartChanged(object? sender, EventArgs e)
         {
@@ -284,304 +293,34 @@ namespace OmadaPOS.Views
 
         public void UpdateCartDisplay()
         {
-            listViewCart.Items.Clear();
+            var result = _cartListViewControl?.UpdateCartItems(_shoppingCart.Items);
+            if (result == null) return;
 
-            totalGlobal = 0;
-
-            decimal subTotal = 0.0m;
-            decimal taxTotal = 0.0m;
-            decimal total = 0.0m;
-
-            foreach (var item in _shoppingCart.Items)
-            {
-                var listItem = new ListViewItem(
-                [
-                    item.Number.ToString(),
-                    item.ProductName,
-                    item.Quantity.ToString(),
-                    item.UnitPrice.ToString("N2"),
-                    item.Subtotal.ToString("N2")
-                ])
-                {
-                    Tag = item.ProductId
-                };
-
-                listViewCart.Items.Add(listItem);
-
-                subTotal += item.Subtotal;
-                taxTotal += item.TaxAmount;
-                total += item.Total;
-            }
-
-            labelSubTotal.Text = $"{subTotal.ToString("n2")}";
-            labelTotalTax.Text = $"{taxTotal.ToString("n2")}";
-
-            totalGlobal = total;
-
-            UpdateTotals();
-        }
-
-        private void UpdateTotals()
-        {
-            labelTotalValue.Text = totalGlobal.ToString("N2");
+            totalGlobal = result.Total;
+            _cartTotalsControl?.UpdateTotals(result.SubTotal, result.TaxTotal, result.Total);
         }
 
         // ═══════════════════════════════════════════════════════════════
         // TEMA VISUAL — Triband Layout
-        // Izq: blanco (carrito)  |  Centro: gris suave (productos)
-        // Der: navy oscuro (pago) — aspecto de terminal de pago
         // ═══════════════════════════════════════════════════════════════
         private void AplicarEstiloVisual()
         {
-            EstilizarBarraSuperior();
-            EstilizarColumnaCarrito();
+            MaintableLayout.BackColor = AppColors.NavyDark;
+            MaintableLayout.Padding = new Padding(0);
+            MaintableLayout.Margin = new Padding(0);
+
+            _posHeaderControl?.ApplyTheme();
+            _cartTotalsControl?.ApplyTheme();
             EstilizarColumnaProductos();
-            EstilizarColumnaPago();
-            EstilizarSeccionBalanza();
+            _paymentPanelControl?.ApplyTheme();
             EstilizarSeparadoresColumnas();
 
-            // Forzar repintado de todos los controles con los nuevos colores
             this.Invalidate(true);
             this.Refresh();
         }
 
-        // ── Barra superior (header del sistema) ──────────────────────────
-        private void EstilizarBarraSuperior()
-        {
-            MaintableLayout.BackColor = AppColors.NavyDark;
-            MaintableLayout.Padding   = new Padding(0);
-            MaintableLayout.Margin    = new Padding(0);
-
-            // Padding vertical en el header — espacio respirable sin perder altura
-            tableLayoutPanel1.BackColor = AppColors.NavyDark;
-            tableLayoutPanel1.Margin    = new Padding(0);
-            tableLayoutPanel1.Padding   = new Padding(8, 4, 8, 4);
-
-            labelProductName.Font      = new Font("Montserrat", 15F, FontStyle.Bold);
-            labelProductName.ForeColor = AppColors.TextWhite;
-            labelProductName.BackColor = Color.Transparent;
-            labelProductName.Text      = "OMADA POS";
-
-            // CONFIG button visible en header — abre flyout del usuario
-            ButtonSettings.Visible = false; // consolidado en el flyout del cajero
-
-            EstilizarScanZone();
-            CrearMenuUsuario();
-        }
-
-        // ── Scan Zone — contenedor visual profesional para el UPC ────────
-        private void EstilizarScanZone()
-        {
-            var pos = tableLayoutPanel1.GetPositionFromControl(textBoxUPC);
-
-            // ── Panel contenedor ─────────────────────────────────────────
-            var scanPanel = new Panel
-            {
-                Dock      = DockStyle.Fill,
-                BackColor = AppColors.NavyBase,
-                Margin    = new Padding(4, 5, 4, 5),
-                Cursor    = Cursors.IBeam,
-            };
-
-            // Borde redondeado + indicador de scan
-            scanPanel.Paint += (s, e) =>
-            {
-                var g = e.Graphics;
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                var rect = new Rectangle(1, 1, scanPanel.Width - 2, scanPanel.Height - 2);
-                using var path   = ElegantButtonStyles.RoundedPath(rect, 8);
-                using var border = new Pen(AppColors.AccentGreen, 1.5f);
-                g.DrawPath(border, path);
-            };
-
-            // ── Ícono de barcode al inicio ───────────────────────────────
-            var iconLabel = new Label
-            {
-                Text      = "⬛",
-                Font      = new Font("Segoe UI", 13F),
-                ForeColor = AppColors.AccentGreen,
-                BackColor = Color.Transparent,
-                Dock      = DockStyle.Left,
-                Width     = 34,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Cursor    = Cursors.IBeam,
-            };
-            iconLabel.Click += (s, e) => textBoxUPC.Focus();
-
-            // ── Botón ✕ Clear integrado al final ─────────────────────────
-            var btnClear = new Button
-            {
-                Text      = "✕",
-                Font      = new Font("Segoe UI", 11F, FontStyle.Bold),
-                ForeColor = AppColors.TextMuted,
-                BackColor = Color.Transparent,
-                FlatStyle = FlatStyle.Flat,
-                Dock      = DockStyle.Right,
-                Width     = 30,
-                Cursor    = Cursors.Hand,
-                TabStop   = false,
-            };
-            btnClear.FlatAppearance.BorderSize         = 0;
-            btnClear.FlatAppearance.MouseOverBackColor = Color.Transparent;
-            btnClear.Click += (s, e) => { textBoxUPC.Text = ""; textBoxUPC.Focus(); };
-
-            // ── TextBox embebido ─────────────────────────────────────────
-            textBoxUPC.Dock            = DockStyle.Fill;
-            textBoxUPC.BackColor       = AppColors.NavyBase;
-            textBoxUPC.ForeColor       = AppColors.AccentGreen;
-            textBoxUPC.Font            = new Font("Consolas", 15F, FontStyle.Bold);
-            textBoxUPC.BorderStyle     = BorderStyle.None;
-            textBoxUPC.TextAlign       = HorizontalAlignment.Center;
-            textBoxUPC.PlaceholderText = "Scan or type UPC...";
-            textBoxUPC.Margin          = new Padding(0);
-
-            // ── Ensamblar: orden de controles con Dock ───────────────────
-            // (Dock.Left se apila de izquierda a derecha; Dock.Right al revés)
-            tableLayoutPanel1.Controls.Remove(textBoxUPC);
-            scanPanel.Controls.Add(textBoxUPC);  // Fill — va al centro
-            scanPanel.Controls.Add(btnClear);    // Right — va a la derecha
-            scanPanel.Controls.Add(iconLabel);   // Left  — va a la izquierda
-
-            tableLayoutPanel1.Controls.Add(scanPanel, pos.Column, pos.Row);
-            scanPanel.Click += (s, e) => textBoxUPC.Focus();
-        }
-
-        // ── Menú flotante del usuario (flyout dropdown) ───────────────────
-        private void CrearMenuUsuario()
-        {
-            // El flyout se posiciona en tiempo de ejecución al abrir
-            _panelUserMenu = new Panel
-            {
-                Size      = new Size(260, 190),
-                BackColor = AppColors.NavyBase,
-                Visible   = false,
-                // BringToFront() + Parent asignado al form para flotar sobre todo
-            };
-            _panelUserMenu.Paint += UserMenuPanel_Paint;
-
-            // ── Encabezado — nombre del cajero ─────────────────────────
-            var lblNombre = new Label
-            {
-                Name      = "lblFlyoutName",
-                Text      = $"👤  {SessionManager.Name}",
-                Font      = new Font("Segoe UI", 13F, FontStyle.Bold),
-                ForeColor = AppColors.TextWhite,
-                BackColor = Color.Transparent,
-                Dock      = DockStyle.Top,
-                Height    = 48,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Padding   = new Padding(0, 6, 0, 0),
-            };
-
-            // ── Separador ──────────────────────────────────────────────
-            var sep = new Panel
-            {
-                Height    = 1,
-                Dock      = DockStyle.Top,
-                BackColor = Color.FromArgb(60, 255, 255, 255),
-                Margin    = new Padding(0),
-            };
-
-            // ── Botones del menú ───────────────────────────────────────
-            var btnSettings = CrearBotonFlyout("⚙  Settings", AppColors.NavyBase);
-            btnSettings.Click += (s, e) => { OcultarMenuUsuario(); buttonSetting_Click(s, e); };
-
-            var btnDailyClose = CrearBotonFlyout("📋  Daily Close", AppColors.NavyBase);
-            btnDailyClose.Click += (s, e) => { OcultarMenuUsuario(); labelCashier_ClickInternal(); };
-
-            var btnLogout = CrearBotonFlyout("⏻  Logout", Color.FromArgb(180, 30, 30));
-            btnLogout.Click += async (s, e) => { OcultarMenuUsuario(); await EjecutarLogout(); };
-
-            // ── Ensamblar: orden invertido por Dock.Top ────────────────
-            // Los controles con Dock.Top se apilan de abajo hacia arriba en orden de Add
-            _panelUserMenu.Controls.Add(btnLogout);
-            _panelUserMenu.Controls.Add(btnDailyClose);
-            _panelUserMenu.Controls.Add(btnSettings);
-            _panelUserMenu.Controls.Add(sep);
-            _panelUserMenu.Controls.Add(lblNombre);
-
-            // Agregar al form directamente — flota sobre todos los demás controles
-            this.Controls.Add(_panelUserMenu);
-            _panelUserMenu.BringToFront();
-
-            // Cerrar el flyout si el usuario hace click en cualquier otro lugar del form
-            this.MouseClick += (s, e) => OcultarMenuUsuario();
-            MaintableLayout.MouseClick += (s, e) => OcultarMenuUsuario();
-        }
-
-        private Button CrearBotonFlyout(string texto, Color bgColor)
-        {
-            var btn = new Button
-            {
-                Text      = texto,
-                Font      = new Font("Segoe UI", 12F, FontStyle.Regular),
-                ForeColor = AppColors.TextWhite,
-                BackColor = bgColor,
-                FlatStyle = FlatStyle.Flat,
-                Dock      = DockStyle.Top,
-                Height    = 44,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding   = new Padding(18, 0, 0, 0),
-                Cursor    = Cursors.Hand,
-                TabStop   = false,
-            };
-            btn.FlatAppearance.BorderSize         = 0;
-            btn.FlatAppearance.MouseOverBackColor = AppColors.NavyLight;
-            return btn;
-        }
-
-        private void UserMenuPanel_Paint(object? sender, PaintEventArgs e)
-        {
-            if (sender is not Panel panel) return;
-            var g = e.Graphics;
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-            var bounds = new Rectangle(0, 0, panel.Width - 1, panel.Height - 1);
-            using var path   = ElegantButtonStyles.RoundedPath(bounds, 10);
-            using var bg     = new SolidBrush(AppColors.NavyBase);
-            g.FillPath(bg, path);
-
-            // Línea emerald en el tope — igual que el header
-            using var accent = new SolidBrush(AppColors.AccentGreen);
-            g.FillRectangle(accent, bounds.X + 12, bounds.Y, bounds.Width - 24, 3);
-
-            // Sombra suave alrededor
-            using var border = new Pen(Color.FromArgb(80, 255, 255, 255), 1);
-            g.DrawPath(border, path);
-        }
-
-        private void MostrarMenuUsuario()
-        {
-            if (_panelUserMenu == null) return;
-
-            // Actualizar el nombre del cajero (puede haber cambiado desde el login)
-            var lbl = _panelUserMenu.Controls.OfType<Label>().FirstOrDefault(l => l.Name == "lblFlyoutName");
-            if (lbl != null) lbl.Text = $"👤  {SessionManager.Name}";
-
-            // Posicionar debajo del botón del cajero
-            var btnPos   = labelCashier.PointToScreen(Point.Empty);
-            var formPos  = this.PointToClient(btnPos);
-            _panelUserMenu.Location = new Point(
-                formPos.X + labelCashier.Width - _panelUserMenu.Width,
-                formPos.Y + labelCashier.Height + 2);
-
-            _panelUserMenu.BringToFront();
-            _panelUserMenu.Visible  = true;
-            _userMenuVisible        = true;
-        }
-
-        private void OcultarMenuUsuario()
-        {
-            if (_panelUserMenu == null) return;
-            _panelUserMenu.Visible = false;
-            _userMenuVisible       = false;
-        }
-
         private void labelCashier_ClickInternal()
-        {
-            var form = new frmCierreDiario();
-            form.ShowDialog(this);
-        }
+            => _windowService.OpenDailyClose(this);
 
         private async Task EjecutarLogout()
         {
@@ -590,57 +329,8 @@ namespace OmadaPOS.Views
                 AdminId = SessionManager.AdminId ?? 0,
                 Phone   = SessionManager.Phone
             });
-            new frmSignIn().Show();
+            _windowService.OpenSignIn();
             this.Close();
-        }
-
-        // ── Columna izquierda — Carrito ───────────────────────────────────
-        private void EstilizarColumnaCarrito()
-        {
-            tableLayoutPanelCart.BackColor       = Color.White;
-            tableLayoutPanelButtonCart.BackColor = Color.White;
-            tableLayoutPanelCart.Padding         = new Padding(6, 6, 6, 4);
-
-            listViewCart.BackColor = Color.White;
-            listViewCart.ForeColor = AppColors.TextPrimary;
-            listViewCart.Font      = new Font("Segoe UI", 13F, FontStyle.Regular);
-
-            // RoundedPanel usa BackgroundStart/BackgroundEnd — no BackColor
-            roundedPanel1.BackgroundStart = AppColors.NavyDark;
-            roundedPanel1.BackgroundEnd   = AppColors.NavyBase;
-            roundedPanel1.BorderColor     = AppColors.AccentGreen;
-            roundedPanel1.CornerRadius    = 12;
-            roundedPanel1.Padding         = new Padding(20, 8, 20, 8);
-            roundedPanel1.Margin          = new Padding(6, 4, 6, 4);
-
-            label1.Font      = new Font("Segoe UI", 12F, FontStyle.Regular);
-            label1.ForeColor = Color.FromArgb(160, 200, 220);
-            label1.BackColor = Color.Transparent;
-
-            label2.Font      = new Font("Segoe UI", 12F, FontStyle.Regular);
-            label2.ForeColor = Color.FromArgb(160, 200, 220);
-            label2.BackColor = Color.Transparent;
-
-            label3.Font      = new Font("Segoe UI", 14F, FontStyle.Bold);
-            label3.ForeColor = Color.White;
-            label3.BackColor = Color.Transparent;
-
-            labelSubTotal.Font      = new Font("Consolas", 13F, FontStyle.Regular);
-            labelSubTotal.ForeColor = Color.FromArgb(200, 230, 240);
-            labelSubTotal.BackColor = Color.Transparent;
-
-            labelTotalTax.Font      = new Font("Consolas", 13F, FontStyle.Regular);
-            labelTotalTax.ForeColor = Color.FromArgb(160, 200, 220);
-            labelTotalTax.BackColor = Color.Transparent;
-
-            labelTotalValue.Font      = new Font("Montserrat", 24F, FontStyle.Bold);
-            labelTotalValue.ForeColor = AppColors.AccentGreen;
-            labelTotalValue.BackColor = Color.Transparent;
-
-            buttonCancelOrder.Text    = "✕  CANCEL";
-            buttonChangeQuantity.Text = "✎  QTY";
-            buttonDeleteItem.Text     = "⌫  REMOVE";
-            buttonHold.Text           = "⏸  HOLD";
         }
 
         // ── Columna central — Productos ───────────────────────────────────
@@ -658,80 +348,15 @@ namespace OmadaPOS.Views
             }
         }
 
-        // ── Columna derecha — Pagos — Terminal oscuro ────────────────────
-        private void EstilizarColumnaPago()
-        {
-            tableLayoutPanelPayment.BackColor = AppColors.NavyDark;
-            tableLayoutPanelPayment.Padding   = new Padding(6, 6, 6, 4);
-
-            tableLayoutPanel2.BackColor   = AppColors.NavyDark;
-          
-
-            // KeyPaymentControl ya aplica NavyDark en su ApplyStyles()
-            // pero forzamos para asegurar
-            keyPaymentControl1.BackColor  = AppColors.NavyDark;
-
-            // RoundedPanel2 — usa BackgroundStart/End, no BackColor
-            roundedPanel2.BackgroundStart = AppColors.NavyBase;
-            roundedPanel2.BackgroundEnd   = Color.FromArgb(20, 35, 58);
-            roundedPanel2.BorderColor     = Color.FromArgb(60, 130, 180);
-            roundedPanel2.CornerRadius    = 12;
-            roundedPanel2.Padding         = new Padding(10, 6, 10, 6);
-            roundedPanel2.Margin          = new Padding(6, 4, 6, 4);
-
-            tableLayoutPanel4.BackColor   = Color.Transparent;
-
-            label4.Font      = new Font("Segoe UI", 13F, FontStyle.Bold);
-            label4.ForeColor = Color.FromArgb(140, 180, 210);
-            label4.BackColor = Color.Transparent;
-
-            label5.Font      = new Font("Segoe UI", 13F, FontStyle.Bold);
-            label5.ForeColor = Color.FromArgb(140, 180, 210);
-            label5.BackColor = Color.Transparent;
-
-            labelInputValue.Font      = new Font("Montserrat", 22F, FontStyle.Bold);
-            labelInputValue.ForeColor = Color.White;
-            labelInputValue.BackColor = Color.Transparent;
-
-            labelChangeValue.Font      = new Font("Montserrat", 22F, FontStyle.Bold);
-            labelChangeValue.ForeColor = AppColors.AccentGreen;
-            labelChangeValue.BackColor = Color.Transparent;
-
-            tableLayoutPanel3.BackColor = AppColors.NavyDark;
-            tableLayoutPanel3.Padding   = new Padding(4, 2, 4, 6);
-        }
-
         // ── Separadores entre columnas via fondo del contenedor padre ────
         private void EstilizarSeparadoresColumnas()
         {
-            // Fondo NavyDark con gap de 2px entre columnas actúa como separador visual
-            tableLayoutPanelMain.BackColor = AppColors.NavyDark;
+            // Borde sutil entre columnas — gris claro en lugar de navy oscuro
+            tableLayoutPanelMain.BackColor = Color.FromArgb(210, 215, 225);
             tableLayoutPanelMain.Padding   = new Padding(0);
             tableLayoutPanelMain.Margin    = new Padding(0);
 
-            // Padding externo del form — espacio respirable sin exagerar
             MaintableLayout.Padding = new Padding(4, 0, 4, 4);
-        }
-
-        // ── Sección balanza / scale ──────────────────────────────────────
-        private void EstilizarSeccionBalanza()
-        {
-            tableLayoutPanelPesado.BackColor = AppColors.NavyDark;
-            tableLayoutPanelPesado.Padding   = new Padding(6);
-
-            labelWeight.Font      = new Font("Montserrat", 20F, FontStyle.Bold);
-            labelWeight.ForeColor = AppColors.Warning;
-            labelWeight.BackColor = Color.Transparent;
-
-            labelPesaProduct.Font      = new Font("Segoe UI", 12F, FontStyle.Regular);
-            labelPesaProduct.ForeColor = AppColors.TextWhite;
-            labelPesaProduct.BackColor = Color.Transparent;
-
-            lblScalStatusDesc.Font      = new Font("Segoe UI", 9F, FontStyle.Italic);
-            lblScalStatusDesc.ForeColor = AppColors.TextMuted;
-            lblScalStatusDesc.BackColor = Color.Transparent;
-
-            pictureBoxPesado.BackColor = AppColors.NavyDark;
         }
 
         private async void frmHome_Load(object sender, EventArgs e)
@@ -752,8 +377,8 @@ namespace OmadaPOS.Views
 
                 await _shoppingCart.LoadCartAsync();
 
-                buttonInvoice.Text = $"⬡  {orderId}";
-                labelCashier.Text  = $"👤  {SessionManager.Name}";
+                _posHeaderControl?.SetInvoiceDisplay(orderId);
+                _userSessionControl?.InvalidateSession();
 
                 await ActualizarEstadoBotonHold();
             }
@@ -770,7 +395,18 @@ namespace OmadaPOS.Views
 
         private void frmHome_FormClosing(object sender, FormClosingEventArgs e)
         {
-            _zebraScannerService?.Close();
+            // Desuscribir eventos de singletons ANTES de cerrar para evitar
+            // que IShoppingCart y ZebraScannerService retengan esta instancia en memoria.
+            _shoppingCart.CartChanged -= ShoppingCart_CartChanged;
+
+            if (_zebraScannerService != null)
+            {
+                _zebraScannerService.OnBarcodeDataReceived -= _zebraScannerService_OnBarcodeDataReceived;
+                _zebraScannerService.OnWeightUpdated       -= _zebraScannerService_OnWeightUpdated;
+                _zebraScannerService.Close();
+            }
+
+            _homeInteractionService.ClearHandlers();
         }
 
         // CRÍTICO: async Task para poder ser awaited — evita race condition con UpdateProductsDisplay
@@ -827,15 +463,21 @@ namespace OmadaPOS.Views
 
         private async void tabControlMenuCategories_SelectedIndexChanged(object sender, EventArgs e)
         {
-            _selectedTab = tabControlMenuCategories.SelectedTab;
-
-            if (_selectedTab?.Tag != null)
+            try
             {
-                var categoryIds = Array.ConvertAll(_selectedTab.Tag.ToString()!.Split(','), int.Parse);
+                _selectedTab = tabControlMenuCategories.SelectedTab;
 
-                await LoadProductsAsync(categoryIds);
-
-                UpdateProductsDisplay();
+                if (_selectedTab?.Tag != null)
+                {
+                    var categoryIds = Array.ConvertAll(_selectedTab.Tag.ToString()!.Split(','), int.Parse);
+                    await LoadProductsAsync(categoryIds);
+                    UpdateProductsDisplay();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading products: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -861,6 +503,12 @@ namespace OmadaPOS.Views
         {
             if (_selectedTab?.Controls[0] is FlowLayoutPanel flowLayoutPanel)
             {
+                // Dispose explícito de cada control antes de removerlo.
+                // ControlCollection.Clear() NO llama Dispose — los ProductImageControl
+                // descartados retendrían HWNDs, Regions y Fonts activos.
+                foreach (Control c in flowLayoutPanel.Controls)
+                    c.Dispose();
+
                 flowLayoutPanel.Controls.Clear();
 
                 foreach (var product in Products)
@@ -870,24 +518,17 @@ namespace OmadaPOS.Views
                     {
                         try
                         {
-                            var category = Categories.Where(c => c.Id == product.CategoryId).SingleOrDefault();
+                            var selection = _barcodeSaleService.HandleProductSelection(product, Categories);
 
-                            if (category != null && category.Pesado)
+                            if (selection.IsWeighted)
                             {
-                                labelPesaProduct.Text = $"{product.Name} (${product.Price.Value.ToString("n2")})";
-                                labelPesaProduct.AccessibleName = product.Id.ToString();
-                                pictureBoxPesado.ImageLocation = product.Image.ConvertUrlString();
+                                labelPesaProduct.Text = selection.WeightDisplayText ?? string.Empty;
+                                labelPesaProduct.AccessibleName = selection.ProductIdText ?? string.Empty;
+                                pictureBoxPesado.ImageLocation = selection.ImageLocation;
                             }
-                            else
+                            else if (selection.AddedToCart)
                             {
-                                _shoppingCart.AddItem(new CartItem()
-                                {
-                                    ProductId = product.Id ?? 0,
-                                    ProductName = product.Name,
-                                    UnitPrice = product.Price ?? 0.0m,
-                                    Quantity = 1
-                                });
-
+                                labelProductName.Text = selection.ProductName ?? string.Empty;
                                 UpdateCartDisplay();
                             }
                         }
@@ -941,20 +582,11 @@ namespace OmadaPOS.Views
 
         private void DisplayTotales()
         {
-            labelInputValue.Text = (inputValue / 100.0).ToString("N2");
-
             changeValue = (inputValue / 100m) - totalGlobal;
-
-            if (changeValue > 0)
-            {
-                labelChangeValue.Text = changeValue.ToString("N2");
-            }
-            else
-            {
-                labelChangeValue.Text = (0.0).ToString("N2");
-            }
-
             dueValue = totalGlobal - (inputValue / 100m);
+            var safeChange = changeValue > 0 ? changeValue : 0.0m;
+
+            _paymentPanelControl?.UpdatePaymentValues(inputValue / 100.0m, safeChange);
         }
 
         private void ClearTotales(bool all = false)
@@ -963,15 +595,8 @@ namespace OmadaPOS.Views
             changeValue = 0;
             dueValue = 0;
 
-            if (all)
-            {
-                labelTotalValue.Text = "0.00";
-            }
-
-            labelSubTotal.Text = "0.00";
-            labelTotalTax.Text = "0.00";
-            labelChangeValue.Text = "0.00";
-            labelInputValue.Text = "0.00";
+            _cartTotalsControl?.ResetTotals(includeGrandTotal: all);
+            _paymentPanelControl?.ResetPaymentValues();
         }
 
         private void _zebraScannerService_OnBarcodeDataReceived(string barcodeData)
@@ -1023,8 +648,7 @@ namespace OmadaPOS.Views
             {
                 var selectedItem = listViewCart.SelectedItems[0];
                 var productId = int.Parse(selectedItem.Tag.ToString());
-                var form = new frmPopupQuantity(0, productId);
-                form.ShowDialog(this);
+                _windowService.OpenPopupQuantity(0, productId, this);
             }
         }
 
@@ -1040,10 +664,7 @@ namespace OmadaPOS.Views
 
         private void buttonHold_Click(object sender, EventArgs e)
         {
-            var frm = new frmHold();
-            // Actualizar estado del botón cuando el formulario de hold se cierre
-            frm.FormClosed += async (s, args) => await ActualizarEstadoBotonHold();
-            frm.Show(this);
+            _windowService.OpenHold(this, () => _ = ActualizarEstadoBotonHold());
         }
 
         /// <summary>
@@ -1054,9 +675,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                var sessionId  = OmadaPOS.Libreria.Utils.WindowsIdProvider.GetMachineGuid();
-                var heldCarts  = await _holdService.GetHeldCartsBySessionAsync(sessionId);
-                int count      = heldCarts?.Count ?? 0;
+                int count = (await _homeHoldCartService.GetCurrentSessionStateAsync()).Count;
 
                 if (count > 0)
                 {
@@ -1081,71 +700,49 @@ namespace OmadaPOS.Views
         }
 
         private void buttonSetting_Click(object sender, EventArgs e)
+            => _windowService.OpenSettings(this);
+
+
+        private async void buttonLogout_Click(object sender, EventArgs e)
         {
-            var frm = new frmSetting();
-            frm.ShowDialog(this);
-        }
-
-        private void buttonDualScreen_Click(object sender, EventArgs e)
-        {
-            var formulario = new frmCustomerScreen();
-
-            formulario.StartPosition = FormStartPosition.Manual;
-
-            if (Screen.AllScreens.Length > 1)
+            try { await EjecutarLogout(); }
+            catch (Exception ex)
             {
-                Screen pantallaSecundaria = Screen.AllScreens[1];
-                formulario.Bounds = pantallaSecundaria.Bounds;
+                MessageBox.Show($"Error during logout: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-
-            formulario.Show();
         }
-
-        private async void buttonLogout_Click(object sender, EventArgs e) =>
-            await EjecutarLogout();
 
         private void buttonProductNoTax_Click(object sender, EventArgs e)
-        {
-            var form = new frmProductNew(false);
-            form.Show(this);
-        }
+            => _windowService.OpenProductNew(false, this);
 
         private void buttonLookup_Click(object sender, EventArgs e)
-        {
-            var form = new frmKeyLookup();
-            form.Show(this);
-        }
+            => _windowService.OpenKeyLookup(this);
 
         private async void buttonOpenDrawer_Click(object sender, EventArgs e)
         {
-            var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
-
-            if (config == null || string.IsNullOrEmpty(config.PrinterName))
+            try
             {
-                MessageBox.Show("Printer not configured", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                var result = await _cashDrawerService.OpenDrawerAsync();
+
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.ErrorMessage ?? "Printer not configured", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
-
-            string printerName = config.PrinterName;
-
-            byte[] openDrawerCommand = [0x1B, 0x70, 0x00, 0x3C, 0xFF];
-
-            await _userService.Log(new LogDTO()
+            catch (Exception ex)
             {
-                AdminId = SessionManager.AdminId ?? 0,
-                Phone = SessionManager.Phone,
-                Info = "Open Drawer"
-            });
-
-            RawPrinterHelper.SendBytesToPrinter(printerName, openDrawerCommand);
+                MessageBox.Show($"Error opening cash drawer: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void buttonSplit_Click(object sender, EventArgs e)
         {
             if (_shoppingCart.ItemCount > 0 && totalGlobal > 0)
             {
-                var form = new frmSplit();
-                form.Show(this);
+                _windowService.OpenSplitPayment(this);
             }
         }
 
@@ -1168,74 +765,54 @@ namespace OmadaPOS.Views
         /// </summary>
         public async void addCustomProduct(bool bTax, decimal price)
         {
-            var cartItem = await _productApplicationService.CreateCustomProductAsync(bTax, price);
-
-            if (cartItem != null)
+            try { await AddCustomProductAsync(bTax, price); }
+            catch (Exception ex)
             {
-                _shoppingCart.AddItem(cartItem);
+                MessageBox.Show($"Error adding product: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task AddCustomProductAsync(bool bTax, decimal price)
+        {
+            if (await _barcodeSaleService.AddCustomProductAsync(bTax, price))
+            {
                 UpdateCartDisplay();
             }
         }
 
-        public async void GiftCardPay()
+        private async Task GiftCardPayAsync()
         {
-            if (_shoppingCart.ItemCount > 0)
+            var orderResponse = await _paymentCoordinatorService.ProcessGiftCardAsync(changeValue, bDesc);
+
+            if (orderResponse != null)
             {
-                var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
-
-                string terminal = config?.Terminal ?? string.Empty;
-
-                PlaceOrderModel? placeOrderModel = _orderApplicationService.BuildOrderModel(
-                    _shoppingCart.Items,
-                    changeValue,
-                    terminal,
-                    "GiftCard",
-                    0,
-                    bDesc
-                );
-
-                if (placeOrderModel != null)
-                {
-                    var orderResponse = await _orderService.PlaceOrder(placeOrderModel);
-
-                    if (orderResponse != null)
-                    {
-                        await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
-                    }
-                }
+                await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
             }
         }
 
         private async void buttonPayCash_Click(object sender, EventArgs e)
         {
-            if (_shoppingCart.ItemCount > 0 && (inputValue / 100.0m) >= totalGlobal && inputValue > 0.0)
+            try
             {
-                var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
+                var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, inputValue, changeValue, bDesc);
 
-                string terminal = config?.Terminal ?? string.Empty;
-
-                PlaceOrderModel? placeOrderModel = _orderApplicationService.BuildOrderModel(
-                    _shoppingCart.Items,
-                    changeValue,
-                    terminal,
-                    "Cash",
-                    0,
-                    bDesc
-                );
-
-                if (placeOrderModel != null)
+                if (!result.IsValidAmount)
                 {
-                    var orderResponse = await _orderService.PlaceOrder(placeOrderModel);
+                    MessageBox.Show(result.ErrorMessage ?? "Please enter a valid amount.",
+                        "Invalid Amount", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
 
-                    if (orderResponse != null)
-                    {
-                        await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
-                    }
+                if (result.OrderResponse != null)
+                {
+                    await PaymentSummary(result.OrderResponse.Order_Id, result.OrderResponse.Consecutivo);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("Please enter a valid amount.", "Invalid Amount", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show($"Cash payment error: {ex.Message}", "Payment Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1249,19 +826,15 @@ namespace OmadaPOS.Views
 
             // CRÍTICO: asignar resultado para que el botón muestre el nuevo número de orden
             orderId = await LoadLastInvoiceAsync();
-            buttonInvoice.Text = $"⬡  {orderId}";
+            _posHeaderControl?.SetInvoiceDisplay(orderId);
 
             var devuelta = changeValue;
 
-            var formInfoPayment = new frmPopupCashPayment(oId, consecutivo, devuelta);
-            formInfoPayment.Show(this);
+            _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this);
         }
 
         private void buttonGiftCard_Click(object sender, EventArgs e)
-        {
-            var form = new frmGiftCard(totalGlobal, 1);
-            form.Show(this);
-        }
+            => _windowService.OpenGiftCard(totalGlobal, 1, this);
 
         private void buttonPayCreditCard_Click(object sender, EventArgs e)
         {
@@ -1280,83 +853,33 @@ namespace OmadaPOS.Views
 
         private async void PaymentOrder(PaymentType paymentType)
         {
-            var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
-
-            string terminal = config?.Terminal ?? string.Empty;
-            int port = config?.Port ?? 0;
-            string ip = config?.IP ?? string.Empty;
-
-            var consecutivo = await _orderService.LoadLastConsecutivoPayment();
-
-            if (paymentType == PaymentType.EBTBalance)
+            try
             {
-                var paymentResponse = await _paymentService.GetEBTBalanceAsync(new PaymentRequest()
+                var result = await _paymentCoordinatorService.ProcessTerminalPaymentAsync(paymentType, totalGlobal, bDesc);
+
+                if (result.PaymentResponse != null)
                 {
-                    Ip = ip,
-                    Port = port,
-                    Terminal = terminal,
-                    Amount = 0,
-                    EcrRefNumber = consecutivo.ToString(),
-                });
+                    string message = result.PaymentResponse.MsgInfo;
+                    if (result.IsBalanceInquiry || result.PaymentResponse.Success)
+                        message += " Balance:" + result.PaymentResponse.Balance.ToString();
 
-                var formPaymentStatus = new frmPaymentStatus(paymentResponse.MsgInfo + " Balance:" + paymentResponse.Balance.ToString());
-                formPaymentStatus.ShowDialog(this);
-            }
-            else if (_shoppingCart.ItemCount > 0)
-            {
-                var placeOrderModel = _orderApplicationService.BuildOrderModel(
-                    _shoppingCart.Items,
-                    0,
-                    terminal,
-                    paymentType.ToString(),
-                    0,
-                    bDesc
-                );
-
-                if (placeOrderModel != null)
-                {
-                    var totalPayment = totalGlobal * 100;
-
-                    // Delegate surcharge calculation to domain policy
-                    totalPayment = SurchargePolicy.Apply(totalPayment, paymentType, SessionManager.BranchId);
-
-                    var paymentResponse = await _paymentService.ProcessPaymentAsync(paymentType, new PaymentRequest()
-                    {
-                        Ip = ip,
-                        Port = port,
-                        Terminal = terminal,
-                        Amount = totalPayment,
-                        EcrRefNumber = consecutivo.ToString(),
-                    });
-
-                    if (paymentResponse != null && paymentResponse.Success)
-                    {
-                        var formPaymentStatus = new frmPaymentStatus(paymentResponse.MsgInfo + " Balance:" + paymentResponse.Balance.ToString());
-                        formPaymentStatus.ShowDialog(this);
-
-                        placeOrderModel.Balance = paymentResponse.Balance;
-
-                        var orderResponse = await _orderService.PlaceOrder(placeOrderModel);
-
-                        if (orderResponse != null)
-                        {
-                            await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
-                        }
-                    }
-                    else
-                    {
-                        var formPaymentStatus = new frmPaymentStatus(paymentResponse.MsgInfo);
-                        formPaymentStatus.ShowDialog(this);
-                    }
+                    _windowService.OpenPaymentStatus(message, this);
                 }
+
+                if (result.OrderResponse != null)
+                {
+                    await PaymentSummary(result.OrderResponse.Order_Id, result.OrderResponse.Consecutivo);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Payment error: {ex.Message}", "Payment Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void buttonInvoice_Click(object sender, EventArgs e)
-        {
-            var printInvoiceForm = new frmPrintInvoice();
-            printInvoiceForm.ShowDialog();
-        }
+            => _windowService.OpenPrintInvoice(this);
 
         /// <summary>
         /// Resolves a scanned UPC and adds the product to the cart.
@@ -1364,22 +887,30 @@ namespace OmadaPOS.Views
         /// </summary>
         public async void SearchProduct(string upc)
         {
+            try { await SearchProductAsync(upc); }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error searching product: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task SearchProductAsync(string upc)
+        {
             if (string.IsNullOrEmpty(upc))
                 return;
 
-            var result = await _productApplicationService.SearchByBarcodeAsync(upc);
+            var result = await _barcodeSaleService.ProcessBarcodeAsync(upc);
 
-            if (result.IsFound && result.CartItem != null)
+            if (result.AddedToCart)
             {
-                labelProductName.Text = result.ProductName;
-                _shoppingCart.AddItem(result.CartItem);
+                labelProductName.Text = result.ProductName ?? string.Empty;
                 UpdateCartDisplay();
                 textBoxUPC.Text = "";
             }
             else if (result.ProductNotFoundOnServer)
             {
-                var frm = new frmProductNoExist(textBoxUPC.Text);
-                frm.ShowDialog(this);
+                _windowService.OpenProductNoExist(textBoxUPC.Text, this);
             }
             else
             {
@@ -1391,93 +922,33 @@ namespace OmadaPOS.Views
             buttonSetting_Click(sender, e);
 
         public async Task<int> LoadLastInvoiceAsync() =>
-            await _orderService.LoadLastInvoiceAdmin();
+            await _homeInitializationService.LoadLastInvoiceAsync();
 
         public async Task LoadCategoriesAsync()
-        {
-            var categories = await _categoryService.LoadCategories();
-            Categories.Clear();
-            foreach (var category in categories)
-                Categories.Add(category);
-        }
+            => await _homeInitializationService.LoadCategoriesAsync(Categories);
 
         public async Task LoadMenuCategoriesAsync()
-        {
-            var menuCategories = await _categoryService.LoadMenuCategories();
-            MenuCategories.Clear();
-            foreach (var menuCategory in menuCategories)
-                MenuCategories.Add(menuCategory);
-        }
+            => await _homeInitializationService.LoadMenuCategoriesAsync(MenuCategories);
 
         public async Task LoadProductsAsync(int[] categoryIds, string? searchLetter = null)
-        {
-            var products = string.IsNullOrEmpty(searchLetter)
-                ? await _categoryService.LoadProductIdCategories(new IdCategoryDTO { Ids = categoryIds })
-                : await _categoryService.LoadProductsByCategoryLetra(new IdCategoryDTO { Ids = categoryIds }, searchLetter);
-
-            Products.Clear();
-            foreach (var product in products)
-                Products.Add(product);
-        }
+            => await _homeInitializationService.LoadProductsAsync(Products, categoryIds, searchLetter);
 
         public async Task<PaymentResponseModel> ProcessPaymentAsync(string paymentType, decimal amount)
-        {
-            var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
-            if (config == null)
-                throw new InvalidOperationException("Payment terminal configuration not found");
-
-            var request = new PaymentRequest
-            {
-                Ip           = config.IP ?? string.Empty,
-                Port         = config.Port ?? 0,
-                Amount       = amount * 100,
-                EcrRefNumber = (await _orderService.LoadLastConsecutivoPayment()).ToString()
-            };
-
-            return paymentType switch
-            {
-                "CREDIT_CARD" => await _paymentService.ProcessPaymentAsync(PaymentType.Credit, request),
-                "DEBIT_CARD"  => await _paymentService.ProcessPaymentAsync(PaymentType.Debit, request),
-                "EBT"         => await _paymentService.ProcessPaymentAsync(PaymentType.EBT, request),
-                "EBT_BALANCE" => await _paymentService.GetEBTBalanceAsync(request),
-                _             => throw new ArgumentException($"Unsupported payment type: {paymentType}")
-            };
-        }
+            => await _paymentCoordinatorService.ProcessPaymentAsync(paymentType, amount);
 
         public async void ProcessPaymentMultiple()
         {
-            var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
-
-            string terminal = config?.Terminal ?? string.Empty;
-
-            List<PlaceOrderPayment> payments = [];
-
-            var pays = await _paymentSplitService.GetSessionPaymentsAsync();
-
-            foreach (var pay in pays)
+            try { await ProcessPaymentMultipleAsync(); }
+            catch (Exception ex)
             {
-                if (pay.Total > 0)
-                {
-                    payments.Add(new PlaceOrderPayment
-                    {
-                        Tipo = pay.PaymentType,
-                        Total = pay.Total
-                    });
-                }
+                MessageBox.Show($"Payment error: {ex.Message}", "Payment Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
 
-            var placeOrderModel = _orderApplicationService.BuildMultipleOrderModel(
-                _shoppingCart.Items,
-                changeValue,
-                terminal,
-                payments,
-                0,
-                bDesc
-            );
-
-            var json = JsonConvert.SerializeObject(placeOrderModel);
-
-            var orderResponse = await _orderService.PlaceOrderMultiple(placeOrderModel);
+        private async Task ProcessPaymentMultipleAsync()
+        {
+            var orderResponse = await _paymentCoordinatorService.ProcessMultiplePaymentsAsync(changeValue, bDesc);
 
             if (orderResponse != null)
             {
@@ -1486,65 +957,43 @@ namespace OmadaPOS.Views
         }
 
         public async Task<OrderResponse?> PlaceOrderAsync(string paymentMethod, decimal changeAmount)
-        {
-            var config   = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
-            var terminal = config?.Terminal ?? string.Empty;
-
-            var orderModel = _orderApplicationService.BuildOrderModel(
-                _shoppingCart.Items, changeAmount, terminal, paymentMethod, 0, bDesc);
-
-            if (orderModel == null)
-                throw new InvalidOperationException("Failed to create order model");
-
-            return await _orderService.PlaceOrder(orderModel);
-        }
+            => await _paymentCoordinatorService.PlaceOrderAsync(paymentMethod, changeAmount, bDesc);
 
         private async void pictureBoxPesado_Click(object sender, EventArgs e)
         {
-            if (labelPesaProduct.Text != "" && weight > 0)
+            try
             {
-
-                if (!string.IsNullOrEmpty(labelPesaProduct.AccessibleName))
+                if (labelPesaProduct.Text != "" && weight > 0)
                 {
-                    int productId = int.Parse(labelPesaProduct.AccessibleName);
-
-                    var product = await _categoryService.LoadProductById(productId);
-
-                    labelProductName.Text = product.Name;
-
-                    _shoppingCart.AddItem(new CartItem()
+                    if (!string.IsNullOrEmpty(labelPesaProduct.AccessibleName))
                     {
-                        ProductId = product.Id ?? 0,
-                        ProductName = product.Name,
-                        UnitPrice = product.Price ?? 0.0m,
-                        Quantity = 1,
-                        Peso = weight / 1000
-                    });
+                        int productId = int.Parse(labelPesaProduct.AccessibleName);
+                        var result = await _barcodeSaleService.AddWeightedProductAsync(productId, weight);
 
-                    UpdateCartDisplay();
+                        if (result.AddedToCart)
+                        {
+                            labelProductName.Text = result.ProductName ?? string.Empty;
+                            UpdateCartDisplay();
 
-                    labelPesaProduct.Text = "";
-                    labelPesaProduct.AccessibleName = "";
-                    labelWeight.Text = "";
-                    weight = 0.0;
+                            labelPesaProduct.Text = "";
+                            labelPesaProduct.AccessibleName = "";
+                            labelWeight.Text = "";
+                            weight = 0.0;
 
-                    pictureBoxPesado.Image = null;
+                            pictureBoxPesado.Image = null;
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error adding weighted product: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void buttonCheckPrice_Click(object sender, EventArgs e)
-        {
-            var form = new frmCheckPrice();
-            form.ShowDialog(this);
-        }
 
         private void labelCashier_Click(object sender, EventArgs e)
-        {
-            if (_userMenuVisible)
-                OcultarMenuUsuario();
-            else
-                MostrarMenuUsuario();
-        }
+            => _userSessionControl?.ToggleMenu();
     }
 }

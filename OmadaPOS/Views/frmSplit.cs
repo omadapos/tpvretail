@@ -4,6 +4,7 @@ using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Services;
+using OmadaPOS.Services.Navigation;
 
 namespace OmadaPOS.Views
 {
@@ -14,8 +15,13 @@ namespace OmadaPOS.Views
         private readonly IPaymentService _paymentService;
         private readonly IOrderService _orderService;
         private readonly IAdminSettingService _adminSettingService;
+        private readonly IHomeInteractionService _homeInteractionService;
 
         private readonly ILogger<frmSplit> _logger;
+
+        // Campo para almacenar el handler de CartChanged y poder desuscribirlo.
+        // Una lambda anónima no puede desuscribirse si no se guarda la referencia.
+        private EventHandler? _cartChangedHandler;
 
         int inputValue = 0;
         decimal totalGlobal = 0;
@@ -25,103 +31,115 @@ namespace OmadaPOS.Views
 
         private RoundedPanel panelSplitPay;
 
-        public frmSplit()
+        public frmSplit(
+            IShoppingCart shoppingCart,
+            IPaymentSplitService paymentSplitService,
+            IPaymentService paymentService,
+            IOrderService orderService,
+            IAdminSettingService adminSettingService,
+            IHomeInteractionService homeInteractionService,
+            ILogger<frmSplit> logger)
         {
             InitializeComponent();
             ConfigureCartListView();
             ConfigurePaymentListView();
             ConfigureUI();
+
             // ── Métodos de pago ───────────────────────────────────────
-            ElegantButtonStyles.Style(buttonCash,          ElegantButtonStyles.CashGreen,        fontSize: 24f);
-            ElegantButtonStyles.Style(buttonCredit,        ElegantButtonStyles.CreditBlue,       fontSize: 18f);
-            ElegantButtonStyles.Style(buttonDebit,         ElegantButtonStyles.DebitGray,        fontSize: 18f);
-            ElegantButtonStyles.Style(buttonEbt,           ElegantButtonStyles.EBTOrange,        fontSize: 18f);
+            ButtonVariants.PaymentCash(buttonCash,        fontSize: 24f);
+            ButtonVariants.PaymentCredit(buttonCredit,    fontSize: 18f);
+            ButtonVariants.PaymentDebit(buttonDebit,      fontSize: 18f);
+            ButtonVariants.PaymentEBT(buttonEbt,          fontSize: 18f);
 
             // ── Acciones EBT ──────────────────────────────────────────
-            ElegantButtonStyles.Style(buttonEbtBalance,    ElegantButtonStyles.EBTBalanceOrange, fontSize: 18f);
-            ElegantButtonStyles.Style(buttonCalculateEBT,  ElegantButtonStyles.EBTBalanceOrange, fontSize: 18f);
+            ButtonVariants.EBTBalance(buttonEbtBalance,   fontSize: 18f);
+            ButtonVariants.EBTBalance(buttonCalculateEBT, fontSize: 18f);
 
-            // ── Confirmar pago (verde = acción positiva/completar) ────
-            ElegantButtonStyles.Style(buttonPrintBill,     ElegantButtonStyles.CashGreen,        fontSize: 18f);
+            // ── Confirmar pago ────────────────────────────────────────
+            ButtonVariants.Primary(buttonPrintBill,       fontSize: 18f);
 
             // ── Cerrar ────────────────────────────────────────────────
-            ElegantButtonStyles.Style(buttonClose,         ElegantButtonStyles.AlertRed,         fontSize: 18f);
+            ButtonVariants.Danger(buttonClose,            fontSize: 18f);
 
-            // ── Teclado numérico (manejado en ConfigureNumericButtons) ─
-            ElegantButtonStyles.Style(buttonClear,         ElegantButtonStyles.Keypad,           fontSize: 18f);
+            // ── Teclado numérico ──────────────────────────────────────
+            ButtonVariants.Keypad(buttonClear,            fontSize: 18f);
 
-            _shoppingCart = Program.GetService<IShoppingCart>();
-            _paymentSplitService = Program.GetService<IPaymentSplitService>();
-            _paymentService = Program.GetService<IPaymentService>();
-            _orderService = Program.GetService<IOrderService>();
-            _adminSettingService = Program.GetService<IAdminSettingService>();
-
-            _logger = Program.GetService<ILogger<frmSplit>>();
+            _shoppingCart           = shoppingCart;
+            _paymentSplitService    = paymentSplitService;
+            _paymentService         = paymentService;
+            _orderService           = orderService;
+            _adminSettingService    = adminSettingService;
+            _homeInteractionService = homeInteractionService;
+            _logger                 = logger;
 
             ClearTotales();
 
-            this.Load += async (s, e) => await InitializeAsync();
+            this.Load   += async (s, e) => await InitializeAsync();
+            this.FormClosed += FrmSplit_FormClosed;
+        }
+
+        private void FrmSplit_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            // Desuscribir de IShoppingCart (Singleton) para que el GC pueda
+            // recolectar esta instancia. Sin esto, cada apertura de frmSplit
+            // acumula una instancia que nunca se libera.
+            if (_cartChangedHandler != null)
+            {
+                _shoppingCart.CartChanged -= _cartChangedHandler;
+                _cartChangedHandler = null;
+            }
         }
 
         private void ConfigureUI()
         {
-            this.WindowState = FormWindowState.Maximized;
+            this.WindowState     = FormWindowState.Maximized;
             this.FormBorderStyle = FormBorderStyle.None;
 
-            // Crear panel estilizado
             panelSplitPay = new RoundedPanel
             {
-                Location = new Point(30, 500),
-                Size = new Size(400, 180),
-                CornerRadius = 16,
-                BorderColor = Color.FromArgb(220, 224, 228),
-                BackgroundStart = Color.FromArgb(245, 247, 250),
-                BackgroundEnd = Color.FromArgb(238, 240, 243),
-                ShadowColor = Color.FromArgb(15, 0, 0, 0),
-                Name = "panelSplitPay"
+                Location        = new Point(30, 500),
+                Size            = new Size(400, 180),
+                CornerRadius    = AppRadii.Dialog,
+                BorderColor     = AppBorders.PanelLight,
+                BackgroundStart = AppColors.BackgroundPrimary,
+                BackgroundEnd   = AppColors.SurfaceMuted,
+                ShadowColor     = AppShadows.Medium,
+                Name            = "panelSplitPay"
             };
             this.Controls.Add(panelSplitPay);
 
-            var numberButtonColor = Color.FromArgb(64, 129, 191);
-            var actionButtonColor = Color.FromArgb(20, 83, 153);
-            var greenButton = Color.FromArgb(34, 139, 34);
-            var orangeButton = Color.FromArgb(255, 140, 0);
-            var violetButton = Color.FromArgb(138, 43, 226);
-            var redButton = Color.FromArgb(220, 53, 69);
-
-            ConfigureNumericButtons(numberButtonColor);
-            //    ConfigureActionButtons(actionButtonColor, greenButton, orangeButton, violetButton, redButton);
+            ConfigureNumericButtons(AppColors.NavyBase);
         }
 
         private void ConfigureCartListView()
         {
-            listViewCart.View = View.Details;
+            listViewCart.View         = View.Details;
             listViewCart.FullRowSelect = true;
-            listViewCart.GridLines = true;
-            listViewCart.MultiSelect = false;
+            listViewCart.GridLines    = true;
+            listViewCart.MultiSelect  = false;
 
-            listViewCart.Columns.Add("#", 80);
-            listViewCart.Columns.Add("Product", 200);
+            listViewCart.Columns.Add("#",        80);
+            listViewCart.Columns.Add("Product",  200);
             listViewCart.Columns.Add("Quantity", 80);
-            listViewCart.Columns.Add("Price", 100);
+            listViewCart.Columns.Add("Price",    100);
             listViewCart.Columns.Add("Subtotal", 100);
 
-            listViewCart.BackColor = Color.White;
-            listViewCart.Font = new Font("Segoe UI", 10F);
+            listViewCart.BackColor = AppColors.BackgroundSecondary;
+            listViewCart.Font      = AppTypography.Body;
         }
 
         private void ConfigurePaymentListView()
         {
-            listViewPayments.View = View.Details;
+            listViewPayments.View         = View.Details;
             listViewPayments.FullRowSelect = true;
-            listViewPayments.GridLines = true;
-            listViewPayments.MultiSelect = false;
+            listViewPayments.GridLines    = true;
+            listViewPayments.MultiSelect  = false;
 
             listViewPayments.Columns.Add("Payment", 200);
-            listViewPayments.Columns.Add("Total", 100);
+            listViewPayments.Columns.Add("Total",   100);
 
-            listViewPayments.BackColor = Color.White;
-            listViewPayments.Font = new Font("Segoe UI", 10F);
+            listViewPayments.BackColor = AppColors.BackgroundSecondary;
+            listViewPayments.Font      = AppTypography.Body;
         }
 
         private async Task InitializeAsync()
@@ -134,7 +152,8 @@ namespace OmadaPOS.Views
 
                 await LoadPaymentsAsync();
 
-                _shoppingCart.CartChanged += (s, e) => LoadCartItems();
+                _cartChangedHandler = (s, e) => LoadCartItems();
+                _shoppingCart.CartChanged += _cartChangedHandler;
             }
             catch (Exception ex)
             {
@@ -294,7 +313,7 @@ namespace OmadaPOS.Views
                     return;
                 }
 
-                ((frmHome)Owner).ProcessPaymentMultiple();
+                await _homeInteractionService.RequestSplitPaymentCompletionAsync();
                 this.Close();
             }
             catch (Exception ex)
@@ -434,22 +453,34 @@ namespace OmadaPOS.Views
 
         private async void buttonEbtBalance_Click(object sender, EventArgs e)
         {
-            var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
-
-            string terminal = config?.Terminal ?? string.Empty;
-            int port = config?.Port ?? 0;
-            string ip = config?.IP ?? string.Empty;
-
-            var consecutivo = await _orderService.LoadLastConsecutivoPayment();
-
-            await _paymentService.GetEBTBalanceAsync(new PaymentRequest()
+            try
             {
-                Ip = ip,
-                Port = port,
-                Terminal = terminal,
-                Amount = 0,
-                EcrRefNumber = consecutivo.ToString(),
-            });
+                buttonEbtBalance.Enabled = false;
+                var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
+
+                string terminal   = config?.Terminal ?? string.Empty;
+                int    port       = config?.Port     ?? 0;
+                string ip         = config?.IP       ?? string.Empty;
+                var    consecutivo = await _orderService.LoadLastConsecutivoPayment();
+
+                await _paymentService.GetEBTBalanceAsync(new PaymentRequest
+                {
+                    Ip           = ip,
+                    Port         = port,
+                    Terminal     = terminal,
+                    Amount       = 0,
+                    EcrRefNumber = consecutivo.ToString(),
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al consultar balance EBT:\n{ex.Message}", "Error EBT",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                buttonEbtBalance.Enabled = true;
+            }
         }
     }
 }

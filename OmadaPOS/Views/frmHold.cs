@@ -1,6 +1,7 @@
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Models;
 using OmadaPOS.Services;
+using OmadaPOS.Services.Navigation;
 using System.ComponentModel;
 
 namespace OmadaPOS.Views
@@ -9,6 +10,7 @@ namespace OmadaPOS.Views
     {
         private readonly IHoldService _holdService;
         private readonly IShoppingCart _shoppingCart;
+        private readonly IHomeInteractionService _homeInteractionService;
         private BindingList<HoldCartModel> _heldCarts;
 
         string[] colors = {
@@ -30,6 +32,7 @@ namespace OmadaPOS.Views
 
             _holdService = Program.GetService<IHoldService>();
             _shoppingCart = Program.GetService<IShoppingCart>();
+            _homeInteractionService = Program.GetService<IHomeInteractionService>();
 
             _heldCarts = new BindingList<HoldCartModel>();
 
@@ -101,8 +104,8 @@ namespace OmadaPOS.Views
                 // Eliminar el carrito en hold
                 await _holdService.DeleteHeldCartAsync(selectedCart.HoldId);
 
-                // Actualizar la visualización del carrito
-                ((frmHome)Owner).UpdateCartDisplay();
+                // Actualizar la visualización del carrito a través del coordinador principal
+                _homeInteractionService.RequestCartRefresh();
 
                 this.Close();
             }

@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Estilos;
+using OmadaPOS.Estilos;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
@@ -19,17 +19,28 @@ namespace OmadaPOS.Views
 
         private async void buttonSave_Click(object sender, EventArgs e)
         {
-            await adminSettingService.UpdateSetting(new AdminSetting() {
-                WindowsId = labelWindowsId.Text,
-                IP = textBoxIP.Text,
-                Port = int.TryParse(textBoxPort.Text, out int port) ? port : 0,
-                Terminal = textBoxTerminal.Text,
-                PrinterName = textBoxPrinterName.Text
-            });
-
-
-
-            this.Close();
+            try
+            {
+                buttonSave.Enabled = false;
+                await adminSettingService.UpdateSetting(new AdminSetting
+                {
+                    WindowsId   = labelWindowsId.Text,
+                    IP          = textBoxIP.Text,
+                    Port        = int.TryParse(textBoxPort.Text, out int port) ? port : 0,
+                    Terminal    = textBoxTerminal.Text,
+                    PrinterName = textBoxPrinterName.Text
+                });
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al guardar la configuración:\n{ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                buttonSave.Enabled = true;
+            }
         }
 
         private void frmSetting_Load(object sender, EventArgs e)

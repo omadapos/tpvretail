@@ -12,11 +12,11 @@ namespace OmadaPOS.Estilos
         public EstiloFormularioPOS()
         {
             this.FormBorderStyle = FormBorderStyle.None;
-            this.StartPosition = FormStartPosition.Manual;
-            this.BackColor = AppColors.BackgroundPrimary;
-            this.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point);
-            this.KeyPreview = true;
-            this.Opacity = 1.0;
+            this.StartPosition   = FormStartPosition.Manual;
+            this.BackColor       = AppColors.BackgroundPrimary;
+            this.Font            = AppTypography.Body;
+            this.KeyPreview      = true;
+            this.Opacity         = 1.0;
 
             ConfigurarTamañoYPosicion();
             EstablecerCabecera();
@@ -46,27 +46,27 @@ namespace OmadaPOS.Estilos
 
             var lblTitulo = new Label
             {
-                Text = "OmadaPOS",
+                Text      = "OmadaPOS",
                 ForeColor = AppColors.TextWhite,
-                Font = new Font("Montserrat", 13F, FontStyle.Bold),
-                AutoSize = true,
-                Location = new Point(18, 14),
+                Font      = AppTypography.AppHeader,
+                AutoSize  = true,
+                Location  = new Point(18, 14),
                 BackColor = Color.Transparent
             };
 
             var btnCerrar = new Button
             {
-                Text = "✕",
+                Text      = "✕",
                 ForeColor = AppColors.TextWhite,
-                Font = new Font("Segoe UI", 13F, FontStyle.Bold),
+                Font      = AppTypography.PaymentLabel,
                 BackColor = AppColors.Danger,
                 FlatStyle = FlatStyle.Flat,
-                Size = new Size(54, 54),
-                Dock = DockStyle.Right,
-                Cursor = Cursors.Hand
+                Size      = new Size(54, 54),
+                Dock      = DockStyle.Right,
+                Cursor    = Cursors.Hand
             };
-            btnCerrar.FlatAppearance.BorderSize = 0;
-            btnCerrar.FlatAppearance.MouseOverBackColor = ElegantButtonStyles.Darken(AppColors.Danger, 0.15f);
+            btnCerrar.FlatAppearance.BorderSize           = 0;
+            btnCerrar.FlatAppearance.MouseOverBackColor   = ElegantButtonStyles.Darken(AppColors.Danger, 0.15f);
             btnCerrar.Click += (s, e) => IniciarFadeOut();
 
             barra.Controls.Add(lblTitulo);

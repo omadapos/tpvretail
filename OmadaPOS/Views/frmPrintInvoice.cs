@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Impresora;
+using OmadaPOS.Impresora;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using System.Numerics;
@@ -20,24 +20,31 @@ namespace OmadaPOS.Views
 
         private async void frmPrintInvoice_Load(object sender, EventArgs e)
         {
-            InitListViewInvoices();
-            InitListViewIProducts();
-
-            var list = await orderService.GetOrderTop();
-
-            if (list != null && list.Count > 0)
+            try
             {
-                foreach (var item in list)
+                InitListViewInvoices();
+                InitListViewIProducts();
+
+                var list = await orderService.GetOrderTop();
+                if (list != null && list.Count > 0)
                 {
-                    var lvi = new ListViewItem(item.Id.ToString());
-                    lvi.SubItems.Add(item.Consecutivo.ToString());
-                    lvi.SubItems.Add(item.Order_Amount.ToString("N2"));
-                    lvi.SubItems.Add(item.Created_At.ToString("yyyy-MM-dd HH:mm"));
-                    lvi.SubItems.Add(item.Devuelta.ToString("N2"));
-                    lvi.SubItems.Add("Print");
-                    lvi.Tag = item.Id; // OrderId
-                    listViewInvoices.Items.Add(lvi);
+                    foreach (var item in list)
+                    {
+                        var lvi = new ListViewItem(item.Id.ToString());
+                        lvi.SubItems.Add(item.Consecutivo.ToString());
+                        lvi.SubItems.Add(item.Order_Amount.ToString("N2"));
+                        lvi.SubItems.Add(item.Created_At.ToString("yyyy-MM-dd HH:mm"));
+                        lvi.SubItems.Add(item.Devuelta.ToString("N2"));
+                        lvi.SubItems.Add("Print");
+                        lvi.Tag = item.Id;
+                        listViewInvoices.Items.Add(lvi);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al cargar facturas:\n{ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -137,66 +144,89 @@ namespace OmadaPOS.Views
 
         private async void PrintInvoice(int orderId)
         {
-            var order = await orderService.GetOrderById(orderId);
-            if (order == null)
+            try
             {
-                MessageBox.Show("Order no exists");
-                return;
-            }
+                Cursor = Cursors.WaitCursor;
+                var order = await orderService.GetOrderById(orderId);
+                if (order == null)
+                {
+                    MessageBox.Show("Order not found.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
 
-            var branchInfo = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
-
-            if (branchInfo != null)
-            {
+                var branchInfo   = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
                 var orderDetails = await orderService.GetOrderDetailsByOrderId(orderId);
 
-                var ticket = new Ticket(orderId, order.Consecutivo, order, orderDetails, SessionManager.Name,
-                    null, branchInfo.Address, branchInfo.Name);
-
-                ticket.Print();
+                if (branchInfo != null)
+                {
+                    var ticket = new Ticket(orderId, order.Consecutivo, order, orderDetails, SessionManager.Name,
+                        null, branchInfo.Address, branchInfo.Name);
+                    ticket.Print();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al imprimir factura:\n{ex.Message}", "Error de Impresión",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
             }
         }
 
         private async void buttonSearch_Click(object sender, EventArgs e)
         {
-            listViewInvoices.Items.Clear();
-
-            string fecha1 = dateTimePicker1.Value.ToString("yyyyMMdd");
-            string fecha2 = dateTimePicker2.Value.ToString("yyyyMMdd");
-
-            Cursor = Cursors.WaitCursor;
-            var list = await orderService.GetOrderTop(fecha1, fecha2);
-            Cursor = Cursors.Default;
-
-            if (list != null && list.Count > 0)
+            try
             {
-                foreach (var item in list)
+                buttonSearch.Enabled = false;
+                listViewInvoices.Items.Clear();
+
+                string fecha1 = dateTimePicker1.Value.ToString("yyyyMMdd");
+                string fecha2 = dateTimePicker2.Value.ToString("yyyyMMdd");
+
+                Cursor = Cursors.WaitCursor;
+                var list = await orderService.GetOrderTop(fecha1, fecha2);
+
+                if (list != null && list.Count > 0)
                 {
-                    var lvi = new ListViewItem(item.Id.ToString());
-                    lvi.SubItems.Add(item.Consecutivo.ToString());
-                    lvi.SubItems.Add(item.Order_Amount.ToString("N2"));
-                    lvi.SubItems.Add(item.Created_At.ToString("yyyy-MM-dd HH:mm"));
-                    lvi.SubItems.Add(item.Devuelta.ToString("N2"));
-                    lvi.SubItems.Add("Print");
-                    lvi.Tag = item.Id; // OrderId
-                    listViewInvoices.Items.Add(lvi);
+                    foreach (var item in list)
+                    {
+                        var lvi = new ListViewItem(item.Id.ToString());
+                        lvi.SubItems.Add(item.Consecutivo.ToString());
+                        lvi.SubItems.Add(item.Order_Amount.ToString("N2"));
+                        lvi.SubItems.Add(item.Created_At.ToString("yyyy-MM-dd HH:mm"));
+                        lvi.SubItems.Add(item.Devuelta.ToString("N2"));
+                        lvi.SubItems.Add("Print");
+                        lvi.Tag = item.Id;
+                        listViewInvoices.Items.Add(lvi);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al buscar facturas:\n{ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+                buttonSearch.Enabled = true;
             }
         }
 
         private async void listViewInvoices_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (listViewInvoices.SelectedItems.Count > 0)
+            if (listViewInvoices.SelectedItems.Count == 0) return;
+            try
             {
                 var selectedItem = listViewInvoices.SelectedItems[0];
-                int orderId = int.Parse(selectedItem.Tag.ToString());
+                if (!int.TryParse(selectedItem.Tag?.ToString(), out int orderId)) return;
 
                 listViewProducts.Items.Clear();
-
                 Cursor = Cursors.WaitCursor;
-                var list = await orderService.GetOrderDetailsByOrderId(orderId);
-                Cursor = Cursors.Default;
 
+                var list = await orderService.GetOrderDetailsByOrderId(orderId);
                 if (list != null && list.Count > 0)
                 {
                     foreach (var item in list)
@@ -207,6 +237,15 @@ namespace OmadaPOS.Views
                         listViewProducts.Items.Add(lvi);
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al cargar detalle de factura:\n{ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
             }
         }
     }

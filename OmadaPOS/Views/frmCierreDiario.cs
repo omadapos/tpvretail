@@ -107,19 +107,35 @@ namespace OmadaPOS.Views
 
         private async void buttonClose_Click(object sender, EventArgs e)
         {
-            var date  = dateTimePickerFecha.Value;
-            var sDate = date.ToString("yyyyMMdd");
-
-            var cierre = await orderService.CierreDiario(sDate, SessionManager.UserName);
-            if (cierre != null)
+            try
             {
-                var branchInfo = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
-                if (branchInfo != null)
+                buttonClose.Enabled = false;
+                var date  = dateTimePickerFecha.Value;
+                var sDate = date.ToString("yyyyMMdd");
+
+                var cierre = await orderService.CierreDiario(sDate, SessionManager.UserName);
+                if (cierre != null)
                 {
-                    var ticket = new TicketCierre(cierre, branchInfo.Address, branchInfo.Name);
-                    ticket.print();
-                    this.Close();
+                    var branchInfo = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
+                    if (branchInfo != null)
+                    {
+                        var ticket = new TicketCierre(cierre, branchInfo.Address ?? "", branchInfo.Name ?? "");
+                        ticket.print();
+                        this.Close();
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al procesar el cierre diario:\n{ex.Message}\n\nEl cierre puede haberse registrado. Verifique con el administrador.",
+                    "Error — Cierre Diario",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                buttonClose.Enabled = true;
             }
         }
     }

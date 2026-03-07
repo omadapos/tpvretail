@@ -23,14 +23,26 @@
     <Compile Update="Componentes\KeyPaymentControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Componentes\OmadaposLogo.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Update="Componentes\ProductImageControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Componentes\RoundedPanel.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Presentation\Controls\CartTotalsControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Presentation\Controls\PaymentPanelControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Presentation\Controls\POSHeaderControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Presentation\Controls\ScanInputControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Presentation\Controls\UserSessionControl.cs">
+      <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Styles\EstiloFormularioPOS.cs">
       <SubType>Form</SubType>

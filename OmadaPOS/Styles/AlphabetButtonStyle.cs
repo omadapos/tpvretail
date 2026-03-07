@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Windows.Forms;
 
+namespace OmadaPOS.Presentation.Styling;
+
 /// <summary>
 /// Estilo de botones del abecedario — PremiumMarket Theme.
 /// Usa FlatStyle.Flat para evitar el overhead de Paint override y
