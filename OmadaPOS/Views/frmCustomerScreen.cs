@@ -3,408 +3,620 @@ using OmadaPOS.Services;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
-namespace OmadaPOS.Views
+namespace OmadaPOS.Views;
+
+/// <summary>
+/// Customer-facing secondary display — optimized for 1024×768 LED screen (4:3).
+///
+/// Lifecycle contract:
+///   • Opened by frmHome.Load (after cashier logs in), positioned on the secondary screen.
+///   • Closed by frmHome.FormClosed — never by the customer.
+///   • User-initiated close attempts (Alt+F4, etc.) are silently blocked.
+///   • Registered as Singleton in DI — always the same instance per app session.
+///
+/// Layout (1024 × 768):
+///   ┌────────────────────────────────────────────┐  64px  Header
+///   ├──────────────────────┬─────────────────────┤
+///   │  🛒 YOUR ORDER       │   BANNER IMAGE       │  fill  Body
+///   │  ListView (55%)      │   Carousel  (45%)    │
+///   ├──────────────────────┴─────────────────────┤
+///   │  Items: 5    Subtotal: $52.30  Tax: $3.66  │  180px Footer
+///   │  ⚖ 0.0 lb                   TOTAL $55.96  │
+///   └────────────────────────────────────────────┘
+/// </summary>
+public sealed class frmCustomerScreen : Form
 {
-    public partial class frmCustomerScreen : Form
+    // ── Services ──────────────────────────────────────────────────────────────
+    private readonly IBannerService _bannerService;
+    private readonly IShoppingCart  _shoppingCart;
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    private string[] _bannerUrls  = [];
+    private int      _bannerIndex = 0;
+    private decimal  _subtotal    = 0;
+    private decimal  _taxTotal    = 0;
+    private decimal  _grandTotal  = 0;
+    private double   _itemCount   = 0;
+
+    // ── Controls ──────────────────────────────────────────────────────────────
+    private ListView   _lvCart    = null!;
+    private PictureBox _pbBanner  = null!;
+    private Label      _lblTotal  = null!;
+    private Label      _lblSubTax = null!;
+    private Label      _lblItems  = null!;
+    private Label      _lblWeight = null!;
+    private Label      _lblClock  = null!;
+
+    // ── Timers ────────────────────────────────────────────────────────────────
+    private System.Windows.Forms.Timer? _timerBanner;
+    private System.Windows.Forms.Timer? _timerClock;
+
+    // ── Static GDI resources (allocated once, never disposed mid-run) ─────────
+    private static readonly Font _fontHero     = new("Montserrat", 38F, FontStyle.Bold);
+    private static readonly Font _fontMeta     = new("Montserrat", 11F, FontStyle.Bold);
+    private static readonly Font _fontItems    = new("Montserrat", 15F, FontStyle.Bold);
+    private static readonly Font _fontDetail   = new("Segoe UI",   10F);
+    private static readonly Font _fontHeader   = new("Montserrat", 13F, FontStyle.Bold);
+    private static readonly Font _fontClock    = new("Montserrat", 11F);
+    private static readonly Font _fontList     = new("Segoe UI",   12F);
+    private static readonly Font _fontListHdr  = new("Montserrat",  9F, FontStyle.Bold);
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+    public frmCustomerScreen(IBannerService bannerService, IShoppingCart shoppingCart)
     {
-        private readonly IBannerService? bannerService;
-        private readonly IShoppingCart _shoppingCart;
+        _bannerService = bannerService;
+        _shoppingCart  = shoppingCart;
 
-        private string[]? imageUrls;
-        private int currentIndex = 0;
-        decimal totalGlobal = 0;
+        InitForm();
 
-        private System.Windows.Forms.Timer? timerCarrousel;
-        private System.Windows.Forms.Timer? clockTimer;
+        _shoppingCart.CartChanged    += OnCartChanged;
+        SharedData.WeightUnitChanged += OnWeightChanged;
 
-        public frmCustomerScreen(IBannerService bannerService, IShoppingCart shoppingCart)
+        Load += async (_, _) =>
         {
-            InitializeComponent();
+            await LoadBannersAsync();
+            StartTimers();
+            RefreshCart();
+        };
+    }
 
-            this.bannerService = bannerService;
-            _shoppingCart      = shoppingCart;
-            _shoppingCart.CartChanged += ShoppingCart_CartChanged;
+    // ── Public API ────────────────────────────────────────────────────────────
 
-            // Diseño profesional — debe aplicarse antes de mostrar controles
-            AplicarDisenoCliente();
-            ConfigureListView();
-
-            LoadData();
-            ConfigureTimers();
-
-            labelWeight.Text = SharedData.WeightUnit;
-            SharedData.WeightUnitChanged += OnWeightUnitChanged;
-
-            LoadCart();
-
-            this.KeyPreview = true;
-            this.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) this.Close(); };
+    /// <summary>
+    /// Positions this form on the secondary (customer) monitor.
+    /// Falls back to a 1024×768 window if only one screen is connected.
+    /// </summary>
+    public void PositionOnSecondaryScreen()
+    {
+        var secondary = Screen.AllScreens.FirstOrDefault(s => !s.Primary);
+        if (secondary != null)
+        {
+            StartPosition = FormStartPosition.Manual;
+            Bounds        = secondary.Bounds;
+            TopMost       = true;
         }
-
-        // ═══════════════════════════════════════════════════════════════
-        // TEMA VISUAL — PremiumMarket Customer Screen
-        // ═══════════════════════════════════════════════════════════════
-        private void AplicarDisenoCliente()
+        else
         {
-            // ── Fondo general ─────────────────────────────────────────────
-            this.BackColor                 = AppColors.NavyDark;
-            tableLayoutPanelMain.BackColor = AppColors.NavyDark;
-            tableLayoutPanelMain.Padding   = new Padding(0);
-            tableLayoutPanelMain.Margin    = new Padding(0);
-
-            // ── Header bienvenida (label1) ────────────────────────────────
-            label1.BackColor  = AppColors.NavyBase;
-            label1.ForeColor  = AppColors.TextWhite;
-            label1.Font       = AppTypography.Welcome;
-            label1.TextAlign  = ContentAlignment.MiddleCenter;
-            label1.Margin     = AppSpacing.None;
-            label1.Text       = "✦  WELCOME  —  DAILY STOP  ✦";
-
-            // ── Columna izquierda — Lista ─────────────────────────────────
-            tableLayoutPanelLeft.BackColor = AppColors.BackgroundPrimary;
-            tableLayoutPanelLeft.Padding   = new Padding(AppSpacing.SM, AppSpacing.SM, AppSpacing.SM, 0);
-            tableLayoutPanelLeft.Margin    = AppSpacing.None;
-
-            listViewCart.BackColor = AppColors.BackgroundSecondary;
-            listViewCart.ForeColor = AppColors.TextPrimary;
-            listViewCart.Font      = AppTypography.HeaderIcon;
-            listViewCart.GridLines = false;
-
-            // ── Banner (columna derecha) ───────────────────────────────────
-            tableLayoutPanel2.BackColor = AppColors.NavyDark;
-            tableLayoutPanel2.Padding   = AppSpacing.Compact;
-            tableLayoutPanel2.Margin    = AppSpacing.None;
-            pictureBoxBanner.BackColor  = AppColors.NavyDark;
-            pictureBoxBanner.SizeMode   = PictureBoxSizeMode.StretchImage;
-
-            // ── Panel de totales ──────────────────────────────────────────
-            // BackColor del panel se dibuja via panel1_Paint (rediseñado abajo)
-            panel1.Margin  = new Padding(AppSpacing.SM, AppSpacing.SM, 5, AppSpacing.SM);
-
-            label2.Font      = AppTypography.SectionTitle;
-            label2.ForeColor = AppColors.TextMuted;
-            label2.BackColor = Color.Transparent;
-            label2.Text      = "TOTAL";
-
-            labelTotal.Font      = AppTypography.AmountHero;
-            labelTotal.ForeColor = AppColors.AccentGreen;
-            labelTotal.BackColor = Color.Transparent;
-            labelTotal.Text      = "$0.00";
-
-            label3.Font      = AppTypography.HeaderIcon;
-            label3.ForeColor = AppColors.TextMuted;
-            label3.BackColor = Color.Transparent;
-            label3.Text      = "WEIGHT";
-
-            labelWeight.Font      = AppTypography.WeightHero;
-            labelWeight.ForeColor = AppColors.Warning;
-            labelWeight.BackColor = Color.Transparent;
-
-            // ── Panel del reloj (panel3) ──────────────────────────────────
-            panel3.BackColor = AppColors.NavyBase;
-            panel3.Margin    = new Padding(5, AppSpacing.SM, AppSpacing.SM, AppSpacing.SM);
-            panel3.Paint    += Panel3_Paint;
-
-            labelHour.Font      = AppTypography.Clock;
-            labelHour.ForeColor = AppColors.TextWhite;
-            labelHour.BackColor = Color.Transparent;
-            labelHour.TextAlign = ContentAlignment.MiddleCenter;
+            // Single-monitor — show as a resizable test window
+            StartPosition = FormStartPosition.Manual;
+            Size          = new Size(1024, 768);
+            Location      = new Point(Screen.PrimaryScreen!.WorkingArea.Right - 1040, 20);
+            TopMost       = false;
         }
+    }
 
-        // ── ListView — columnas temáticas ─────────────────────────────────
-        private void ConfigureListView()
+    // ── Form construction ─────────────────────────────────────────────────────
+    private void InitForm()
+    {
+        FormBorderStyle = FormBorderStyle.None;
+        BackColor       = AppColors.NavyDark;
+        Text            = "Customer Display";
+
+        // Block customer-initiated close (Alt+F4). Programmatic Close() uses
+        // CloseReason.None and passes through normally.
+        FormClosing += (_, e) =>
         {
-            listViewCart.View         = View.Details;
-            listViewCart.FullRowSelect = true;
-            listViewCart.GridLines    = false;
-            listViewCart.MultiSelect  = false;
+            if (e.CloseReason == CloseReason.UserClosing)
+                e.Cancel = true;
+        };
 
-            listViewCart.Columns.Add("#",        80);
-            listViewCart.Columns.Add("Product",  200);
-            listViewCart.Columns.Add("Qty",       80);
-            listViewCart.Columns.Add("Price",    100);
-            listViewCart.Columns.Add("Subtotal", 100);
+        var root = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 3,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0),
+            Margin      = new Padding(0),
+        };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));   // header
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  100));  // body
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 180));  // footer
 
-            foreach (ColumnHeader col in listViewCart.Columns)
-                col.TextAlign = HorizontalAlignment.Center;
+        root.Controls.Add(BuildHeader(), 0, 0);
+        root.Controls.Add(BuildBody(),   0, 1);
+        root.Controls.Add(BuildFooter(), 0, 2);
 
-            listViewCart.OwnerDraw = true;
+        Controls.Add(root);
+    }
 
-            // Header navy con texto blanco — igual que frmHome
-            listViewCart.DrawColumnHeader += (s, e) =>
+    // ── Header (64px) ─────────────────────────────────────────────────────────
+    private Panel BuildHeader()
+    {
+        var header = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyDark,
+            Padding   = new Padding(0),
+        };
+        // Emerald accent line at the bottom
+        header.Paint += (_, e) =>
+        {
+            using var accent = new SolidBrush(AppColors.AccentGreen);
+            e.Graphics.FillRectangle(accent, 0, header.Height - 3, header.Width, 3);
+        };
+
+        var lblStore = new Label
+        {
+            Text      = "🏪  DAILY STOP",
+            Font      = _fontHeader,
+            ForeColor = AppColors.TextWhite,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Left,
+            Width     = 260,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding   = new Padding(18, 0, 0, 0),
+        };
+
+        var lblWelcome = new Label
+        {
+            Text      = "✦  WELCOME  ✦",
+            Font      = new Font("Montserrat", 12F, FontStyle.Bold),
+            ForeColor = AppColors.AccentGreen,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        _lblClock = new Label
+        {
+            Text      = DateTime.Now.ToString("ddd, MMM dd  ·  HH:mm:ss"),
+            Font      = _fontClock,
+            ForeColor = AppColors.TextMuted,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Right,
+            Width     = 280,
+            TextAlign = ContentAlignment.MiddleRight,
+            Padding   = new Padding(0, 0, 18, 0),
+        };
+
+        header.Controls.Add(lblWelcome);   // fill — must be added first so Dock.Fill works
+        header.Controls.Add(_lblClock);
+        header.Controls.Add(lblStore);
+
+        return header;
+    }
+
+    // ── Body (fill — 2 columns) ───────────────────────────────────────────────
+    private Control BuildBody()
+    {
+        var body = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount    = 1,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0),
+            Margin      = new Padding(0),
+        };
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55)); // cart
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45)); // banner
+        body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        body.Controls.Add(BuildCartPanel(),   0, 0);
+        body.Controls.Add(BuildBannerPanel(), 1, 0);
+
+        return body;
+    }
+
+    // ── Cart panel ─────────────────────────────────────────────────────────────
+    private Control BuildCartPanel()
+    {
+        var panel = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = Color.FromArgb(248, 250, 252),
+            Padding   = new Padding(0),
+            Margin    = new Padding(0),
+        };
+
+        // Sub-header "YOUR ORDER"
+        var subHeader = new Panel
+        {
+            Dock      = DockStyle.Top,
+            Height    = 36,
+            BackColor = AppColors.NavyBase,
+        };
+        var lblTitle = new Label
+        {
+            Text      = "🛒  YOUR ORDER",
+            Font      = new Font("Montserrat", 10F, FontStyle.Bold),
+            ForeColor = AppColors.TextWhite,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+        subHeader.Controls.Add(lblTitle);
+
+        // Cart list
+        _lvCart = new ListView
+        {
+            Dock              = DockStyle.Fill,
+            View              = View.Details,
+            FullRowSelect     = true,
+            GridLines         = false,
+            MultiSelect       = false,
+            BackColor         = Color.FromArgb(248, 250, 252),
+            ForeColor         = AppColors.TextPrimary,
+            Font              = _fontList,
+            BorderStyle       = BorderStyle.None,
+            HeaderStyle       = ColumnHeaderStyle.Nonclickable,
+            OwnerDraw         = true,
+            UseCompatibleStateImageBehavior = false,
+        };
+        _lvCart.Columns.Add("#",       42,  HorizontalAlignment.Center);
+        _lvCart.Columns.Add("Product", 200, HorizontalAlignment.Left);
+        _lvCart.Columns.Add("Qty",     48,  HorizontalAlignment.Center);
+        _lvCart.Columns.Add("Price",   84,  HorizontalAlignment.Right);
+        _lvCart.Columns.Add("Total",   84,  HorizontalAlignment.Right);
+        AttachListViewDraw(_lvCart);
+        _lvCart.Resize += (_, _) => FillProductColumn(_lvCart, fillIdx: 1);
+
+        panel.Controls.Add(_lvCart);
+        panel.Controls.Add(subHeader);
+
+        return panel;
+    }
+
+    // ── Banner panel ──────────────────────────────────────────────────────────
+    private Panel BuildBannerPanel()
+    {
+        var panel = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyDark,
+            Padding   = new Padding(0),
+            Margin    = new Padding(0),
+        };
+
+        _pbBanner = new PictureBox
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyDark,
+            SizeMode  = PictureBoxSizeMode.Zoom,
+        };
+
+        panel.Controls.Add(_pbBanner);
+        return panel;
+    }
+
+    // ── Footer (180px) ────────────────────────────────────────────────────────
+    private Control BuildFooter()
+    {
+        var footer = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyBase,
+            Padding   = new Padding(0),
+            Margin    = new Padding(0),
+        };
+        // Emerald accent line at the top
+        footer.Paint += (_, e) =>
+        {
+            using var accent = new SolidBrush(AppColors.AccentGreen);
+            e.Graphics.FillRectangle(accent, 0, 0, footer.Width, 4);
+        };
+
+        var grid = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount    = 1,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0),
+            Margin      = new Padding(0),
+        };
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52)); // details
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48)); // total
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        grid.Controls.Add(BuildFooterDetails(), 0, 0);
+        grid.Controls.Add(BuildFooterTotal(),   1, 0);
+
+        footer.Controls.Add(grid);
+        return footer;
+    }
+
+    private Control BuildFooterDetails()
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 3,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(24, 16, 12, 12),
+            Margin      = new Padding(0),
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 38)); // items count
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 32)); // subtotal + tax
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 30)); // weight
+
+        _lblItems = new Label
+        {
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = "Items: 0",
+            Font      = _fontItems,
+            ForeColor = AppColors.TextWhite,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        _lblSubTax = new Label
+        {
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = "Subtotal: $0.00   ·   Tax: $0.00",
+            Font      = _fontDetail,
+            ForeColor = AppColors.TextMuted,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        _lblWeight = new Label
+        {
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = $"⚖  {SharedData.WeightUnit}",
+            Font      = _fontDetail,
+            ForeColor = AppColors.Warning,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        panel.Controls.Add(_lblItems,  0, 0);
+        panel.Controls.Add(_lblSubTax, 0, 1);
+        panel.Controls.Add(_lblWeight, 0, 2);
+
+        return panel;
+    }
+
+    private Control BuildFooterTotal()
+    {
+        var panel = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            Padding   = new Padding(16, 10, 24, 10),
+        };
+        // Subtle vertical separator on the left
+        panel.Paint += (_, e) =>
+        {
+            using var sep = new Pen(Color.FromArgb(50, 255, 255, 255), 1f);
+            e.Graphics.DrawLine(sep, 8, 20, 8, panel.Height - 20);
+        };
+
+        var inner = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 2,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0),
+            Margin      = new Padding(0),
+        };
+        inner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        inner.RowStyles.Add(new RowStyle(SizeType.Percent, 30)); // "TOTAL" label
+        inner.RowStyles.Add(new RowStyle(SizeType.Percent, 70)); // amount
+
+        var lblCaption = new Label
+        {
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = "TOTAL",
+            Font      = _fontMeta,
+            ForeColor = AppColors.TextMuted,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.BottomRight,
+            Padding   = new Padding(0, 0, 0, 2),
+        };
+
+        _lblTotal = new Label
+        {
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = "$0.00",
+            Font      = _fontHero,
+            ForeColor = AppColors.AccentGreen,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.TopRight,
+        };
+
+        inner.Controls.Add(lblCaption, 0, 0);
+        inner.Controls.Add(_lblTotal,  0, 1);
+
+        panel.Controls.Add(inner);
+        return panel;
+    }
+
+    // ── ListView owner-draw ───────────────────────────────────────────────────
+    private void AttachListViewDraw(ListView lv)
+    {
+        lv.DrawColumnHeader += (_, e) =>
+        {
+            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+            using var bg = new SolidBrush(AppColors.NavyBase);
+            e.Graphics.FillRectangle(bg, e.Bounds);
+            using var tb = new SolidBrush(AppColors.TextWhite);
+            using var sf = new StringFormat
             {
-                var g = e.Graphics;
-                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-
-                using var bgBrush = new SolidBrush(AppColors.NavyBase);
-                g.FillRectangle(bgBrush, e.Bounds);
-
-            using var sep = new Pen(AppBorders.SeparatorOnDark, AppBorders.Thin);
-            g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4,
-                            e.Bounds.Right - 1, e.Bounds.Bottom - 4);
-
-            var       hFont  = AppTypography.ColumnHeader;   // static shared — do NOT dispose
-                using var tBrush = new SolidBrush(AppColors.TextWhite);
-                using var sf     = new StringFormat
-                {
-                    Alignment     = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center,
-                    Trimming      = StringTrimming.EllipsisCharacter
-                };
-                g.DrawString(e.Header.Text, hFont, tBrush,
-                    new Rectangle(e.Bounds.X + 2, e.Bounds.Y, e.Bounds.Width - 4, e.Bounds.Height), sf);
+                Alignment     = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center,
             };
+            e.Graphics.DrawString(e.Header.Text, _fontListHdr, tb, e.Bounds, sf);
+        };
 
-            // Filas alternadas (zebra) — dibujamos fondo Y texto manualmente
-            // para que el fondo zebra no quede sobreescrito por DrawDefault
-            listViewCart.DrawItem += (s, e) =>
+        lv.DrawItem += (_, e) =>
+        {
+            bool isAlt = e.ItemIndex % 2 == 1;
+            var  bg    = isAlt ? Color.FromArgb(241, 245, 250) : Color.FromArgb(248, 250, 252);
+            using var br = new SolidBrush(bg);
+            e.Graphics.FillRectangle(br, e.Bounds);
+        };
+
+        lv.DrawSubItem += (_, e) =>
+        {
+            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
+            // Respect column text alignment
+            var colAlign = e.ColumnIndex < lv.Columns.Count
+                           ? lv.Columns[e.ColumnIndex].TextAlign
+                           : HorizontalAlignment.Left;
+            var strAlign = colAlign == HorizontalAlignment.Right  ? StringAlignment.Far
+                         : colAlign == HorizontalAlignment.Center ? StringAlignment.Center
+                         : StringAlignment.Near;
+
+            // Highlight the product name (col 1) slightly
+            var fg = e.ColumnIndex == 1 ? AppColors.TextPrimary
+                   : e.ColumnIndex >= 3 ? AppColors.NavyBase
+                   : AppColors.TextSecondary;
+
+            using var tb   = new SolidBrush(fg);
+            using var sfmt = new StringFormat
             {
-                var g      = e.Graphics;
-                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-
-                bool isAlt = e.ItemIndex % 2 == 1;
-                bool isSel = (e.State & ListViewItemStates.Selected) != 0;
-
-                Color bg = isSel
-                    ? AppColors.NavyLight
-                    : isAlt ? Color.FromArgb(245, 248, 252) : Color.White;
-
-                using var bgBrush = new SolidBrush(bg);
-                g.FillRectangle(bgBrush, e.Bounds);
-
-                // No usamos DrawDefault — el texto lo dibuja DrawSubItem
+                Alignment     = strAlign,
+                LineAlignment = StringAlignment.Center,
+                Trimming      = StringTrimming.EllipsisCharacter,
             };
+            var rect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 6, e.Bounds.Height);
+            e.Graphics.DrawString(e.SubItem.Text, lv.Font, tb, rect, sfmt);
+        };
+    }
 
-            listViewCart.DrawSubItem += (s, e) =>
+    private static void FillProductColumn(ListView lv, int fillIdx)
+    {
+        if (lv.Columns.Count == 0) return;
+        int total  = lv.ClientSize.Width;
+        int fixedW = 0;
+        for (int i = 0; i < lv.Columns.Count; i++)
+            if (i != fillIdx) fixedW += lv.Columns[i].Width;
+        lv.Columns[fillIdx].Width = Math.Max(total - fixedW, 60);
+    }
+
+    // ── Cart data ─────────────────────────────────────────────────────────────
+    private void OnCartChanged(object? sender, EventArgs e)
+    {
+        if (InvokeRequired) { Invoke(RefreshCart); return; }
+        RefreshCart();
+    }
+
+    private void RefreshCart()
+    {
+        _lvCart.Items.Clear();
+        _subtotal  = 0;
+        _taxTotal  = 0;
+        _itemCount = 0;
+
+        foreach (var item in _shoppingCart.Items)
+        {
+            _subtotal  += item.Subtotal;
+            _taxTotal  += item.Total - item.Subtotal;
+            _itemCount += item.Quantity;
+
+            var lvi = new ListViewItem(item.Number.ToString());
+            lvi.SubItems.Add(item.ProductName);
+            lvi.SubItems.Add(item.Quantity.ToString());
+            lvi.SubItems.Add(item.UnitPrice.ToString("C"));
+            lvi.SubItems.Add(item.Total.ToString("C"));
+            _lvCart.Items.Add(lvi);
+        }
+
+        _grandTotal = _subtotal + _taxTotal;
+        UpdateFooter();
+    }
+
+    private void UpdateFooter()
+    {
+        if (_lblTotal  != null) _lblTotal.Text  = _grandTotal.ToString("C");
+        if (_lblItems  != null) _lblItems.Text  = $"Items: {_itemCount:G}";
+        if (_lblSubTax != null) _lblSubTax.Text = $"Subtotal: {_subtotal:C}   ·   Tax: {_taxTotal:C}";
+    }
+
+    // ── Weight ────────────────────────────────────────────────────────────────
+    private void OnWeightChanged(string newUnit)
+    {
+        void Update() => _lblWeight.Text = $"⚖  {newUnit}";
+        if (InvokeRequired) Invoke(Update);
+        else Update();
+    }
+
+    // ── Banners ───────────────────────────────────────────────────────────────
+    private async Task LoadBannersAsync()
+    {
+        try
+        {
+            var list    = await _bannerService.LoadBanners();
+            _bannerUrls = list.Select(b => b.Image).ToArray();
+            if (_bannerUrls.Length > 0)
+                ShowBanner();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[CustomerScreen] Banner load failed: {ex.Message}");
+        }
+    }
+
+    private void ShowBanner()
+    {
+        if (_bannerUrls.Length == 0) return;
+        try { _pbBanner.LoadAsync(_bannerUrls[_bannerIndex]); }
+        catch { /* silent — bad URL or network issue */ }
+    }
+
+    // ── Timers ────────────────────────────────────────────────────────────────
+    private void StartTimers()
+    {
+        _timerBanner = new System.Windows.Forms.Timer { Interval = 4000 };
+        _timerBanner.Tick += (_, _) =>
+        {
+            if (_bannerUrls.Length > 0)
             {
-                var g      = e.Graphics;
-                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-
-                bool isSel = (e.ItemState & ListViewItemStates.Selected) != 0;
-                Color fg   = isSel ? AppColors.TextWhite : AppColors.TextPrimary;
-
-                using var textBrush = new SolidBrush(fg);
-                using var sf        = new StringFormat
-                {
-                    Alignment     = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center,
-                    Trimming      = StringTrimming.EllipsisCharacter
-                };
-
-                var textRect = new Rectangle(
-                    e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height);
-                g.DrawString(e.SubItem.Text, listViewCart.Font, textBrush, textRect, sf);
-            };
-
-            AdjustListViewColumns();
-            listViewCart.Resize += (s, e) => AdjustListViewColumns();
-        }
-
-        private void AdjustListViewColumns()
-        {
-            int total  = listViewCart.ClientSize.Width;
-            int count  = listViewCart.Columns.Count;
-            if (count == 0) return;
-
-            int colW   = total / count;
-            int lastW  = total - colW * (count - 1);
-            for (int i = 0; i < count; i++)
-                listViewCart.Columns[i].Width = (i == count - 1) ? lastW : colW;
-        }
-
-        // ── Paint: Panel de totales ───────────────────────────────────────
-        private void panel1_Paint(object sender, PaintEventArgs e)
-        {
-            var panel = (Panel)sender;
-            var g     = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-
-            var bounds = new Rectangle(1, 1, panel.Width - 3, panel.Height - 3);
-
-            using var bgBrush = new SolidBrush(AppColors.NavyBase);
-            using var path    = RoundedRect(bounds, 18);
-            g.FillPath(bgBrush, path);
-
-            using var borderPen = new Pen(Color.FromArgb(60, 255, 255, 255), 1f);
-            g.DrawPath(borderPen, path);
-
-            using var accentBrush = new SolidBrush(AppColors.AccentGreen);
-            var accentRect = new Rectangle(bounds.X, bounds.Y + 16, 6, bounds.Height - 32);
-            using var accentPath = RoundedRect(accentRect, 3);
-            g.FillPath(accentBrush, accentPath);
-
-            // Dispose la región anterior antes de asignar la nueva — evita GDI leak
-            var oldRegion = panel.Region;
-            panel.Region  = new Region(path);
-            oldRegion?.Dispose();
-        }
-
-        // ── Paint: Panel del reloj ────────────────────────────────────────
-        private void Panel3_Paint(object sender, PaintEventArgs e)
-        {
-            var panel = (Panel)sender;
-            var g     = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-
-            var bounds = new Rectangle(1, 1, panel.Width - 3, panel.Height - 3);
-
-            using var bgBrush = new SolidBrush(AppColors.NavyBase);
-            using var path    = RoundedRect(bounds, 18);
-            g.FillPath(bgBrush, path);
-
-            using var borderPen = new Pen(Color.FromArgb(60, 255, 255, 255), 1f);
-            g.DrawPath(borderPen, path);
-
-            using var accentBrush = new SolidBrush(AppColors.AccentGreen);
-            var accentRect = new Rectangle(bounds.X + 16, bounds.Y, bounds.Width - 32, 5);
-            using var accentPath = RoundedRect(accentRect, 2);
-            g.FillPath(accentBrush, accentPath);
-
-            // Dispose la región anterior antes de asignar la nueva — evita GDI leak
-            var oldRegion = panel.Region;
-            panel.Region  = new Region(path);
-            oldRegion?.Dispose();
-        }
-
-        // ── Carrito ───────────────────────────────────────────────────────
-        private async void LoadCart()
-        {
-            try
-            {
-                await _shoppingCart.LoadCartAsync();
+                _bannerIndex = (_bannerIndex + 1) % _bannerUrls.Length;
+                ShowBanner();
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"CustomerScreen.LoadCart failed: {ex.Message}");
-            }
-        }
+        };
+        _timerBanner.Start();
 
-        private void ShoppingCart_CartChanged(object? sender, EventArgs e)
-        {
-            if (InvokeRequired) { Invoke(UpdateCartDisplay); return; }
-            UpdateCartDisplay();
-        }
+        _timerClock = new System.Windows.Forms.Timer { Interval = 1000 };
+        _timerClock.Tick += (_, _) =>
+            _lblClock.Text = DateTime.Now.ToString("ddd, MMM dd  ·  HH:mm:ss");
+        _timerClock.Start();
+    }
 
-        public void UpdateCartDisplay()
-        {
-            listViewCart.Items.Clear();
-            totalGlobal = 0;
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        _shoppingCart.CartChanged    -= OnCartChanged;
+        SharedData.WeightUnitChanged -= OnWeightChanged;
 
-            foreach (var item in _shoppingCart.Items)
-            {
-                var li = new ListViewItem(new[]
-                {
-                    item.Number.ToString(),
-                    item.ProductName,
-                    item.Quantity.ToString(),
-                    item.UnitPrice.ToString("N2"),
-                    item.Total.ToString("N2")   // Total incluye tax — consistente con frmHome
-                }) { Tag = item.ProductId };
+        _timerBanner?.Stop();
+        _timerBanner?.Dispose();
+        _timerClock?.Stop();
+        _timerClock?.Dispose();
 
-                listViewCart.Items.Add(li);
-                totalGlobal += item.Total;      // Total con tax — el cliente paga este monto
-            }
-
-            UpdateTotals();
-        }
-
-        private void UpdateTotals()
-        {
-            labelTotal.Text = $"${totalGlobal:N2}";
-        }
-
-        // ── Peso ──────────────────────────────────────────────────────────
-        private void OnWeightUnitChanged(string newWeightUnit)
-        {
-            if (InvokeRequired)
-                Invoke(new Action(() => labelWeight.Text = newWeightUnit));
-            else
-                labelWeight.Text = newWeightUnit;
-        }
-
-        // ── Timers ────────────────────────────────────────────────────────
-        private void ConfigureTimers()
-        {
-            timerCarrousel = new System.Windows.Forms.Timer { Interval = 4000 };
-            timerCarrousel.Tick += TimerCarrousel_Tick;
-            timerCarrousel.Start();
-
-            clockTimer = new System.Windows.Forms.Timer { Interval = 1000 };
-            clockTimer.Tick += Timer_Tick;
-            clockTimer.Start();
-        }
-
-        private void TimerCarrousel_Tick(object sender, EventArgs e)
-        {
-            if (imageUrls != null && imageUrls.Length > 0)
-            {
-                LoadPicture();
-                currentIndex = (currentIndex + 1) % imageUrls.Length;
-            }
-        }
-
-        private void Timer_Tick(object sender, EventArgs e)
-        {
-            labelHour.Text = DateTime.Now.ToString("dddd\ndd/MM/yyyy   HH:mm:ss");
-        }
-
-        // ── Banners ───────────────────────────────────────────────────────
-        private async void LoadData()
-        {
-            try
-            {
-                var list   = await bannerService!.LoadBanners();
-                imageUrls  = list.Select(b => b.Image).ToArray();
-                if (imageUrls.Length > 0)
-                    LoadPicture();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading banners: {ex.Message}");
-            }
-        }
-
-        private void LoadPicture()
-        {
-            if (imageUrls != null && imageUrls.Length > 0)
-            {
-                try { pictureBoxBanner.LoadAsync(imageUrls[currentIndex]); }
-                catch { /* fallo silencioso */ }
-            }
-        }
-
-        // ── Cierre limpio ─────────────────────────────────────────────────
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            // Desuscribir de IShoppingCart (Singleton) — sin esto la instancia
-            // nunca es recolectada por el GC (memory leak acumulativo).
-            _shoppingCart.CartChanged -= ShoppingCart_CartChanged;
-
-            SharedData.WeightUnitChanged -= OnWeightUnitChanged;
-
-            // Stop + Dispose libera el handle Win32 del timer, no solo detiene el tick.
-            timerCarrousel?.Stop();
-            timerCarrousel?.Dispose();
-            timerCarrousel = null;
-
-            clockTimer?.Stop();
-            clockTimer?.Dispose();
-            clockTimer = null;
-
-            base.OnFormClosing(e);
-        }
-
-        // ── Helper: path con esquinas redondeadas ─────────────────────────
-        private static GraphicsPath RoundedRect(Rectangle r, int radius)
-        {
-            int d    = radius * 2;
-            var path = new GraphicsPath();
-            path.AddArc(r.X,          r.Y,          d, d, 180, 90);
-            path.AddArc(r.Right - d,  r.Y,          d, d, 270, 90);
-            path.AddArc(r.Right - d,  r.Bottom - d, d, d,   0, 90);
-            path.AddArc(r.X,          r.Bottom - d, d, d,  90, 90);
-            path.CloseFigure();
-            return path;
-        }
+        base.OnFormClosed(e);
     }
 }

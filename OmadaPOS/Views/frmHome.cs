@@ -44,6 +44,7 @@ namespace OmadaPOS.Views
         private readonly ICashDrawerService _cashDrawerService;
         private readonly IWindowService _windowService;
         private readonly IHomeInteractionService _homeInteractionService;
+        private readonly frmCustomerScreen _customerScreen;
 
         public frmHome(
             ZebraScannerService zebraScannerService,
@@ -56,7 +57,8 @@ namespace OmadaPOS.Views
             IHomeHoldCartService homeHoldCartService,
             ICashDrawerService cashDrawerService,
             IWindowService windowService,
-            IHomeInteractionService homeInteractionService)
+            IHomeInteractionService homeInteractionService,
+            frmCustomerScreen customerScreen)
         {
             InitializeComponent();
 
@@ -71,6 +73,7 @@ namespace OmadaPOS.Views
             _cashDrawerService = cashDrawerService;
             _windowService = windowService;
             _homeInteractionService = homeInteractionService;
+            _customerScreen = customerScreen;
 
             _shoppingCart = shoppingCart;
             _shoppingCart.CartChanged += ShoppingCart_CartChanged;
@@ -401,6 +404,14 @@ namespace OmadaPOS.Views
             {
                 Cursor = Cursors.WaitCursor;
 
+                // Show the customer display on the secondary screen (LED 1024×768).
+                // Done here — after login — so the screen only activates for an active session.
+                if (!_customerScreen.Visible)
+                {
+                    _customerScreen.PositionOnSecondaryScreen();
+                    _customerScreen.Show();
+                }
+
                 AplicarEstiloVisual();
 
                 await LoadMenuCategoriesAsync();
@@ -446,7 +457,10 @@ namespace OmadaPOS.Views
                 return;
             }
 
-            // Authorised close — clean up singleton event subscriptions.
+            // Authorised close — close customer display and clean up singleton subscriptions.
+            if (!_customerScreen.IsDisposed)
+                _customerScreen.Close();
+
             _shoppingCart.CartChanged -= ShoppingCart_CartChanged;
 
             if (_zebraScannerService != null)

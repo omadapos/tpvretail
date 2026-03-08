@@ -58,7 +58,7 @@ internal static class Program
         services.AddTransient<frmHold>();
         services.AddTransient<frmCheckPrice>();
         services.AddTransient<frmProductNew>();
-        services.AddTransient<frmCustomerScreen>();
+        services.AddSingleton<frmCustomerScreen>(); // Singleton — one instance per session, opened by frmHome
         services.AddTransient<frmSetting>();
         services.AddTransient<frmCierreDiario>();
         services.AddTransient<frmPopupQuantity>();
