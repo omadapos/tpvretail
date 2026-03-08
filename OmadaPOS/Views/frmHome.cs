@@ -14,11 +14,10 @@ namespace OmadaPOS.Views
     {
         private readonly ZebraScannerService? _zebraScannerService;
 
-        private POSHeaderControl? _posHeaderControl;
+        private POSHeaderControl?    _posHeaderControl;
         private CartListViewControl? _cartListViewControl;
-        private CartTotalsControl? _cartTotalsControl;
+        private CartTotalsControl?   _cartTotalsControl;
         private PaymentPanelControl? _paymentPanelControl;
-        private UserSessionControl? _userSessionControl;
 
         int orderId = 0;
 
@@ -96,40 +95,33 @@ namespace OmadaPOS.Views
 
         private void InicializarControlesUI()
         {
-            // ── Abecedario (stripped by Designer on each regeneration) ────────
-            if (abecedarioControl1 == null)
+            // ── Abecedario — always created in code; Designer never initializes it ─
+            abecedarioControl1 = new Componentes.AbecedarioControl
             {
-                abecedarioControl1 = new Componentes.AbecedarioControl
-                {
-                    Dock = DockStyle.Fill,
-                    Name = "abecedarioControl1",
-                };
-                abecedarioControl1.LetraClicked += AbecedarioControl1_LetraClicked;
-                tableLayoutPanelCategoria.Controls.Add(abecedarioControl1, 0, 1);
-            }
+                Dock = DockStyle.Fill,
+                Name = "abecedarioControl1",
+            };
+            abecedarioControl1.LetraClicked += AbecedarioControl1_LetraClicked;
+            tableLayoutPanelCategoria.Controls.Add(abecedarioControl1, 0, 1);
 
-            // ── Header / scan bar / user session controls ─────────────────────
-            ScanInputControl.Attach(tableLayoutPanel1, textBoxUPC);
-            _userSessionControl = UserSessionControl.Attach(this, MaintableLayout, tableLayoutPanel1, labelCashier);
-            _userSessionControl.SettingsRequested     += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
-            _userSessionControl.DailyCloseRequested   += (_, _) => labelCashier_ClickInternal();
-            _userSessionControl.LogoutRequested       += async (_, _) => await EjecutarLogout();
+            // ── Header: brand, cashier, scan input, product name, config, exit ──
+            _posHeaderControl = POSHeaderControl.Attach(MaintableLayout, tableLayoutPanel1, textBoxUPC);
+            _posHeaderControl.SettingsRequested   += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
+            _posHeaderControl.DailyCloseRequested += (_, _) => labelCashier_ClickInternal();
+            _posHeaderControl.InvoiceRequested    += (_, _) => _windowService.OpenPrintInvoice(this);
+            _posHeaderControl.LogoutRequested     += async (_, _) => await EjecutarLogout();
+            _posHeaderControl.ExitRequested       += (_, _) => Application.Exit();
 
-            _posHeaderControl = POSHeaderControl.Attach(
-                MaintableLayout, tableLayoutPanel1,
-                buttonInvoice, ButtonSettings, buttonClose);
-
-            // ── Cart totals panel (roundedPanel1 is also stripped by Designer) ─
-            if (roundedPanel1 == null)
-            {
-                roundedPanel1 = new Componentes.RoundedPanel { Dock = DockStyle.Fill };
-                tableLayoutPanelTotal.Dock = DockStyle.Fill;
-                roundedPanel1.Controls.Add(tableLayoutPanelTotal);
-                tableLayoutPanelCart.Controls.Add(roundedPanel1, 0, 1);
-            }
-
+            // ── Cart list ─────────────────────────────────────────────────────
             _cartListViewControl = CartListViewControl.Attach(tableLayoutPanelCart, listViewCart);
-            _cartTotalsControl   = CartTotalsControl.Attach(
+
+            // ── Cart totals card — always created in code; Designer never initializes roundedPanel1 ─
+            roundedPanel1 = new Componentes.RoundedPanel { Dock = DockStyle.Fill };
+            tableLayoutPanelTotal.Dock = DockStyle.Fill;
+            roundedPanel1.Controls.Add(tableLayoutPanelTotal);
+            tableLayoutPanelCart.Controls.Add(roundedPanel1, 0, 1);
+
+            _cartTotalsControl = CartTotalsControl.Attach(
                 tableLayoutPanelCart, roundedPanel1,
                 label1, label2, label3,
                 labelSubTotal, labelTotalTax, labelTotalValue);
@@ -157,22 +149,6 @@ namespace OmadaPOS.Views
         private void ConfigureUI()
         {
             // ═══════════════════════════════════════════════════════════
-            // GRUPO 1 — Barra superior (header)
-            // ═══════════════════════════════════════════════════════════
-            // Botones compactos del header — ícono solo, tooltip para accesibilidad
-            ElegantButtonStyles.Style(buttonInvoice,  ElegantButtonStyles.Keypad,   fontSize: 20f);
-            ElegantButtonStyles.Style(buttonClose,    ElegantButtonStyles.AlertRed, fontSize: 20f);
-            ElegantButtonStyles.Style(ButtonSettings, ElegantButtonStyles.Keypad,   fontSize: 16f);
-
-            // Tooltips accesibles para botones de ícono
-            var toolTip = new ToolTip { ShowAlways = true };
-            components ??= new System.ComponentModel.Container();
-            components.Add(toolTip);
-            toolTip.SetToolTip(buttonInvoice,  "Reimprimir último recibo");
-            toolTip.SetToolTip(ButtonSettings, "Configuración");
-            toolTip.SetToolTip(buttonClose,    "Salir / Cerrar sesión");
-
-            // ═══════════════════════════════════════════════════════════
             // GRUPO 2 — Acciones del carrito
             // ═══════════════════════════════════════════════════════════
             ElegantButtonStyles.Style(buttonCancelOrder,    ElegantButtonStyles.AlertRed,    fontSize: 16f);
@@ -183,28 +159,38 @@ namespace OmadaPOS.Views
             // Payment buttons, Quick Sale, Lookup UPC and Scale are now
             // owned and styled entirely by PaymentPanelControl.
 
-            EstilizarTabControl();
+            ConfigureProductColumn();
         }
 
-        // ── Tab Control profesional con owner-drawing ─────────────────────
-        private void EstilizarTabControl()
+        // ── Columna central — setup único + re-theming ───────────────────
+        private static readonly Color _productsBg = Color.FromArgb(248, 249, 252);
+
+        private void ConfigureProductColumn()
         {
             var tab = tabControlMenuCategories;
 
-            // Fuente legible para las pestañas
             tab.Font     = new Font("Segoe UI", 13F, FontStyle.Bold);
             tab.DrawMode = TabDrawMode.OwnerDrawFixed;
             tab.SizeMode = TabSizeMode.FillToRight;
             tab.ItemSize = new Size(0, 54);
             tab.Padding  = new Point(18, 14);
-
             tab.DrawItem += TabControl_DrawItem;
 
-            var productsBg = Color.FromArgb(248, 249, 252);
-            tableLayoutPanelCategoria.BackColor = productsBg;
-            tableLayoutPanelCategoria.Padding   = new Padding(0);
+            ApplyProductColumnColors();
+        }
 
-            tab.BackColor = productsBg;
+        private void ApplyProductColumnColors()
+        {
+            tableLayoutPanelCategoria.BackColor = _productsBg;
+            tableLayoutPanelCategoria.Padding   = new Padding(0);
+            tabControlMenuCategories.BackColor  = _productsBg;
+
+            foreach (TabPage tab in tabControlMenuCategories.TabPages)
+            {
+                tab.BackColor = _productsBg;
+                if (tab.Controls.Count > 0 && tab.Controls[0] is FlowLayoutPanel flp)
+                    flp.BackColor = _productsBg;
+            }
         }
 
         // Fonts cacheados para el TabControl — se crean una sola vez
@@ -285,9 +271,8 @@ namespace OmadaPOS.Views
             MaintableLayout.Padding = new Padding(0);
             MaintableLayout.Margin = new Padding(0);
 
-            _posHeaderControl?.ApplyTheme();
             _cartTotalsControl?.ApplyTheme();
-            EstilizarColumnaProductos();
+            ApplyProductColumnColors();
             _paymentPanelControl?.ApplyTheme();
             EstilizarSeparadoresColumnas();
 
@@ -311,20 +296,7 @@ namespace OmadaPOS.Views
             this.Close();
         }
 
-        // ── Columna central — Productos ───────────────────────────────────
-        private void EstilizarColumnaProductos()
-        {
-            // Gris muy suave — casi blanco, diferencia la zona sin imponer color fuerte
-            var productsBg = Color.FromArgb(248, 249, 252);
-            tableLayoutPanelCategoria.BackColor = productsBg;
-
-            foreach (TabPage tab in tabControlMenuCategories.TabPages)
-            {
-                tab.BackColor = productsBg;
-                if (tab.Controls.Count > 0 && tab.Controls[0] is FlowLayoutPanel flp)
-                    flp.BackColor = productsBg;
-            }
-        }
+        // EstilizarColumnaProductos merged into ApplyProductColumnColors() above.
 
         // ── Separadores entre columnas via fondo del contenedor padre ────
         private void EstilizarSeparadoresColumnas()
@@ -363,8 +335,7 @@ namespace OmadaPOS.Views
 
                 await _shoppingCart.LoadCartAsync();
 
-                _posHeaderControl?.SetInvoiceDisplay(orderId);
-                _userSessionControl?.InvalidateSession();
+                _posHeaderControl?.UpdateCashier(SessionManager.Name ?? "");
 
                 await ActualizarEstadoBotonHold();
             }
@@ -548,7 +519,7 @@ namespace OmadaPOS.Views
                             }
                             else if (selection.AddedToCart)
                             {
-                                labelProductName.Text = selection.ProductName ?? string.Empty;
+                                _posHeaderControl?.UpdateProductName(selection.ProductName ?? string.Empty);
                                 UpdateCartDisplay();
                             }
                         }
@@ -796,7 +767,6 @@ namespace OmadaPOS.Views
 
             // CRÍTICO: asignar resultado para que el botón muestre el nuevo número de orden
             orderId = await LoadLastInvoiceAsync();
-            _posHeaderControl?.SetInvoiceDisplay(orderId);
 
             _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this);
         }
@@ -872,7 +842,7 @@ namespace OmadaPOS.Views
 
             if (result.AddedToCart)
             {
-                labelProductName.Text = result.ProductName ?? string.Empty;
+                _posHeaderControl?.UpdateProductName(result.ProductName ?? string.Empty);
                 UpdateCartDisplay();
                 textBoxUPC.Text = "";
             }
@@ -886,8 +856,6 @@ namespace OmadaPOS.Views
             }
         }
 
-        private void ButtonSettings_Click(object sender, EventArgs e) =>
-            buttonSetting_Click(sender, e);
 
         public async Task<int> LoadLastInvoiceAsync() =>
             await _homeInitializationService.LoadLastInvoiceAsync();
@@ -925,7 +893,7 @@ namespace OmadaPOS.Views
 
                     if (result.AddedToCart)
                     {
-                        labelProductName.Text = result.ProductName ?? string.Empty;
+                        _posHeaderControl?.UpdateProductName(result.ProductName ?? string.Empty);
                         UpdateCartDisplay();
                         weight = 0.0;
                         _paymentPanelControl.ClearScaleProduct();
@@ -940,7 +908,6 @@ namespace OmadaPOS.Views
         }
 
 
-        private void labelCashier_Click(object sender, EventArgs e)
-            => _userSessionControl?.ToggleMenu();
+        private void labelCashier_Click(object sender, EventArgs e) { }
     }
 }

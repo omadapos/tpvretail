@@ -2,159 +2,231 @@ using OmadaPOS.Presentation.Styling;
 
 namespace OmadaPOS.Presentation.Controls;
 
-public class POSHeaderControl : UserControl
+/// <summary>
+/// Slim, self-contained header bar.
+/// Zones: [Brand/Cashier | Scan input + Product name | ⚙ Config menu | ✕ Exit]
+/// </summary>
+public sealed class POSHeaderControl : UserControl
 {
-    private readonly TableLayoutPanel _headerLayout;
-    private readonly Button           _buttonPrint;
-    private readonly Button           _buttonSettings;
-    private readonly Button           _buttonClose;
-    private Label?                    _lblOrder;
+    // ── Public events ──────────────────────────────────────────────────────────
+    public event EventHandler? SettingsRequested;
+    public event EventHandler? DailyCloseRequested;
+    public event EventHandler? InvoiceRequested;
+    public event EventHandler? LogoutRequested;
+    public event EventHandler? ExitRequested;
 
-    private POSHeaderControl(
-        TableLayoutPanel headerLayout,
-        Button buttonPrint,
-        Button buttonSettings,
-        Button buttonClose)
-    {
-        _headerLayout   = headerLayout;
-        _buttonPrint    = buttonPrint;
-        _buttonSettings = buttonSettings;
-        _buttonClose    = buttonClose;
+    // ── Internal state ─────────────────────────────────────────────────────────
+    private readonly Label   _lblCashier;
+    private readonly Label   _lblProductName;
 
-        Dock      = DockStyle.Fill;
-        Margin    = _headerLayout.Margin;
-        Padding   = new Padding(0);
-        BackColor = Color.Transparent;
-
-        _headerLayout.Dock = DockStyle.Fill;
-        Controls.Add(_headerLayout);
-    }
-
+    // ── Factory ────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// Replaces <paramref name="oldHeaderLayout"/> (and the product-strip row below it)
+    /// with this control inside <paramref name="mainLayout"/>.
+    /// </summary>
     public static POSHeaderControl Attach(
         TableLayoutPanel mainLayout,
-        TableLayoutPanel headerLayout,
-        Button buttonPrint,
-        Button buttonSettings,
-        Button buttonClose)
+        TableLayoutPanel oldHeaderLayout,
+        TextBox          textBoxUPC)
     {
         ArgumentNullException.ThrowIfNull(mainLayout);
-        ArgumentNullException.ThrowIfNull(headerLayout);
+        ArgumentNullException.ThrowIfNull(oldHeaderLayout);
+        ArgumentNullException.ThrowIfNull(textBoxUPC);
 
-        var pos = mainLayout.GetPositionFromControl(headerLayout);
-        mainLayout.Controls.Remove(headerLayout);
+        mainLayout.SuspendLayout();
 
-        var control = new POSHeaderControl(
-            headerLayout,
-            buttonPrint,
-            buttonSettings,
-            buttonClose);
+        // Remove and dispose the placeholder header layout (and its children).
+        // The Designer already places tableLayoutPanelMain at row 1 with the
+        // correct 2-row structure, so no further row surgery is needed.
+        mainLayout.Controls.Remove(oldHeaderLayout);
+        oldHeaderLayout.Dispose();
 
-        mainLayout.Controls.Add(control, pos.Column, pos.Row);
-        return control;
+        // Insert the new self-contained header at row 0.
+        var header = new POSHeaderControl(textBoxUPC);
+        mainLayout.Controls.Add(header, 0, 0);
+
+        mainLayout.ResumeLayout(true);
+        return header;
     }
 
-    public void ApplyTheme()
+    // ── Constructor ────────────────────────────────────────────────────────────
+    private POSHeaderControl(TextBox textBoxUPC)
     {
-        BackColor               = AppColors.BackgroundSecondary;
-        _headerLayout.BackColor = AppColors.BackgroundSecondary;
-        _headerLayout.Margin    = AppSpacing.None;
-        _headerLayout.Padding   = new Padding(0);
+        Dock      = DockStyle.Fill;
+        Margin    = Padding.Empty;
+        Padding   = Padding.Empty;
+        BackColor = AppColors.BackgroundSecondary;
 
-        // Accent line at bottom + subtle shadow
-        _headerLayout.Paint += (_, e) =>
+        // Bottom accent separator
+        Paint += (_, e) =>
         {
-            using var pen    = new Pen(AppColors.AccentGreen, 2f);
-            using var shadow = new Pen(AppColors.ShadowSubtle, 1f);
-            e.Graphics.DrawLine(pen,    0, _headerLayout.Height - 1, _headerLayout.Width, _headerLayout.Height - 1);
-            e.Graphics.DrawLine(shadow, 0, _headerLayout.Height - 2, _headerLayout.Width, _headerLayout.Height - 2);
+            using var pen = new Pen(AppColors.SeparatorOnDark, 1f);
+            e.Graphics.DrawLine(pen, 0, Height - 1, Width, Height - 1);
         };
 
-        // ── Ensure exactly 6 columns (Designer may have reset ColumnCount) ────────
-        // Layout: [220px Brand] [% Scan] [90px Print] [90px Settings] [200px User] [90px Exit]
-        _headerLayout.ColumnCount = 6;
-        while (_headerLayout.ColumnStyles.Count < 6)
-            _headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        // ── Root layout: 4 columns ─────────────────────────────────────────────
+        var layout = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 4,
+            RowCount    = 1,
+            Margin      = Padding.Empty,
+            Padding     = new Padding(0, 0, 4, 0),
+            BackColor   = Color.Transparent,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180F)); // Brand/Cashier
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,  100F)); // Scan + Product
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));  // ⚙ Config
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54F));  // ✕ Exit
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        _headerLayout.ColumnStyles[0] = new ColumnStyle(SizeType.Absolute, 220);
-        _headerLayout.ColumnStyles[1] = new ColumnStyle(SizeType.Percent,  100);
-        _headerLayout.ColumnStyles[2] = new ColumnStyle(SizeType.Absolute, 90);
-        _headerLayout.ColumnStyles[3] = new ColumnStyle(SizeType.Absolute, 90);
-        _headerLayout.ColumnStyles[4] = new ColumnStyle(SizeType.Absolute, 200);
-        _headerLayout.ColumnStyles[5] = new ColumnStyle(SizeType.Absolute, 90);
-
-        // ── Zone 1: Brand + Order number ────────────────────────────────────────
-        var pnlZone1 = new Panel
+        // ── Zone 1: Brand + cashier name ──────────────────────────────────────
+        var zone1 = new Panel
         {
             Dock      = DockStyle.Fill,
             BackColor = Color.Transparent,
-            Padding   = new Padding(16, 0, 8, 0),
+            Padding   = new Padding(14, 6, 8, 6),
         };
 
         var lblBrand = new Label
         {
-            Text      = "● Omada POS",
-            Font      = AppTypography.AppHeader,
+            Text      = "● OMADA POS",
+            Font      = new Font("Segoe UI", 12F, FontStyle.Bold),
             ForeColor = AppColors.TextPrimary,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Top,
-            Height    = 32,
+            Height    = 34,
             TextAlign = ContentAlignment.BottomLeft,
         };
 
-        _lblOrder = new Label
+        _lblCashier = new Label
         {
-            Text      = "# ------",
-            Font      = new Font("Consolas", 10F, FontStyle.Regular),
-            ForeColor = AppColors.AccentGreen,
+            Text      = "—",
+            Font      = new Font("Segoe UI", 9F),
+            ForeColor = AppColors.TextSecondary,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.TopLeft,
         };
 
-        // DockStyle.Top stacking: add Fill first, then Top — lblBrand ends on top
-        pnlZone1.Controls.Add(_lblOrder);
-        pnlZone1.Controls.Add(lblBrand);
-        PlaceInHeader(pnlZone1, 0);
+        // Dock.Top stacking: add Fill first, then Top so lblBrand renders on top
+        zone1.Controls.Add(_lblCashier);
+        zone1.Controls.Add(lblBrand);
+        layout.Controls.Add(zone1, 0, 0);
 
-        // ── Zone 2: Scan input — handled by ScanInputControl (col 1) ─────────────
+        // ── Zone 2: Scan input (top row) + product name (bottom row) ──────────
+        var zone2 = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            RowCount    = 2,
+            ColumnCount = 1,
+            Margin      = Padding.Empty,
+            Padding     = new Padding(0, 8, 8, 8),
+            BackColor   = Color.Transparent,
+        };
+        zone2.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+        zone2.RowStyles.Add(new RowStyle(SizeType.Percent,  100F));
+        zone2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-        // ── Zone 3: Print ────────────────────────────────────────────────────────
-        _buttonPrint.Text   = "🖨";
-        _buttonPrint.Dock   = DockStyle.Fill;
-        _buttonPrint.Margin = new Padding(2, 6, 2, 6);
-        ElegantButtonStyles.Style(_buttonPrint, AppColors.SlateBlue, AppColors.TextWhite, radius: AppRadii.Compact, fontSize: 18f);
-        PlaceInHeader(_buttonPrint, 2);
+        // Styled scan input wrapper
+        var scanWrapper = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.BackgroundPrimary,
+            Margin    = Padding.Empty,
+            Padding   = new Padding(8, 0, 0, 0),
+        };
+        scanWrapper.Paint += (_, e) =>
+        {
+            var r = new Rectangle(0, 0, scanWrapper.Width - 1, scanWrapper.Height - 1);
+            using var pen = new Pen(AppColors.SeparatorOnDark, 1f);
+            e.Graphics.DrawRectangle(pen, r);
+        };
 
-        // ── Zone 4: Settings ─────────────────────────────────────────────────────
-        _buttonSettings.Text   = "⚙";
-        _buttonSettings.Dock   = DockStyle.Fill;
-        _buttonSettings.Margin = new Padding(2, 6, 2, 6);
-        ElegantButtonStyles.Style(_buttonSettings, AppColors.SlateBlue, AppColors.TextWhite, radius: AppRadii.Compact, fontSize: 18f);
-        PlaceInHeader(_buttonSettings, 3);
+        textBoxUPC.Parent?.Controls.Remove(textBoxUPC);
+        textBoxUPC.Dock          = DockStyle.Fill;
+        textBoxUPC.BackColor     = AppColors.BackgroundPrimary; // Transparent not allowed on native TextBox
+        textBoxUPC.BorderStyle   = BorderStyle.None;
+        textBoxUPC.Font          = new Font("Segoe UI", 12F);
+        textBoxUPC.ForeColor     = AppColors.TextPrimary;
+        textBoxUPC.PlaceholderText = "Scan UPC...";
+        textBoxUPC.TextAlign     = HorizontalAlignment.Left;
+        scanWrapper.Controls.Add(textBoxUPC);
+        zone2.Controls.Add(scanWrapper, 0, 0);
 
-        // ── Zone 5: User session — handled by UserSessionControl (col 4) ─────────
+        _lblProductName = new Label
+        {
+            Text      = "Ready to scan…",
+            Font      = new Font("Segoe UI", 10F, FontStyle.Italic),
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding   = new Padding(2, 0, 0, 0),
+        };
+        zone2.Controls.Add(_lblProductName, 0, 1);
+        layout.Controls.Add(zone2, 1, 0);
 
-        // ── Zone 6: Exit ─────────────────────────────────────────────────────────
-        _buttonClose.Text   = "⏻";
-        _buttonClose.Dock   = DockStyle.Fill;
-        _buttonClose.Margin = new Padding(2, 6, 2, 6);
-        ElegantButtonStyles.Style(_buttonClose, AppColors.Danger, AppColors.TextWhite, radius: AppRadii.Compact, fontSize: 20f);
-        PlaceInHeader(_buttonClose, 5);
+        // ── Zone 3: Config (dropdown menu) ────────────────────────────────────
+        var btnConfig = MakeHeaderButton("⚙", AppColors.SlateBlue);
+        btnConfig.Click += BtnConfig_Click;
+        layout.Controls.Add(btnConfig, 2, 0);
+
+        // ── Zone 4: Exit (closes entire application) ───────────────────────────
+        var btnExit = MakeHeaderButton("✕", AppColors.Danger);
+        btnExit.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
+        layout.Controls.Add(btnExit, 3, 0);
+
+        Controls.Add(layout);
     }
 
-    /// <summary>
-    /// Moves <paramref name="ctrl"/> to <paramref name="column"/> in the header layout,
-    /// removing it from its current parent first. This is Designer-regeneration-safe.
-    /// </summary>
-    private void PlaceInHeader(Control ctrl, int column)
+    // ── Config dropdown ────────────────────────────────────────────────────────
+    private void BtnConfig_Click(object sender, EventArgs e)
     {
-        ctrl.Parent?.Controls.Remove(ctrl);
-        _headerLayout.Controls.Add(ctrl, column, 0);
+        var menu = new ContextMenuStrip();
+        StyleContextMenu(menu);
+        menu.Items.Add("⚙  Configuración",    null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("🖨  Reimprimir factura", null, (_, _) => InvoiceRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("📅  Cierre diario",    null, (_, _) => DailyCloseRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("🚪  Cerrar sesión",    null, (_, _) => LogoutRequested?.Invoke(this, EventArgs.Empty));
+
+        var btn = (Control)sender;
+        menu.Show(btn, new Point(0, btn.Height));
     }
 
-    public void SetInvoiceDisplay(int orderId)
+    private static void StyleContextMenu(ContextMenuStrip menu)
     {
-        if (_lblOrder != null)
-            _lblOrder.Text = $"# {orderId:D5}";
+        menu.Font            = new Font("Segoe UI", 11F);
+        menu.BackColor       = AppColors.BackgroundPrimary;
+        menu.ForeColor       = AppColors.TextPrimary;
+        menu.ShowImageMargin = false;
+        menu.RenderMode      = ToolStripRenderMode.System;
     }
+
+    // ── Public API ─────────────────────────────────────────────────────────────
+    public void UpdateCashier(string name)
+        => _lblCashier.Text = string.IsNullOrWhiteSpace(name) ? "—" : $"👤 {name}";
+
+    public void UpdateProductName(string name)
+        => _lblProductName.Text = string.IsNullOrWhiteSpace(name) ? "Ready to scan…" : name;
+
+    /// <summary>No-op kept for call-site compatibility during migration.</summary>
+    public void SetInvoiceDisplay(int orderId) { }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    private static Button MakeHeaderButton(string text, Color backColor) =>
+        new()
+        {
+            Text      = text,
+            Dock      = DockStyle.Fill,
+            Margin    = new Padding(2, 10, 2, 10),
+            Font      = new Font("Segoe UI", 17F),
+            ForeColor = Color.White,
+            BackColor = backColor,
+            FlatStyle = FlatStyle.Flat,
+            Cursor    = Cursors.Hand,
+            FlatAppearance = { BorderSize = 0 },
+        };
 }

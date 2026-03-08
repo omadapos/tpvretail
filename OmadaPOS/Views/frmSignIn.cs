@@ -150,8 +150,8 @@ public partial class frmSignIn
                 SessionManager.AdminId  = response.AdminId;
                 SessionManager.Phone    = response.Phone;
 
-                Hide();
                 _windowService.OpenHome();
+                Hide();
             }
             else
             {
@@ -161,7 +161,8 @@ public partial class frmSignIn
         }
         catch (Exception ex)
         {
-            ShowError($"Connection error: {ex.Message}");
+            Show();
+            ShowError($"Error: {ex.Message}");
             ClearPin();
         }
         finally

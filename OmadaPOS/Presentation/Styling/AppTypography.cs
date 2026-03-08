@@ -46,7 +46,7 @@ public static class AppTypography
     public static readonly Font ListItem       = new("Segoe UI", 13F, FontStyle.Regular);
 
     /// <summary>Subtotal / tax row labels.</summary>
-    public static readonly Font RowLabel       = new("Segoe UI", 12F, FontStyle.Regular);
+    public static readonly Font RowLabel       = new("Segoe UI", 14F, FontStyle.Regular);
 
     /// <summary>General body — form labels, inputs.</summary>
     public static readonly Font Body           = new("Segoe UI", 12F, FontStyle.Regular);
@@ -81,7 +81,7 @@ public static class AppTypography
     public static readonly Font ScanInput      = new("Consolas", 15F, FontStyle.Bold);
 
     /// <summary>Subtotal and tax values inside totals panel.</summary>
-    public static readonly Font AmountMono     = new("Consolas", 13F, FontStyle.Regular);
+    public static readonly Font AmountMono     = new("Consolas", 16F, FontStyle.Regular);
 
     /// <summary>Keypad numeric display (PIN / GiftCard entry).</summary>
     public static readonly Font KeypadDisplay  = new("Consolas", 30F, FontStyle.Bold);

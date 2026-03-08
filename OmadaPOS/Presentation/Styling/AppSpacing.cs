@@ -40,8 +40,8 @@ public static class AppSpacing
     /// <summary>8px all sides — compact panels.</summary>
     public static readonly Padding Compact    = new(SM);
 
-    /// <summary>Horizontal 20px, vertical 8px — totals panel inner.</summary>
-    public static readonly Padding TotalsInner = new(XL, SM, XL, SM);
+    /// <summary>Horizontal 20px, vertical 16px — totals panel inner.</summary>
+    public static readonly Padding TotalsInner = new(XL, LG, XL, LG);
 
     /// <summary>6px horizontal, 4px vertical — panel margins in grid.</summary>
     public static readonly Padding PanelMargin = new(6, XS, 6, XS);

@@ -40,10 +40,6 @@ namespace OmadaPOS.Views
             tabControlMenuCategories = new TabControl();
             tableLayoutPanelPayment = new TableLayoutPanel();
             textBoxUPC = new TextBox();
-            buttonInvoice = new Button();
-            buttonClose = new Button();
-            labelCashier = new Button();
-            ButtonSettings = new Button();
             tableLayoutPanelTotal = new TableLayoutPanel();
             label1 = new Label();
             label2 = new Label();
@@ -51,18 +47,14 @@ namespace OmadaPOS.Views
             labelSubTotal = new Label();
             labelTotalTax = new Label();
             labelTotalValue = new Label();
-            labelProductName = new Label();
             tableLayoutPanel1 = new TableLayoutPanel();
             MaintableLayout = new TableLayoutPanel();
-            pnlProductStrip = new Panel();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanelCart.SuspendLayout();
             tableLayoutPanelButtonCart.SuspendLayout();
             tableLayoutPanelCategoria.SuspendLayout();
             tableLayoutPanelTotal.SuspendLayout();
-            tableLayoutPanel1.SuspendLayout();
             MaintableLayout.SuspendLayout();
-            pnlProductStrip.SuspendLayout();
             SuspendLayout();
             // 
             // tableLayoutPanelMain
@@ -96,9 +88,9 @@ namespace OmadaPOS.Views
             tableLayoutPanelCart.Margin = new Padding(0);
             tableLayoutPanelCart.Name = "tableLayoutPanelCart";
             tableLayoutPanelCart.RowCount = 3;
-            tableLayoutPanelCart.RowStyles.Add(new RowStyle(SizeType.Percent, 73.68421F));
-            tableLayoutPanelCart.RowStyles.Add(new RowStyle(SizeType.Percent, 15.7894735F));
-            tableLayoutPanelCart.RowStyles.Add(new RowStyle(SizeType.Percent, 10.5263157F));
+            tableLayoutPanelCart.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));   // Row 0: list (fills remaining height)
+            tableLayoutPanelCart.RowStyles.Add(new RowStyle(SizeType.Absolute, 170F));  // Row 1: totals card (fixed)
+            tableLayoutPanelCart.RowStyles.Add(new RowStyle(SizeType.Absolute, 80F));   // Row 2: action buttons (fixed)
             tableLayoutPanelCart.Size = new Size(621, 772);
             tableLayoutPanelCart.TabIndex = 0;
             // 
@@ -191,8 +183,8 @@ namespace OmadaPOS.Views
             tableLayoutPanelCategoria.Margin = new Padding(0);
             tableLayoutPanelCategoria.Name = "tableLayoutPanelCategoria";
             tableLayoutPanelCategoria.RowCount = 2;
-            tableLayoutPanelCategoria.RowStyles.Add(new RowStyle(SizeType.Percent, 88.32117F));
-            tableLayoutPanelCategoria.RowStyles.Add(new RowStyle(SizeType.Percent, 11.6788321F));
+            tableLayoutPanelCategoria.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));  // Row 0: products (fills remaining space)
+            tableLayoutPanelCategoria.RowStyles.Add(new RowStyle(SizeType.Absolute, 90F));  // Row 1: abecedario (fixed height, stable on resize)
             tableLayoutPanelCategoria.Size = new Size(828, 772);
             tableLayoutPanelCategoria.TabIndex = 1;
             // 
@@ -200,7 +192,6 @@ namespace OmadaPOS.Views
             // 
             tabControlMenuCategories.Alignment = TabAlignment.Bottom;
             tabControlMenuCategories.Dock = DockStyle.Fill;
-            tabControlMenuCategories.Font = new Font("Microsoft Sans Serif", 35.9999962F, FontStyle.Bold, GraphicsUnit.Point, 0);
             tabControlMenuCategories.Location = new Point(3, 2);
             tabControlMenuCategories.Margin = new Padding(3, 2, 3, 2);
             tabControlMenuCategories.Name = "tabControlMenuCategories";
@@ -234,51 +225,6 @@ namespace OmadaPOS.Views
             textBoxUPC.TextAlign = HorizontalAlignment.Center;
             textBoxUPC.TextChanged += textBoxUPC_TextChanged;
             // 
-            // buttonInvoice
-            // 
-            buttonInvoice.Location = new Point(1353, 2);
-            buttonInvoice.Margin = new Padding(2);
-            buttonInvoice.Name = "buttonInvoice";
-            buttonInvoice.Size = new Size(51, 54);
-            buttonInvoice.TabIndex = 9;
-            buttonInvoice.Text = "Print Invoice";
-            buttonInvoice.UseVisualStyleBackColor = true;
-            buttonInvoice.Click += buttonInvoice_Click;
-            // 
-            // buttonClose
-            // 
-            buttonClose.BackColor = Color.IndianRed;
-            buttonClose.Location = new Point(623, 2);
-            buttonClose.Margin = new Padding(2);
-            buttonClose.Name = "buttonClose";
-            buttonClose.Size = new Size(128, 54);
-            buttonClose.TabIndex = 6;
-            buttonClose.Text = "Close";
-            buttonClose.UseVisualStyleBackColor = false;
-            buttonClose.Click += buttonLogout_Click;
-            // 
-            // labelCashier
-            // 
-            labelCashier.BackColor = Color.Transparent;
-            labelCashier.FlatAppearance.BorderColor = Color.YellowGreen;
-            labelCashier.FlatStyle = FlatStyle.Flat;
-            labelCashier.Font = new Font("Microsoft Sans Serif", 12F);
-            labelCashier.ForeColor = Color.FromArgb(59, 130, 246);
-            labelCashier.Location = new Point(994, 3);
-            labelCashier.Name = "labelCashier";
-            labelCashier.Size = new Size(89, 52);
-            labelCashier.TabIndex = 3;
-            labelCashier.Text = "Username";
-            labelCashier.UseVisualStyleBackColor = false;
-            labelCashier.Click += labelCashier_Click;
-            // 
-            // ButtonSettings
-            // 
-            ButtonSettings.Location = new Point(0, 0);
-            ButtonSettings.Name = "ButtonSettings";
-            ButtonSettings.Size = new Size(75, 23);
-            ButtonSettings.TabIndex = 0;
-            // 
             // tableLayoutPanelTotal
             // 
             tableLayoutPanelTotal.BackColor = Color.Transparent;
@@ -296,9 +242,9 @@ namespace OmadaPOS.Views
             tableLayoutPanelTotal.Margin = new Padding(3, 2, 3, 2);
             tableLayoutPanelTotal.Name = "tableLayoutPanelTotal";
             tableLayoutPanelTotal.RowCount = 3;
-            tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
-            tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
+            tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33F));
+            tableLayoutPanelTotal.RowStyles.Add(new RowStyle(SizeType.Percent, 33.34F));
             tableLayoutPanelTotal.Size = new Size(575, 75);
             tableLayoutPanelTotal.TabIndex = 2;
             // 
@@ -376,38 +322,12 @@ namespace OmadaPOS.Views
             labelTotalValue.Text = "0.00";
             labelTotalValue.TextAlign = ContentAlignment.MiddleRight;
             // 
-            // labelProductName
+            // tableLayoutPanel1 — placeholder; disposed and replaced by POSHeaderControl.Attach()
             // 
-            labelProductName.Font = new Font("Segoe UI", 12F);
-            labelProductName.ForeColor = Color.FromArgb(71, 85, 105);
-            labelProductName.Location = new Point(0, 0);
-            labelProductName.Margin = new Padding(0);
-            labelProductName.Name = "labelProductName";
-            labelProductName.Padding = new Padding(16, 0, 0, 0);
-            labelProductName.Size = new Size(621, 36);
-            labelProductName.TabIndex = 2;
-            labelProductName.Text = "Ready to scan...";
-            labelProductName.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // tableLayoutPanel1
-            // 
-            tableLayoutPanel1.BackColor = Color.FromArgb(15, 23, 42);
-            tableLayoutPanel1.ColumnCount = 5;
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 370F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 360F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 317F));
-            tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 402F));
-            tableLayoutPanel1.Controls.Add(buttonInvoice, 3, 0);
-            tableLayoutPanel1.Controls.Add(buttonClose, 1, 0);
-            tableLayoutPanel1.Controls.Add(labelCashier, 2, 0);
             tableLayoutPanel1.Dock = DockStyle.Fill;
-            tableLayoutPanel1.Location = new Point(3, 2);
-            tableLayoutPanel1.Margin = new Padding(3, 2, 3, 2);
             tableLayoutPanel1.Name = "tableLayoutPanel1";
             tableLayoutPanel1.RowCount = 1;
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel1.Size = new Size(2070, 60);
             tableLayoutPanel1.TabIndex = 1;
             // 
             // MaintableLayout
@@ -416,28 +336,16 @@ namespace OmadaPOS.Views
             MaintableLayout.ColumnCount = 1;
             MaintableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             MaintableLayout.Controls.Add(tableLayoutPanel1, 0, 0);
-            MaintableLayout.Controls.Add(pnlProductStrip, 0, 1);
-            MaintableLayout.Controls.Add(tableLayoutPanelMain, 0, 2);
+            MaintableLayout.Controls.Add(tableLayoutPanelMain, 0, 1);
             MaintableLayout.Dock = DockStyle.Fill;
             MaintableLayout.Location = new Point(0, 0);
             MaintableLayout.Margin = new Padding(0);
             MaintableLayout.Name = "MaintableLayout";
-            MaintableLayout.RowCount = 3;
-            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
-            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            MaintableLayout.RowCount = 2;
+            MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80F));
             MaintableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             MaintableLayout.Size = new Size(2076, 876);
             MaintableLayout.TabIndex = 1;
-            // 
-            // pnlProductStrip
-            // 
-            pnlProductStrip.BackColor = Color.FromArgb(248, 250, 252);
-            pnlProductStrip.Controls.Add(labelProductName);
-            pnlProductStrip.Location = new Point(0, 64);
-            pnlProductStrip.Margin = new Padding(0);
-            pnlProductStrip.Name = "pnlProductStrip";
-            pnlProductStrip.Size = new Size(624, 36);
-            pnlProductStrip.TabIndex = 2;
             // 
             // frmHome
             // 
@@ -463,9 +371,7 @@ namespace OmadaPOS.Views
             tableLayoutPanelCategoria.ResumeLayout(false);
             tableLayoutPanelTotal.ResumeLayout(false);
             tableLayoutPanelTotal.PerformLayout();
-            tableLayoutPanel1.ResumeLayout(false);
             MaintableLayout.ResumeLayout(false);
-            pnlProductStrip.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -473,7 +379,6 @@ namespace OmadaPOS.Views
 
         private TableLayoutPanel tableLayoutPanelMain;
         private TableLayoutPanel tableLayoutPanelCart;
-        private Label labelProductName;
         private TableLayoutPanel tableLayoutPanelTotal;
         private Label label1;
         private Label label2;
@@ -489,16 +394,11 @@ namespace OmadaPOS.Views
         private TableLayoutPanel tableLayoutPanelCategoria;
         private TabControl tabControlMenuCategories;
         private TableLayoutPanel tableLayoutPanelPayment; // placeholder — disposed by PaymentPanelControl.Attach()
-        private TableLayoutPanel tableLayoutPanel1;
-        private Button labelCashier;
+        private TableLayoutPanel tableLayoutPanel1;       // placeholder — disposed by POSHeaderControl.Attach()
         private Componentes.AbecedarioControl abecedarioControl1;
         private TableLayoutPanel MaintableLayout;
         private TextBox textBoxUPC;
-        private Panel pnlProductStrip;
-        private Button buttonClose;
         private ListView listViewCart;
         private Componentes.RoundedPanel roundedPanel1;
-        private Button buttonInvoice;
-        private Button ButtonSettings;
     }
 }
