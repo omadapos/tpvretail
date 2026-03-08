@@ -26,6 +26,7 @@ public sealed class frmPrintInvoice : POSDialog
     private DateTimePicker _dtTo        = null!;
     private Button         _btnSearch   = null!;
     private Label          _lblSummary  = null!;  // selected-invoice summary strip
+    private TextBox        _tbScan      = null!;  // barcode scan input
 
     // ── Column index constants ────────────────────────────────────────────────
     private const int COL_INV_NUM     = 0;
@@ -123,17 +124,56 @@ public sealed class frmPrintInvoice : POSDialog
             await SearchAsync();
         };
 
+        // ── Barcode scan input (right side, before buttons) ─────────────────
+        var lblScan = FilterLabel("║▌▌▌ Scan:");
+        lblScan.ForeColor = AppColors.AccentGreen;
+        lblScan.Font      = new Font("Consolas", 9F, FontStyle.Bold);
+
+        _tbScan = new TextBox
+        {
+            Width       = 160,
+            Font        = new Font("Consolas", 12F, FontStyle.Bold),
+            BackColor   = AppColors.NavyDark,
+            ForeColor   = AppColors.AccentGreen,
+            BorderStyle = BorderStyle.FixedSingle,
+            PlaceholderText = "Scan receipt…",
+            MaxLength   = 20,
+        };
+        _tbScan.KeyDown += async (_, e) =>
+        {
+            if (e.KeyCode == Keys.Return || e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                await FindByBarcodeAsync(_tbScan.Text.Trim());
+                _tbScan.Clear();
+            }
+        };
+
+        var btnScanSearch = new Button { Text = "▶", Width = 36, Dock = DockStyle.Right };
+        ElegantButtonStyles.Style(btnScanSearch, AppColors.AccentGreen, AppColors.NavyDark, fontSize: 14f);
+        btnScanSearch.Click += async (_, _) =>
+        {
+            await FindByBarcodeAsync(_tbScan.Text.Trim());
+            _tbScan.Clear();
+        };
+
         // Arrange left-to-right manually since Panel + Dock.Left is simplest
         int x = 0;
         void Place(Control c, int gap = 6) { c.Left = x; c.Top = (bar.Height - c.Height) / 2; bar.Controls.Add(c); x += c.Width + gap; }
 
-        Place(lblFrom,   4);
-        Place(_dtFrom,   16);
-        Place(lblTo,     4);
-        Place(_dtTo,     0);
+        Place(lblFrom,     4);
+        Place(_dtFrom,    16);
+        Place(lblTo,       4);
+        Place(_dtTo,      20);
+        Place(lblScan,     4);
+        Place(_tbScan,     2);
+        Place(btnScanSearch, 0);
 
         bar.Controls.Add(_btnSearch);
         bar.Controls.Add(btnToday);
+
+        // Auto-focus scan box when form opens
+        Shown += (_, _) => _tbScan.Focus();
 
         return bar;
     }
@@ -433,6 +473,80 @@ public sealed class frmPrintInvoice : POSDialog
         await LoadInvoicesAsync(from, to);
     }
 
+    // ── Barcode scan lookup ───────────────────────────────────────────────────
+    /// <summary>
+    /// Called when the cashier scans a receipt's CODE128 barcode (e.g. "00001234").
+    /// 1. Tries to find the invoice in the currently loaded list.
+    /// 2. If not found, expands the search to the last 90 days and tries again.
+    /// 3. Selects, highlights, and loads the invoice detail panel.
+    /// </summary>
+    private async Task FindByBarcodeAsync(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return;
+
+        // Strip leading zeros and parse consecutivo
+        if (!int.TryParse(raw.TrimStart('0'), out int consecutivo) || consecutivo <= 0)
+        {
+            _lblSummary.Text = $"⚠  Invalid barcode: \"{raw}\"";
+            return;
+        }
+
+        // ── Step 1: search in the already-loaded list ─────────────────────────
+        if (SelectInvoiceByConsecutivo(consecutivo)) return;
+
+        // ── Step 2: not visible — load a wider date range and retry ───────────
+        _lblSummary.Text = $"Looking up Invoice #{consecutivo}…";
+        Cursor = Cursors.WaitCursor;
+        try
+        {
+            string from = DateTime.Today.AddDays(-90).ToString("yyyyMMdd");
+            string to   = DateTime.Today.ToString("yyyyMMdd");
+            await LoadInvoicesAsync(from, to);
+
+            if (!SelectInvoiceByConsecutivo(consecutivo))
+                _lblSummary.Text = $"⚠  Invoice #{consecutivo} not found in the last 90 days.";
+        }
+        finally
+        {
+            Cursor = Cursors.Default;
+        }
+    }
+
+    /// <summary>
+    /// Finds the row with the given consecutivo, selects it, scrolls to it,
+    /// and triggers the detail load. Returns true if found.
+    /// </summary>
+    private bool SelectInvoiceByConsecutivo(int consecutivo)
+    {
+        foreach (ListViewItem lvi in _lvInvoices.Items)
+        {
+            if (lvi.Tag is not OrderModel order) continue;
+            if (order.Consecutivo != consecutivo) continue;
+
+            // Flash highlight and select
+            _lvInvoices.SelectedItems.Clear();
+            lvi.Selected = true;
+            lvi.Focused  = true;
+            _lvInvoices.EnsureVisible(lvi.Index);
+            _lvInvoices.Focus();
+
+            // Highlight row briefly with accent color using a quick timer
+            var origColor = lvi.BackColor;
+            lvi.BackColor = AppColors.AccentGreen;
+            var t = new System.Windows.Forms.Timer { Interval = 450 };
+            t.Tick += (_, _) =>
+            {
+                lvi.BackColor = origColor;
+                t.Stop(); t.Dispose();
+            };
+            t.Start();
+
+            _lblSummary.Text = $"✔  Invoice #{consecutivo} found — {order.Created_At:MM/dd/yyyy HH:mm}";
+            return true;
+        }
+        return false;
+    }
+
     private async Task LoadDetailsAsync()
     {
         if (_lvInvoices.SelectedItems.Count == 0) return;
@@ -498,9 +612,14 @@ public sealed class frmPrintInvoice : POSDialog
             var details = await _orderService.GetOrderDetailsByOrderId(order.Id);
             if (branch != null)
             {
-                var ticket = new Ticket(order.Id, order.Consecutivo, order, details,
-                    SessionManager.Name, null, branch.Address, branch.Name);
-                ticket.Print();
+                new ReceiptPrinter(
+                    order,
+                    details,
+                    cashier:      SessionManager.Name ?? "",
+                    storeName:    branch.Name    ?? "OMADA POS",
+                    storeAddress: branch.Address ?? "",
+                    storePhone:   branch.Contact,
+                    footerMsg:    branch.FooterMsg).Print();
             }
         }
         catch (Exception ex)

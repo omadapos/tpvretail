@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using OmadaPOS.Libreria.Models;
 using OmadaPOS.Views;
 
 namespace OmadaPOS.Services.Navigation;
@@ -52,8 +53,14 @@ public class WindowService : IWindowService
     public void OpenKeyLookup(IWin32Window? owner = null)
         => ShowModeless(CreateForm<frmKeyLookup>());
 
-    public void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null)
-        => ShowModeless(CreateForm<frmPopupCashPayment>(orderId, consecutivo, devuelta));
+    public void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null, PaymentResponseModel? paymentResponse = null)
+    {
+        // ActivatorUtilities cannot match a typed null — only pass paymentResponse when it has a value
+        var form = paymentResponse is not null
+            ? CreateForm<frmPopupCashPayment>(orderId, consecutivo, devuelta, paymentResponse)
+            : CreateForm<frmPopupCashPayment>(orderId, consecutivo, devuelta);
+        ShowModeless(form);
+    }
 
     public void OpenGiftCard(decimal totalGlobal, int tipo, IWin32Window? owner = null)
         => ShowModeless(CreateForm<frmGiftCard>(totalGlobal, tipo));

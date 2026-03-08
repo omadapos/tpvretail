@@ -1,3 +1,4 @@
+using OmadaPOS.Libreria.Models;
 using OmadaPOS.Views;
 
 namespace OmadaPOS.Services.Navigation;
@@ -14,7 +15,7 @@ public interface IWindowService
     void OpenDailyClose(IWin32Window? owner = null);
     void OpenPopupQuantity(int number, int productId, IWin32Window? owner = null);
     void OpenKeyLookup(IWin32Window? owner = null);
-    void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null);
+    void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null, PaymentResponseModel? paymentResponse = null);
     void OpenGiftCard(decimal totalGlobal, int tipo, IWin32Window? owner = null);
     void OpenPaymentStatus(string message, IWin32Window? owner = null);
     void OpenPrintInvoice(IWin32Window? owner = null);

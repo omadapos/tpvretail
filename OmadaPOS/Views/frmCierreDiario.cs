@@ -64,7 +64,7 @@ public sealed class frmCierreDiario : POSDialog
 
         var branch = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
         if (branch != null)
-            new TicketCierre(cierre, branch.Address ?? "", branch.Name ?? "").print();
+            new TicketCierre(cierre, branch.Name ?? "OMADA POS", branch.Address).Print();
 
         return true;
     }

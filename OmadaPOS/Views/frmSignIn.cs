@@ -12,11 +12,20 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     //  State
     // ─────────────────────────────────────────────────────────────────
-    private readonly IUserService  _userService;
+    private readonly IUserService   _userService;
     private readonly IWindowService _windowService;
     private string _pin = string.Empty;
     private System.Windows.Forms.Timer? _clock;
     private bool _loginInProgress;
+
+    // Overlay
+    private Panel?  _pnlOverlay;
+    private Label?  _lblOverlayStatus;
+    private Label?  _lblSpinner;
+    private System.Windows.Forms.Timer? _spinnerTimer;
+    private int     _spinnerFrame;
+    private static readonly char[] SpinnerFrames =
+        ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'];
 
     // ─────────────────────────────────────────────────────────────────
     //  Constructor
@@ -26,6 +35,7 @@ public partial class frmSignIn
         InitializeComponent();
         _userService   = userService;
         _windowService = windowService;
+        BuildOverlay();
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -51,6 +61,8 @@ public partial class frmSignIn
     {
         _clock?.Stop();
         _clock?.Dispose();
+        _spinnerTimer?.Stop();
+        _spinnerTimer?.Dispose();
         base.OnFormClosed(e);
     }
 
@@ -61,6 +73,95 @@ public partial class frmSignIn
     {
         if (lblClock.IsHandleCreated)
             lblClock.Text = DateTime.Now.ToString("hh:mm tt");
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    //  Loading overlay
+    // ─────────────────────────────────────────────────────────────────
+    private void BuildOverlay()
+    {
+        const int W = 340, H = 200;
+
+        var lblBrand = new Label
+        {
+            Text      = "● OMADA POS",
+            Font      = new Font("Segoe UI", 18F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(248, 250, 252),
+            BackColor = Color.Transparent,
+            AutoSize  = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Bounds    = new Rectangle(0, 0, W, 72),
+        };
+
+        _lblSpinner = new Label
+        {
+            Text      = SpinnerFrames[0].ToString(),
+            Font      = new Font("Consolas", 32F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(52, 211, 153),
+            BackColor = Color.Transparent,
+            AutoSize  = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Bounds    = new Rectangle(0, 72, W, 64),
+        };
+
+        _lblOverlayStatus = new Label
+        {
+            Text      = string.Empty,
+            Font      = new Font("Segoe UI", 11F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(148, 163, 184),
+            BackColor = Color.Transparent,
+            AutoSize  = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Bounds    = new Rectangle(0, 136, W, 40),
+        };
+
+        var pnlCenter = new Panel
+        {
+            BackColor = Color.Transparent,
+            Size      = new Size(W, H),
+        };
+        pnlCenter.Controls.AddRange([lblBrand, _lblSpinner, _lblOverlayStatus]);
+
+        _pnlOverlay = new Panel
+        {
+            BackColor = Color.FromArgb(15, 23, 42),
+            Visible   = false,
+        };
+        _pnlOverlay.Controls.Add(pnlCenter);
+        _pnlOverlay.Resize += (_, _) => pnlCenter.Location = new Point(
+            (_pnlOverlay.Width  - W) / 2,
+            (_pnlOverlay.Height - H) / 2);
+
+        Controls.Add(_pnlOverlay);
+
+        _spinnerTimer = new System.Windows.Forms.Timer { Interval = 80 };
+        _spinnerTimer.Tick += (_, _) =>
+        {
+            _spinnerFrame = (_spinnerFrame + 1) % SpinnerFrames.Length;
+            if (_lblSpinner?.IsHandleCreated == true)
+                _lblSpinner.Text = SpinnerFrames[_spinnerFrame].ToString();
+        };
+    }
+
+    private void ShowOverlay(string message)
+    {
+        if (_pnlOverlay is null) return;
+        _pnlOverlay.Bounds = new Rectangle(0, 0, ClientSize.Width, ClientSize.Height);
+        if (_lblOverlayStatus is not null) _lblOverlayStatus.Text = message;
+        _pnlOverlay.Visible = true;
+        _pnlOverlay.BringToFront();
+        _spinnerTimer?.Start();
+    }
+
+    private void SetOverlayMessage(string message)
+    {
+        if (_lblOverlayStatus is not null) _lblOverlayStatus.Text = message;
+    }
+
+    private void HideOverlay()
+    {
+        _spinnerTimer?.Stop();
+        if (_pnlOverlay is not null) _pnlOverlay.Visible = false;
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -126,9 +227,9 @@ public partial class frmSignIn
             return;
         }
 
-        _loginInProgress = true;
+        _loginInProgress    = true;
         buttonLogin.Enabled = false;
-        Cursor = Cursors.WaitCursor;
+        ShowOverlay("Verificando credenciales…");
 
         try
         {
@@ -150,17 +251,21 @@ public partial class frmSignIn
                 SessionManager.AdminId  = response.AdminId;
                 SessionManager.Phone    = response.Phone;
 
+                SetOverlayMessage("Iniciando sistema…");
                 _windowService.OpenHome();
+                HideOverlay();
                 Hide();
             }
             else
             {
+                HideOverlay();
                 ShowError("Invalid PIN. Please try again.");
                 ClearPin();
             }
         }
         catch (Exception ex)
         {
+            HideOverlay();
             Show();
             ShowError($"Error: {ex.Message}");
             ClearPin();
@@ -169,7 +274,6 @@ public partial class frmSignIn
         {
             _loginInProgress    = false;
             buttonLogin.Enabled = true;
-            Cursor = Cursors.Default;
         }
     }
 

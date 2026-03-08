@@ -5,13 +5,17 @@ using OmadaPOS.Libreria.Services;
 namespace OmadaPOS.Views;
 
 /// <summary>
-/// Shown (modeless) immediately after a cash payment is processed.
-/// Displays the change due and provides a one-click receipt print.
+/// Shown (modeless) immediately after any payment is processed.
+/// - Cash:         displays change due in green.
+/// - Credit/Debit: displays approval + masked card number + reference.
+/// - EBT:          displays approval + remaining EBT balance.
+/// Always offers one-click receipt print.
 /// </summary>
 public sealed class frmPopupCashPayment : POSDialog
 {
-    private readonly IOrderService   _orderService;
-    private readonly IBranchService  _branchService;
+    private readonly IOrderService        _orderService;
+    private readonly IBranchService       _branchService;
+    private readonly PaymentResponseModel? _paymentResponse;
 
     private readonly int     _orderId;
     private readonly int     _consecutivo;
@@ -19,22 +23,40 @@ public sealed class frmPopupCashPayment : POSDialog
 
     private Button _btnPrint = null!;
 
+    // ── Payment type helpers ──────────────────────────────────────────────────
+    private string  Method     => (_paymentResponse?.PaymentCardType is not null ? "CARD" :
+                                   _devuelta > 0                                  ? "CASH" : "OTHER");
+    private bool    IsCash     => _devuelta > 0 && _paymentResponse == null;
+    private bool    IsEbt      => _paymentResponse?.Balance > 0 &&
+                                  string.IsNullOrWhiteSpace(_paymentResponse?.PaymentCardType);
+    private bool    IsCard     => !IsCash && !IsEbt && _paymentResponse != null;
+
     public frmPopupCashPayment(
-        IOrderService  orderService,
-        IBranchService branchService,
-        int orderId, int consecutivo, decimal devuelta)
+        IOrderService         orderService,
+        IBranchService        branchService,
+        int orderId, int consecutivo, decimal devuelta,
+        PaymentResponseModel? paymentResponse = null)
     {
-        _orderService  = orderService;
-        _branchService = branchService;
-        _orderId       = orderId;
-        _consecutivo   = consecutivo;
-        _devuelta      = devuelta;
+        _orderService    = orderService;
+        _branchService   = branchService;
+        _orderId         = orderId;
+        _consecutivo     = consecutivo;
+        _devuelta        = devuelta;
+        _paymentResponse = paymentResponse;
     }
 
-    protected override Color      AccentColor => AppColors.AccentGreen;
-    protected override string     Icon        => "💵";
-    protected override string     Title       => "Cash Payment";
-    protected override string     Subtitle    => "Transaction complete — give change to customer";
+    protected override Color  AccentColor => IsEbt  ? AppColors.AccentGreen
+                                           : IsCard ? AppColors.SlateBlue
+                                           :          AppColors.AccentGreen;
+    protected override string Icon        => IsEbt  ? "🏦"
+                                           : IsCard ? "💳"
+                                           :          "💵";
+    protected override string Title       => IsEbt  ? "EBT Payment"
+                                           : IsCard ? "Card Payment"
+                                           :          "Cash Payment";
+    protected override string Subtitle    => IsEbt  ? "Approved — EBT balance printed on receipt"
+                                           : IsCard ? "Approved — transaction details printed on receipt"
+                                           :          "Transaction complete — give change to customer";
     protected override DialogSize Size        => DialogSize.Medium;
     protected override string?    ConfirmText => "🖨  PRINT RECEIPT";
     protected override string     CancelText  => "✕  CLOSE";
@@ -50,49 +72,75 @@ public sealed class frmPopupCashPayment : POSDialog
             Padding     = new Padding(24, 20, 24, 12),
         };
         outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        outer.RowStyles.Add(new RowStyle(SizeType.Percent,  60)); // change card
-        outer.RowStyles.Add(new RowStyle(SizeType.Percent,  40)); // invoice info
+        outer.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
+        outer.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
 
-        // ── Change Amount Card — TableLayoutPanel so rows are exact ───────────
-        var changeCard = new TableLayoutPanel
+        outer.Controls.Add(BuildMainCard(), 0, 0);
+        outer.Controls.Add(BuildInvoiceRow(), 0, 1);
+        return outer;
+    }
+
+    // ── Main card — adapts to payment type ───────────────────────────────────
+    private Control BuildMainCard()
+    {
+        if (IsCash)   return BuildCashCard();
+        if (IsEbt)    return BuildEbtCard();
+        return BuildCardApprovalCard();
+    }
+
+    private Control BuildCashCard()
+    {
+        var card = MakeInfoCard(Color.FromArgb(236, 253, 245));
+
+        card.Controls.Add(MakeCaption("CHANGE DUE"),  0, 0);
+        card.Controls.Add(MakeBigAmount(_devuelta.ToString("C"), AppColors.AccentGreen), 0, 1);
+        return card;
+    }
+
+    private Control BuildEbtCard()
+    {
+        var card = MakeInfoCard(Color.FromArgb(236, 253, 245));
+        card.Controls.Add(MakeCaption("EBT APPROVED  ✓"), 0, 0);
+
+        string balanceText = _paymentResponse?.Balance > 0
+            ? $"Balance: {_paymentResponse.Balance:C}"
+            : "Approved";
+        card.Controls.Add(MakeBigAmount(balanceText, AppColors.AccentGreen), 0, 1);
+        return card;
+    }
+
+    private Control BuildCardApprovalCard()
+    {
+        var card = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount    = 2,
-            BackColor   = Color.FromArgb(236, 253, 245),
+            RowCount    = 4,
+            BackColor   = Color.FromArgb(239, 246, 255),
             Margin      = new Padding(0, 0, 0, 12),
         };
-        changeCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        changeCard.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));  // "CHANGE DUE" label
-        changeCard.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // amount
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // caption
+        card.RowStyles.Add(new RowStyle(SizeType.Percent,  40));   // "APPROVED ✓"
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));   // card / holder
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));   // reference
 
-        var lblLegend = new Label
-        {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
-            Text      = "CHANGE DUE",
-            Font      = AppTypography.RowLabel,
-            ForeColor = AppColors.TextSecondary,
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.BottomCenter,
-        };
+        string cardType = _paymentResponse?.PaymentCardType?.ToUpperInvariant() ?? "CARD";
+        string cardNum  = MaskCard(_paymentResponse?.PaymentNumber);
+        string holder   = _paymentResponse?.PaymentCardHolder?.ToUpperInvariant() ?? "";
+        string refNum   = _paymentResponse?.PaymentReferenceNumber ?? "";
 
-        var lblAmount = new Label
-        {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
-            Text      = _devuelta.ToString("C"),
-            Font      = new Font("Montserrat", 44F, FontStyle.Bold),
-            ForeColor = AppColors.AccentGreen,
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.MiddleCenter,
-        };
+        card.Controls.Add(MakeCaption($"{cardType} APPROVED  ✓"), 0, 0);
+        card.Controls.Add(MakeBigAmount("✓ APPROVED", AppColors.SlateBlue), 0, 1);
+        card.Controls.Add(MakeInfoLabel($"{cardNum}   {holder}"), 0, 2);
+        card.Controls.Add(MakeInfoLabel($"Ref: {refNum}"), 0, 3);
+        return card;
+    }
 
-        changeCard.Controls.Add(lblLegend, 0, 0);
-        changeCard.Controls.Add(lblAmount, 0, 1);
-
-        // ── Invoice info row ──────────────────────────────────────────────────
-        var invoiceRow = new TableLayoutPanel
+    // ── Invoice info row ──────────────────────────────────────────────────────
+    private Control BuildInvoiceRow()
+    {
+        var row = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 2,
@@ -100,38 +148,70 @@ public sealed class frmPopupCashPayment : POSDialog
             BackColor   = Color.Transparent,
             Margin      = new Padding(0),
         };
-        invoiceRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
-        invoiceRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        invoiceRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var lblIcon = new Label
+        row.Controls.Add(new Label
         {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
-            Text      = "🧾",
-            Font      = new Font("Segoe UI Emoji", 22F),
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.MiddleCenter,
-        };
+            AutoSize  = false, Dock = DockStyle.Fill,
+            Text      = "🧾", Font = new Font("Segoe UI Emoji", 22F),
+            BackColor = Color.Transparent, TextAlign = ContentAlignment.MiddleCenter,
+        }, 0, 0);
 
-        var lblInvoice = new Label
+        row.Controls.Add(new Label
         {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
+            AutoSize  = false, Dock = DockStyle.Fill,
             Text      = $"Invoice  #  {_consecutivo}",
             Font      = AppTypography.SectionTitle,
             ForeColor = AppColors.TextPrimary,
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.MiddleLeft,
+            BackColor = Color.Transparent, TextAlign = ContentAlignment.MiddleLeft,
+        }, 1, 0);
+
+        return row;
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────────────
+    private static TableLayoutPanel MakeInfoCard(Color bg)
+    {
+        var c = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            BackColor = bg, Margin = new Padding(0, 0, 0, 12),
         };
+        c.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        c.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        c.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        return c;
+    }
 
-        invoiceRow.Controls.Add(lblIcon,    0, 0);
-        invoiceRow.Controls.Add(lblInvoice, 1, 0);
+    private static Label MakeCaption(string text) => new()
+    {
+        AutoSize = false, Dock = DockStyle.Fill, Text = text,
+        Font = AppTypography.RowLabel, ForeColor = AppColors.TextSecondary,
+        BackColor = Color.Transparent, TextAlign = ContentAlignment.BottomCenter,
+    };
 
-        outer.Controls.Add(changeCard, 0, 0);
-        outer.Controls.Add(invoiceRow, 0, 1);
+    private static Label MakeBigAmount(string text, Color color) => new()
+    {
+        AutoSize = false, Dock = DockStyle.Fill, Text = text,
+        Font = new Font("Montserrat", 36F, FontStyle.Bold),
+        ForeColor = color, BackColor = Color.Transparent,
+        TextAlign = ContentAlignment.MiddleCenter,
+    };
 
-        return outer;
+    private static Label MakeInfoLabel(string text) => new()
+    {
+        AutoSize = false, Dock = DockStyle.Fill, Text = text,
+        Font = AppTypography.Body, ForeColor = AppColors.TextSecondary,
+        BackColor = Color.Transparent, TextAlign = ContentAlignment.MiddleCenter,
+    };
+
+    private static string MaskCard(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "•••• •••• •••• ••••";
+        string digits = System.Text.RegularExpressions.Regex.Replace(raw, @"\D", "");
+        return digits.Length >= 4 ? $"•••• •••• •••• {digits[^4..]}" : raw;
     }
 
     protected override async Task<bool> OnConfirmAsync()
@@ -151,9 +231,15 @@ public sealed class frmPopupCashPayment : POSDialog
             var branch = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
             if (branch != null)
             {
-                var ticket = new Ticket(_orderId, order.Consecutivo, order, orderDetails,
-                    SessionManager.Name, null, branch.Address, branch.FooterMsg);
-                ticket.Print();
+                new ReceiptPrinter(
+                    order,
+                    orderDetails,
+                    cashier:         SessionManager.Name ?? "",
+                    storeName:       branch.Name    ?? "OMADA POS",
+                    storeAddress:    branch.Address ?? "",
+                    storePhone:      branch.Contact,
+                    footerMsg:       branch.FooterMsg,
+                    paymentResponse: _paymentResponse).Print();
             }
 
             return true;

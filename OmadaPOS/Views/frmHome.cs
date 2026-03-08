@@ -110,7 +110,7 @@ namespace OmadaPOS.Views
             _posHeaderControl.DailyCloseRequested += (_, _) => labelCashier_ClickInternal();
             _posHeaderControl.InvoiceRequested    += (_, _) => _windowService.OpenPrintInvoice(this);
             _posHeaderControl.LogoutRequested     += async (_, _) => await EjecutarLogout();
-            _posHeaderControl.ExitRequested       += (_, _) => Application.Exit();
+            _posHeaderControl.ExitRequested       += (_, _) => Close(); // triggers frmHome_FormClosing → PIN check → Application.Exit()
 
             // ── Cart list ─────────────────────────────────────────────────────
             _cartListViewControl = CartListViewControl.Attach(tableLayoutPanelCart, listViewCart);
@@ -754,7 +754,8 @@ namespace OmadaPOS.Views
             }
         }
 
-        async Task PaymentSummary(int oId, int consecutivo)
+        async Task PaymentSummary(int oId, int consecutivo,
+            OmadaPOS.Libreria.Models.PaymentResponseModel? paymentResponse = null)
         {
             // Capturar el cambio ANTES de ClearTotales() que lo resetea a 0.
             var devuelta = changeValue > 0 ? changeValue : 0m;
@@ -768,7 +769,7 @@ namespace OmadaPOS.Views
             // CRÍTICO: asignar resultado para que el botón muestre el nuevo número de orden
             orderId = await LoadLastInvoiceAsync();
 
-            _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this);
+            _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this, paymentResponse);
         }
 
         private void buttonGiftCard_Click(object sender, EventArgs e)
@@ -795,18 +796,18 @@ namespace OmadaPOS.Views
             {
                 var result = await _paymentCoordinatorService.ProcessTerminalPaymentAsync(paymentType, totalGlobal, false);
 
-                if (result.PaymentResponse != null)
+                if (result.PaymentResponse != null && !result.PaymentResponse.Success)
                 {
-                    string message = result.PaymentResponse.MsgInfo;
-                    if (result.IsBalanceInquiry || result.PaymentResponse.Success)
-                        message += " Balance:" + result.PaymentResponse.Balance.ToString();
-
-                    _windowService.OpenPaymentStatus(message, this);
+                    // Only show status popup on failure — success is shown via the payment popup
+                    _windowService.OpenPaymentStatus(result.PaymentResponse.MsgInfo ?? "Payment declined", this);
                 }
 
                 if (result.OrderResponse != null)
                 {
-                    await PaymentSummary(result.OrderResponse.Order_Id, result.OrderResponse.Consecutivo);
+                    await PaymentSummary(
+                        result.OrderResponse.Order_Id,
+                        result.OrderResponse.Consecutivo,
+                        result.PaymentResponse);
                 }
             }
             catch (Exception ex)
