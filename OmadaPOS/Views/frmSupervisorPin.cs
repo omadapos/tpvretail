@@ -126,8 +126,8 @@ public sealed class frmSupervisorPin : Form
         Controls.Add(lblTitle);
         Controls.Add(lblIcon);
 
-        // Dismiss on click outside the form (user is not in supervisor position)
-        Deactivate += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
+        // Keep dialog on top if something else briefly steals focus
+        Deactivate += (_, _) => { if (!IsDisposed) Activate(); };
     }
 
     // ── PIN pad grid (3 cols × 4 rows) ────────────────────────────────────────

@@ -105,73 +105,60 @@ namespace OmadaPOS.Views
             listViewCart.UseCompatibleStateImageBehavior = false;
             // 
             // tableLayoutPanelButtonCart
-            // 
-            tableLayoutPanelButtonCart.BackColor = Color.WhiteSmoke;
+            //
+            tableLayoutPanelButtonCart.BackColor = Color.FromArgb(15, 23, 42); // NavyDark — matches overall theme
             tableLayoutPanelButtonCart.ColumnCount = 4;
             tableLayoutPanelButtonCart.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             tableLayoutPanelButtonCart.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             tableLayoutPanelButtonCart.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             tableLayoutPanelButtonCart.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tableLayoutPanelButtonCart.Controls.Add(buttonHold, 3, 0);
-            tableLayoutPanelButtonCart.Controls.Add(buttonDeleteItem, 2, 0);
+            tableLayoutPanelButtonCart.Controls.Add(buttonCancelOrder,    0, 0);
             tableLayoutPanelButtonCart.Controls.Add(buttonChangeQuantity, 1, 0);
-            tableLayoutPanelButtonCart.Controls.Add(buttonCancelOrder, 0, 0);
-            tableLayoutPanelButtonCart.Dock = DockStyle.Fill;
-            tableLayoutPanelButtonCart.Location = new Point(3, 691);
-            tableLayoutPanelButtonCart.Margin = new Padding(3, 2, 3, 2);
-            tableLayoutPanelButtonCart.Name = "tableLayoutPanelButtonCart";
+            tableLayoutPanelButtonCart.Controls.Add(buttonDeleteItem,     2, 0);
+            tableLayoutPanelButtonCart.Controls.Add(buttonHold,           3, 0);
+            tableLayoutPanelButtonCart.Dock     = DockStyle.Fill;
+            tableLayoutPanelButtonCart.Margin   = new Padding(0);
+            tableLayoutPanelButtonCart.Name     = "tableLayoutPanelButtonCart";
             tableLayoutPanelButtonCart.RowCount = 1;
             tableLayoutPanelButtonCart.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanelButtonCart.Size = new Size(615, 79);
             tableLayoutPanelButtonCart.TabIndex = 3;
-            // 
-            // buttonHold
-            // 
-            buttonHold.Dock = DockStyle.Fill;
-            buttonHold.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonHold.Location = new Point(462, 3);
-            buttonHold.Name = "buttonHold";
-            buttonHold.Size = new Size(150, 73);
-            buttonHold.TabIndex = 3;
-            buttonHold.Text = "HOLD";
-            buttonHold.UseVisualStyleBackColor = true;
-            buttonHold.Click += buttonHold_Click;
-            // 
-            // buttonDeleteItem
-            // 
-            buttonDeleteItem.Dock = DockStyle.Fill;
-            buttonDeleteItem.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonDeleteItem.Location = new Point(309, 3);
-            buttonDeleteItem.Name = "buttonDeleteItem";
-            buttonDeleteItem.Size = new Size(147, 73);
-            buttonDeleteItem.TabIndex = 2;
-            buttonDeleteItem.Text = "Delete";
-            buttonDeleteItem.UseVisualStyleBackColor = true;
-            buttonDeleteItem.Click += buttonDeleteItem_Click;
-            // 
-            // buttonChangeQuantity
-            // 
-            buttonChangeQuantity.Dock = DockStyle.Fill;
-            buttonChangeQuantity.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonChangeQuantity.Location = new Point(156, 3);
-            buttonChangeQuantity.Name = "buttonChangeQuantity";
-            buttonChangeQuantity.Size = new Size(147, 73);
-            buttonChangeQuantity.TabIndex = 1;
-            buttonChangeQuantity.Text = "Change";
-            buttonChangeQuantity.UseVisualStyleBackColor = true;
-            buttonChangeQuantity.Click += buttonChangeQuantity_Click;
-            // 
+            tableLayoutPanelButtonCart.Padding  = new Padding(4, 6, 4, 6);
+            //
             // buttonCancelOrder
-            // 
-            buttonCancelOrder.Dock = DockStyle.Fill;
-            buttonCancelOrder.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonCancelOrder.Location = new Point(3, 3);
-            buttonCancelOrder.Name = "buttonCancelOrder";
-            buttonCancelOrder.Size = new Size(147, 73);
+            //
+            buttonCancelOrder.Dock    = DockStyle.Fill;
+            buttonCancelOrder.Margin  = new Padding(3, 0, 3, 0);
+            buttonCancelOrder.Name    = "buttonCancelOrder";
             buttonCancelOrder.TabIndex = 0;
-            buttonCancelOrder.Text = "Cancel Order";
-            buttonCancelOrder.UseVisualStyleBackColor = true;
-            buttonCancelOrder.Click += buttonCancelOrder_Click;
+            buttonCancelOrder.Text    = "✕  CANCEL";
+            buttonCancelOrder.Click  += buttonCancelOrder_Click;
+            //
+            // buttonChangeQuantity
+            //
+            buttonChangeQuantity.Dock    = DockStyle.Fill;
+            buttonChangeQuantity.Margin  = new Padding(3, 0, 3, 0);
+            buttonChangeQuantity.Name    = "buttonChangeQuantity";
+            buttonChangeQuantity.TabIndex = 1;
+            buttonChangeQuantity.Text    = "✏  QTY";
+            buttonChangeQuantity.Click  += buttonChangeQuantity_Click;
+            //
+            // buttonDeleteItem
+            //
+            buttonDeleteItem.Dock    = DockStyle.Fill;
+            buttonDeleteItem.Margin  = new Padding(3, 0, 3, 0);
+            buttonDeleteItem.Name    = "buttonDeleteItem";
+            buttonDeleteItem.TabIndex = 2;
+            buttonDeleteItem.Text    = "🗑  DELETE";
+            buttonDeleteItem.Click  += buttonDeleteItem_Click;
+            //
+            // buttonHold
+            //
+            buttonHold.Dock    = DockStyle.Fill;
+            buttonHold.Margin  = new Padding(3, 0, 3, 0);
+            buttonHold.Name    = "buttonHold";
+            buttonHold.TabIndex = 3;
+            buttonHold.Text    = "⏸  HOLD";
+            buttonHold.Click  += buttonHold_Click;
             // 
             // tableLayoutPanelCategoria
             // 

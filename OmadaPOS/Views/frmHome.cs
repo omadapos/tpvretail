@@ -151,15 +151,36 @@ namespace OmadaPOS.Views
             // ═══════════════════════════════════════════════════════════
             // GRUPO 2 — Acciones del carrito
             // ═══════════════════════════════════════════════════════════
-            ElegantButtonStyles.Style(buttonCancelOrder,    ElegantButtonStyles.AlertRed,    fontSize: 16f);
-            ElegantButtonStyles.Style(buttonChangeQuantity, ElegantButtonStyles.WarningOrange, fontSize: 16f);
-            ElegantButtonStyles.Style(buttonDeleteItem,     ElegantButtonStyles.AlertRed,    fontSize: 16f);
-            ElegantButtonStyles.Style(buttonHold,           ElegantButtonStyles.WarningOrange, fontSize: 16f);
+            ElegantButtonStyles.Style(buttonCancelOrder,    ElegantButtonStyles.AlertRed,     fontSize: 15f);
+            ElegantButtonStyles.Style(buttonChangeQuantity, ElegantButtonStyles.WarningOrange, fontSize: 15f);
+            ElegantButtonStyles.Style(buttonDeleteItem,     ElegantButtonStyles.AlertRed,     fontSize: 15f);
+            ElegantButtonStyles.Style(buttonHold,           ElegantButtonStyles.WarningOrange, fontSize: 15f);
+
+            // Initial state — all action buttons disabled until cart has items
+            RefreshCartButtons(hasItems: false, hasSelection: false);
+
+            // Update button states on every selection change in the cart list
+            listViewCart.SelectedIndexChanged += (_, _) =>
+                RefreshCartButtons(
+                    hasItems:     _shoppingCart.ItemCount > 0,
+                    hasSelection: listViewCart.SelectedItems.Count > 0);
 
             // Payment buttons, Quick Sale, Lookup UPC and Scale are now
             // owned and styled entirely by PaymentPanelControl.
 
             ConfigureProductColumn();
+        }
+
+        /// <summary>
+        /// Enables or disables the cart action buttons based on current cart state.
+        /// Called on cart change and on list selection change.
+        /// </summary>
+        private void RefreshCartButtons(bool hasItems, bool hasSelection)
+        {
+            buttonCancelOrder.Enabled    = hasItems;
+            buttonChangeQuantity.Enabled = hasSelection;
+            buttonDeleteItem.Enabled     = hasSelection;
+            // Hold is always available — can hold even an empty cart to resume later
         }
 
         // ── Columna central — setup único + re-theming ───────────────────
@@ -260,6 +281,11 @@ namespace OmadaPOS.Views
 
             totalGlobal = result.Total;
             _cartTotalsControl?.UpdateTotals(result.SubTotal, result.TaxTotal, result.Total);
+
+            // Sync cart action button states
+            RefreshCartButtons(
+                hasItems:     _shoppingCart.ItemCount > 0,
+                hasSelection: listViewCart.SelectedItems.Count > 0);
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -358,15 +384,17 @@ namespace OmadaPOS.Views
 
         private void frmHome_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // Block any user-initiated close (Alt+F4, task-bar close, etc.)
-            // unless the supervisor PIN was already verified via EjecutarLogout().
+            // Block any user-initiated close (Alt+F4, task-bar close, EXIT button, etc.)
+            // unless the supervisor PIN was already verified.
             if (!_supervisorApproved && e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
                 if (!VerificarPinSupervisor()) return;
 
-                // PIN accepted — run logout and let it close cleanly.
-                _ = EjecutarLogout();
+                // PIN accepted for EXIT — set flag and re-trigger close so the
+                // cleanup block below runs, then Application.Exit() is called.
+                _supervisorApproved = true;
+                Close();
                 return;
             }
 
@@ -577,6 +605,17 @@ namespace OmadaPOS.Views
 
         private void buttonCancelOrder_Click(object sender, EventArgs e)
         {
+            if (_shoppingCart.ItemCount == 0) return;
+
+            var confirm = MessageBox.Show(
+                "Are you sure you want to cancel this order?\nAll items will be removed.",
+                "Cancel Order",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (confirm != DialogResult.Yes) return;
+
             _shoppingCart.Clear();
             _paymentSplitService.Clear();
 
@@ -586,22 +625,30 @@ namespace OmadaPOS.Views
 
         private void buttonChangeQuantity_Click(object sender, EventArgs e)
         {
-            if (listViewCart.SelectedItems.Count > 0)
+            if (listViewCart.SelectedItems.Count == 0) return;
+
+            var selectedItem = listViewCart.SelectedItems[0];
+            if (!int.TryParse(selectedItem.Tag?.ToString(), out int productId))
             {
-                var selectedItem = listViewCart.SelectedItems[0];
-                var productId = int.Parse(selectedItem.Tag.ToString());
-                _windowService.OpenPopupQuantity(0, productId, this);
+                MessageBox.Show("Invalid item selected.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
+
+            _windowService.OpenPopupQuantity(0, productId, this);
         }
 
         private void buttonDeleteItem_Click(object sender, EventArgs e)
         {
-            if (listViewCart.SelectedItems.Count > 0)
+            if (listViewCart.SelectedItems.Count == 0) return;
+
+            var selectedItem = listViewCart.SelectedItems[0];
+            if (!int.TryParse(selectedItem.Tag?.ToString(), out int productId))
             {
-                var selectedItem = listViewCart.SelectedItems[0];
-                var productId = int.Parse(selectedItem.Tag.ToString());
-                _shoppingCart.RemoveItem(productId);
+                MessageBox.Show("Invalid item selected.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
             }
+
+            _shoppingCart.RemoveItem(productId);
         }
 
         private void buttonHold_Click(object sender, EventArgs e)
