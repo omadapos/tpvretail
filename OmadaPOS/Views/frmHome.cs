@@ -410,6 +410,9 @@ namespace OmadaPOS.Views
                     _customerScreen.Close();
             }
 
+            // ── Close any open modeless child forms (Hold, Split, KeyLookup…) ─
+            _windowService.CloseAllModeless();
+
             // ── Unsubscribe per-session event handlers ───────────────────────
             _shoppingCart.CartChanged -= ShoppingCart_CartChanged;
 
@@ -940,9 +943,9 @@ namespace OmadaPOS.Views
                 if (_paymentPanelControl == null) return;
                 if (_paymentPanelControl.ScaleProductDisplayText == "" || weight <= 0) return;
 
-                if (!string.IsNullOrEmpty(_paymentPanelControl.ScaleProductId))
+                if (!string.IsNullOrEmpty(_paymentPanelControl.ScaleProductId) &&
+                    int.TryParse(_paymentPanelControl.ScaleProductId, out int productId))
                 {
-                    int productId = int.Parse(_paymentPanelControl.ScaleProductId);
                     var result    = await _barcodeSaleService.AddWeightedProductAsync(productId, weight);
 
                     if (result.AddedToCart)
@@ -962,6 +965,5 @@ namespace OmadaPOS.Views
         }
 
 
-        private void labelCashier_Click(object sender, EventArgs e) { }
     }
 }

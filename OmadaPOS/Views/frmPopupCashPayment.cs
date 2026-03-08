@@ -1,6 +1,7 @@
 using OmadaPOS.Impresora;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
+using OmadaPOS.Libreria.Utils;
 
 namespace OmadaPOS.Views;
 
@@ -16,6 +17,7 @@ public sealed class frmPopupCashPayment : POSDialog
 {
     private readonly IOrderService         _orderService;
     private readonly IBranchService        _branchService;
+    private readonly IAdminSettingService  _adminSettingService;
     private readonly PaymentResponseModel? _paymentResponse;
     private readonly List<PaymentModel>?   _splitPayments;
 
@@ -35,17 +37,19 @@ public sealed class frmPopupCashPayment : POSDialog
     public frmPopupCashPayment(
         IOrderService          orderService,
         IBranchService         branchService,
+        IAdminSettingService   adminSettingService,
         int orderId, int consecutivo, decimal devuelta,
         PaymentResponseModel?  paymentResponse = null,
         List<PaymentModel>?    splitPayments   = null)
     {
-        _orderService    = orderService;
-        _branchService   = branchService;
-        _orderId         = orderId;
-        _consecutivo     = consecutivo;
-        _devuelta        = devuelta;
-        _paymentResponse = paymentResponse;
-        _splitPayments   = splitPayments;
+        _orderService        = orderService;
+        _branchService       = branchService;
+        _adminSettingService = adminSettingService;
+        _orderId             = orderId;
+        _consecutivo         = consecutivo;
+        _devuelta            = devuelta;
+        _paymentResponse     = paymentResponse;
+        _splitPayments       = splitPayments;
     }
 
     protected override Color  AccentColor => IsEbt   ? AppColors.AccentGreen
@@ -337,10 +341,11 @@ public sealed class frmPopupCashPayment : POSDialog
                 return false;
             }
 
-            var branch = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
+            var branch   = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
+            var settings = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
             if (branch != null)
             {
-                new ReceiptPrinter(
+                var printer = new ReceiptPrinter(
                     order,
                     orderDetails,
                     cashier:         SessionManager.Name ?? "",
@@ -349,7 +354,13 @@ public sealed class frmPopupCashPayment : POSDialog
                     storePhone:      branch.Contact,
                     footerMsg:       branch.FooterMsg,
                     paymentResponse: _paymentResponse,
-                    splitPayments:   _splitPayments).Print();
+                    splitPayments:   _splitPayments);
+
+                string? configuredPrinter = settings?.PrinterName;
+                if (!string.IsNullOrWhiteSpace(configuredPrinter))
+                    printer.PrintTo(configuredPrinter);
+                else
+                    printer.Print();
             }
 
             return true;

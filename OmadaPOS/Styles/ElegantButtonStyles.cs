@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 
 namespace OmadaPOS.Presentation.Styling;
@@ -34,8 +35,10 @@ public static class ElegantButtonStyles
     // Texto
     public static readonly Color TextWhite = AppColors.TextWhite;
 
-    // HashSet para rastrear botones ya estilizados sin tocar su Tag
-    private static readonly HashSet<Button> _styledButtons = new();
+    // ConditionalWeakTable uses weak references as keys — styled buttons are
+    // automatically removed when the form/control is GC'd, preventing memory leaks
+    // that would occur with a strong-reference HashSet across transient form instances.
+    private static readonly ConditionalWeakTable<Button, object> _styledButtons = new();
 
     // ─────────────────────────────────────────────
     // MÉTODO PRINCIPAL DE ESTILO DE BOTÓN
@@ -43,7 +46,7 @@ public static class ElegantButtonStyles
     public static void Style(Button button, Color? backColor = null, Color? foreColor = null, int radius = 10, float fontSize = 30F)
     {
         // Evitar suscripción duplicada al Paint/Resize si el botón ya fue estilizado
-        if (_styledButtons.Contains(button))
+        if (_styledButtons.TryGetValue(button, out _))
         {
             UpdateButtonColor(button, backColor ?? HeaderNavy, foreColor ?? TextWhite, radius, fontSize);
             return;
@@ -52,7 +55,7 @@ public static class ElegantButtonStyles
         var bg = backColor ?? HeaderNavy;
         var fg = foreColor ?? TextWhite;
 
-        _styledButtons.Add(button);
+        _styledButtons.Add(button, new object());
         button.FlatStyle = FlatStyle.Flat;
         button.BackColor = Color.Transparent;
         button.ForeColor = fg;

@@ -1,6 +1,7 @@
 using OmadaPOS.Impresora;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
+using OmadaPOS.Libreria.Utils;
 using System.Drawing.Text;
 
 namespace OmadaPOS.Views;
@@ -16,8 +17,9 @@ namespace OmadaPOS.Views;
 /// </summary>
 public sealed class frmPrintInvoice : POSDialog
 {
-    private readonly IOrderService  _orderService;
-    private readonly IBranchService _branchService;
+    private readonly IOrderService        _orderService;
+    private readonly IBranchService       _branchService;
+    private readonly IAdminSettingService _adminSettingService;
 
     // ── Controls ──────────────────────────────────────────────────────────────
     private ListView       _lvInvoices  = null!;
@@ -37,10 +39,11 @@ public sealed class frmPrintInvoice : POSDialog
     private const int COL_INV_PAY     = 5;
     private const int COL_INV_PRINT   = 6;  // always last
 
-    public frmPrintInvoice(IOrderService orderService, IBranchService branchService)
+    public frmPrintInvoice(IOrderService orderService, IBranchService branchService, IAdminSettingService adminSettingService)
     {
-        _orderService  = orderService;
-        _branchService = branchService;
+        _orderService        = orderService;
+        _branchService       = branchService;
+        _adminSettingService = adminSettingService;
 
         Shown += async (_, _) => await LoadInvoicesAsync();
     }
@@ -612,14 +615,21 @@ public sealed class frmPrintInvoice : POSDialog
             var details = await _orderService.GetOrderDetailsByOrderId(order.Id);
             if (branch != null)
             {
-                new ReceiptPrinter(
+                var settings = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
+                var rePrinter = new ReceiptPrinter(
                     order,
                     details,
                     cashier:      SessionManager.Name ?? "",
                     storeName:    branch.Name    ?? "OMADA POS",
                     storeAddress: branch.Address ?? "",
                     storePhone:   branch.Contact,
-                    footerMsg:    branch.FooterMsg).Print();
+                    footerMsg:    branch.FooterMsg);
+
+                string? configuredPrinter = settings?.PrinterName;
+                if (!string.IsNullOrWhiteSpace(configuredPrinter))
+                    rePrinter.PrintTo(configuredPrinter);
+                else
+                    rePrinter.Print();
             }
         }
         catch (Exception ex)

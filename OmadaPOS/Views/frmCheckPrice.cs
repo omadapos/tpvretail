@@ -12,13 +12,15 @@ public sealed class frmCheckPrice : POSDialog
     private Label    _lblName  = null!;
     private Label    _lblPrice = null!;
 
+    private CancellationTokenSource? _searchCts;
+
     public frmCheckPrice(ICategoryService categoryService, IWindowService windowService)
     {
         _categoryService = categoryService;
         _windowService   = windowService;
 
-        // Focus scan input after form is shown
-        Shown += (_, _) => _textUPC.Focus();
+        Shown    += (_, _) => _textUPC.Focus();
+        FormClosed += (_, _) => { _searchCts?.Cancel(); _searchCts?.Dispose(); };
     }
 
     protected override Color      AccentColor => AppColors.Info;
@@ -63,7 +65,19 @@ public sealed class frmCheckPrice : POSDialog
             TextAlign       = HorizontalAlignment.Center,
             PlaceholderText = "Scan or type UPC…",
         };
-        _textUPC.TextChanged += (_, _) => SearchProduct(_textUPC.Text);
+        _textUPC.TextChanged += async (_, _) =>
+        {
+            _searchCts?.Cancel();
+            _searchCts?.Dispose();
+            _searchCts = new CancellationTokenSource();
+            var token = _searchCts.Token;
+            try
+            {
+                await Task.Delay(250, token);
+                await SearchProductAsync(_textUPC.Text, token);
+            }
+            catch (OperationCanceledException) { }
+        };
         scanPanel.Controls.Add(_textUPC);
 
         // ── Product name ──────────────────────────────────────────────────────
@@ -95,24 +109,41 @@ public sealed class frmCheckPrice : POSDialog
         return panel;
     }
 
-    private async void SearchProduct(string upc)
+    // Weight-embedded barcode format "20CCCCCPPPP?" requires at least 11 chars:
+    // pos 0   = "2", pos 1 = "0", pos 1..5 = PLU code (5 digits), pos 7..10 = price (4 digits).
+    private const int WeightBarcodeMinLength = 11;
+
+    private async Task SearchProductAsync(string upc, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(upc)) return;
         try
         {
-            if (upc.Length > 2 && upc.StartsWith("20"))
+            if (upc.Length >= WeightBarcodeMinLength && upc.StartsWith("20"))
             {
                 decimal price = decimal.Parse(upc.Substring(7, 4)) / 100;
                 string  code  = upc.Substring(1, 5);
+                ct.ThrowIfCancellationRequested();
                 var plu = await _categoryService.LoadProductByUPC_Promotion(code);
-                if (plu != null) { _lblName.Text = plu.Name; _lblPrice.Text = price.ToString("C"); _textUPC.Clear(); }
+                if (plu != null && !ct.IsCancellationRequested)
+                {
+                    _lblName.Text  = plu.Name;
+                    _lblPrice.Text = price.ToString("C");
+                    _textUPC.Clear();
+                }
             }
             else
             {
+                ct.ThrowIfCancellationRequested();
                 var plu = await _categoryService.LoadProductByUPC_Promotion(upc);
-                if (plu != null) { _lblName.Text = plu.Name; _lblPrice.Text = plu.Price?.ToString("C") ?? "—"; _textUPC.Clear(); }
+                if (plu != null && !ct.IsCancellationRequested)
+                {
+                    _lblName.Text  = plu.Name;
+                    _lblPrice.Text = plu.Price?.ToString("C") ?? "—";
+                    _textUPC.Clear();
+                }
             }
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex) { _windowService.OpenError(ex.Message); }
     }
 }

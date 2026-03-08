@@ -54,9 +54,7 @@ public sealed class frmGiftCard : POSDialog
         };
 
         // ── Card code input ───────────────────────────────────────────────────
-        FieldPanel("Gift Card Code", out _textCode, placeholder: "Scan or type code…");
-        _textCode.TextChanged += TextCode_Changed;
-        var fieldPanel = FieldPanel("Gift Card Code", out _textCode, "Scan or type code…");
+        var fieldPanel = FieldPanel("Gift Card Code", out _textCode, placeholder: "Scan or type code…");
         _textCode.TextChanged += TextCode_Changed;
 
         // ── Balance row ───────────────────────────────────────────────────────
@@ -154,14 +152,8 @@ public sealed class frmGiftCard : POSDialog
             return false;
         }
 
-        if (_balance < _totalGlobal)
-        {
-            MessageBox.Show(
-                $"Insufficient balance.\nAvailable: {_balance:C}\nDue: {_totalGlobal:C}",
-                "Insufficient Balance", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return false;
-        }
-
+        // Re-fetch current balance at confirm time to prevent race condition
+        // between the TextChanged validation and the actual deduction.
         var card = await _giftCardService.GetByCode(_cardCode);
         if (card == null)
         {
@@ -169,7 +161,18 @@ public sealed class frmGiftCard : POSDialog
             return false;
         }
 
-        card.Balance = (double?)(_balance - _totalGlobal);
+        decimal currentBalance = (decimal)(card.Balance ?? 0);
+        if (currentBalance < _totalGlobal)
+        {
+            _balance = currentBalance;
+            _lblBalance.Text = currentBalance.ToString("C");
+            MessageBox.Show(
+                $"Insufficient balance.\nAvailable: {currentBalance:C}\nDue: {_totalGlobal:C}",
+                "Insufficient Balance", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+
+        card.Balance = (double?)(currentBalance - _totalGlobal);
         await _giftCardService.PlaceSaldo(card.Id, card);
         await _homeInteractionService.RequestGiftCardPaymentAsync();
         return true;

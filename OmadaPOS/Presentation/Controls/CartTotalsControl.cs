@@ -103,9 +103,9 @@ public class CartTotalsControl : UserControl
 
     public void UpdateTotals(decimal subtotal, decimal tax, decimal total)
     {
-        _labelSubtotalValue.Text = subtotal.ToString("n2");
-        _labelTaxValue.Text = tax.ToString("n2");
-        _labelTotalValue.Text = total.ToString("N2");
+        _labelSubtotalValue.Text = subtotal.ToString("C");
+        _labelTaxValue.Text      = tax.ToString("C");
+        _labelTotalValue.Text    = total.ToString("C");
     }
 
     public void ResetTotals(bool includeGrandTotal)

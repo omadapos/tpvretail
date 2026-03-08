@@ -1,12 +1,14 @@
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
+using OmadaPOS.Services.POS;
 
 namespace OmadaPOS.Views;
 
 public sealed class frmSetting : POSDialog
 {
-    private readonly IAdminSettingService _adminSettingService;
+    private readonly IAdminSettingService       _adminSettingService;
+    private readonly IPaymentCoordinatorService _paymentCoordinatorService;
 
     private TextBox _tbIP          = null!;
     private TextBox _tbPort        = null!;
@@ -14,9 +16,10 @@ public sealed class frmSetting : POSDialog
     private TextBox _tbPrinter     = null!;
     private Label   _lblWindowsId  = null!;
 
-    public frmSetting(IAdminSettingService adminSettingService)
+    public frmSetting(IAdminSettingService adminSettingService, IPaymentCoordinatorService paymentCoordinatorService)
     {
-        _adminSettingService = adminSettingService;
+        _adminSettingService       = adminSettingService;
+        _paymentCoordinatorService = paymentCoordinatorService;
         Shown += async (_, _) => await LoadSettingsAsync();
     }
 
@@ -97,6 +100,10 @@ public sealed class frmSetting : POSDialog
             Terminal    = _tbTerminal.Text,
             PrinterName = _tbPrinter.Text,
         });
+
+        // Force the payment service to reload config on next payment call
+        _paymentCoordinatorService.InvalidateConfig();
+
         return true;
     }
 }

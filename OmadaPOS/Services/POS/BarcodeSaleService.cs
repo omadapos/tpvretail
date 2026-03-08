@@ -107,10 +107,17 @@ public class BarcodeSaleService : IBarcodeSaleService
 
         _shoppingCart.AddItem(new CartItem
         {
-            ProductId = product.Id ?? 0,
-            ProductName = product.Name,
-            UnitPrice = product.Price ?? 0.0m,
-            Quantity = 1
+            ProductId      = product.Id ?? 0,
+            ProductName    = product.Name ?? string.Empty,
+            UnitPrice      = product.Price ?? 0.0m,
+            Quantity       = 1,
+            Tax            = product.Tax ?? 0.0,
+            IsEBT          = product.Ebt,
+            UPC            = product.UPC,
+            Image          = product.Image.ConvertUrlString(),
+            PromotionName  = product.PromotionName,
+            PromotionValue = product.PromotionValue,
+            PromotionLimit = product.PromotionLimit,
         });
 
         return new ProductSelectionResult
@@ -128,11 +135,18 @@ public class BarcodeSaleService : IBarcodeSaleService
 
         _shoppingCart.AddItem(new CartItem
         {
-            ProductId = product.Id ?? 0,
-            ProductName = product.Name,
-            UnitPrice = product.Price ?? 0.0m,
-            Quantity = 1,
-            Peso = weight / 1000
+            ProductId      = product.Id ?? 0,
+            ProductName    = product.Name ?? string.Empty,
+            UnitPrice      = product.Price ?? 0.0m,
+            Quantity       = 1,
+            Peso           = weight / 1000,
+            Tax            = product.Tax ?? 0.0,
+            IsEBT          = product.Ebt,
+            UPC            = product.UPC,
+            Image          = product.Image.ConvertUrlString(),
+            PromotionName  = product.PromotionName,
+            PromotionValue = product.PromotionValue,
+            PromotionLimit = product.PromotionLimit,
         });
 
         return new WeightedProductAddResult

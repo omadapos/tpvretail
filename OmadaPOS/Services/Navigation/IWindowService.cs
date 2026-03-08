@@ -21,4 +21,7 @@ public interface IWindowService
     void OpenPrintInvoice(IWin32Window? owner = null);
     void OpenProductNoExist(string upc, IWin32Window? owner = null);
     void OpenError(string message, IWin32Window? owner = null);
+
+    /// <summary>Close all open modeless forms (Hold, Split, KeyLookup, etc.) — called on logout.</summary>
+    void CloseAllModeless();
 }

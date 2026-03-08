@@ -62,8 +62,10 @@ namespace OmadaPOS.Componentes
 
         // ── Caché de imágenes (app-lifetime) ─────────────────────────────
         // Evita re-descargar/re-leer la misma imagen al filtrar por letra.
-        // Key = URL/path, Value = Bitmap clonado (no asociado a ningún PictureBox).
-        private static readonly Dictionary<string, Image> _imageCache = [];
+        // Capped at MaxCacheSize entries; oldest entry is evicted when full.
+        private const int MaxCacheSize = 200;
+        private static readonly Dictionary<string, Image> _imageCache   = [];
+        private static readonly Queue<string>             _cacheKeyQueue = new();
 
         private bool    _isHovered;
         private Region? _cardRegion;
@@ -296,7 +298,7 @@ namespace OmadaPOS.Componentes
                 {
                     // Clonamos: PictureBox es dueño de su copia (la destruirá al
                     // hacer Dispose). El cache guarda una copia independiente.
-                    _imageCache[url] = new Bitmap(img);
+                    AddToCache(url, new Bitmap(img));
                 }
             }
         }
@@ -312,6 +314,23 @@ namespace OmadaPOS.Componentes
                 _cardRegion = null;
             }
             base.Dispose(disposing);
+        }
+
+        // ── Cache helpers ─────────────────────────────────────────────────
+        private static void AddToCache(string key, Image image)
+        {
+            // Evict oldest entry when cap is reached
+            while (_cacheKeyQueue.Count >= MaxCacheSize)
+            {
+                var evict = _cacheKeyQueue.Dequeue();
+                if (_imageCache.TryGetValue(evict, out var old))
+                {
+                    old?.Dispose();
+                    _imageCache.Remove(evict);
+                }
+            }
+            _cacheKeyQueue.Enqueue(key);
+            _imageCache[key] = image;
         }
 
         // ── Helper: path con esquinas redondeadas ─────────────────────────

@@ -64,7 +64,18 @@ public sealed class frmCierreDiario : POSDialog
 
         var branch = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
         if (branch != null)
-            new TicketCierre(cierre, branch.Name ?? "OMADA POS", branch.Address).Print();
+        {
+            try
+            {
+                new TicketCierre(cierre, branch.Name ?? "OMADA POS", branch.Address).Print();
+            }
+            catch (Exception printEx)
+            {
+                MessageBox.Show(
+                    $"Day closed successfully, but the report could not print:\n{printEx.Message}",
+                    "Print Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
 
         return true;
     }

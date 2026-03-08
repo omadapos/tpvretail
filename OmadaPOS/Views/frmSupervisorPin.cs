@@ -14,6 +14,8 @@ public sealed class frmSupervisorPin : Form
     private string _entered = "";
     private const int MaxLen = 4;
 
+    private CancellationTokenSource? _flashCts;
+
     // ── UI refs ───────────────────────────────────────────────────────────────
     private readonly Label _displayLabel;
     private readonly Label _statusLabel;
@@ -128,6 +130,10 @@ public sealed class frmSupervisorPin : Form
 
         // Keep dialog on top if something else briefly steals focus
         Deactivate += (_, _) => { if (!IsDisposed) Activate(); };
+
+        // Cancel any pending flash task when the form closes to avoid
+        // ObjectDisposedException races with Invoke() after Dispose().
+        FormClosed += (_, _) => { _flashCts?.Cancel(); _flashCts?.Dispose(); };
     }
 
     // ── PIN pad grid (3 cols × 4 rows) ────────────────────────────────────────
@@ -227,16 +233,25 @@ public sealed class frmSupervisorPin : Form
         _displayLabel.Text      = "✕  ✕  ✕  ✕";
         _statusLabel.Text       = "Incorrect PIN — try again";
 
-        Task.Delay(1200).ContinueWith(_ =>
+        _flashCts?.Cancel();
+        _flashCts?.Dispose();
+        _flashCts = new CancellationTokenSource();
+        var token = _flashCts.Token;
+
+        Task.Delay(1200, token).ContinueWith(_ =>
         {
-            if (IsDisposed) return;
-            Invoke(() =>
+            if (IsDisposed || token.IsCancellationRequested) return;
+            try
             {
-                _entered = "";
-                _statusLabel.Text = "";
-                RefreshDisplay();
-            });
-        });
+                Invoke(() =>
+                {
+                    _entered = "";
+                    _statusLabel.Text = "";
+                    RefreshDisplay();
+                });
+            }
+            catch (ObjectDisposedException) { }
+        }, TaskScheduler.Default);
     }
 
     private void RefreshDisplay()

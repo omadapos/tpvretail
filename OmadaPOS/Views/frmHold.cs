@@ -201,7 +201,22 @@ public sealed class frmHold : POSDialog
         try
         {
             var selected = (HoldCartModel)_listBox.SelectedItem!;
-            var items    = await _holdService.RetrieveHeldCartAsync(selected.HoldId);
+
+            string warning = _shoppingCart.ItemCount > 0
+                ? $"Restore cart \"{selected.HoldId}\"?\nThis will replace the current cart ({_shoppingCart.ItemCount} item{(_shoppingCart.ItemCount != 1 ? "s" : "")})."
+                : $"Restore cart \"{selected.HoldId}\"?";
+
+            var confirm = MessageBox.Show(warning, "Restore Hold",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button1);
+
+            if (confirm != DialogResult.Yes)
+            {
+                _listBox.SelectedIndex = -1;
+                return;
+            }
+
+            var items = await _holdService.RetrieveHeldCartAsync(selected.HoldId);
 
             _shoppingCart.Clear();
             foreach (var item in items) _shoppingCart.AddItem(item);

@@ -7,10 +7,21 @@ namespace OmadaPOS.Services.Navigation;
 public class WindowService : IWindowService
 {
     private readonly IServiceProvider _provider;
+    private readonly List<Form>       _modelessForms = [];
 
     public WindowService(IServiceProvider provider)
     {
         _provider = provider;
+    }
+
+    public void CloseAllModeless()
+    {
+        foreach (var form in _modelessForms.ToList())
+        {
+            if (!form.IsDisposed)
+                form.Close();
+        }
+        _modelessForms.Clear();
     }
 
     public void OpenHome()
@@ -90,5 +101,10 @@ public class WindowService : IWindowService
             form.ShowDialog();
     }
 
-    private static void ShowModeless(Form form) => form.Show();
+    private void ShowModeless(Form form)
+    {
+        _modelessForms.Add(form);
+        form.FormClosed += (_, _) => _modelessForms.Remove(form);
+        form.Show();
+    }
 }
