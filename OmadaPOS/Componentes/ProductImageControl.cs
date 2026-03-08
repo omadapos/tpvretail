@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -8,44 +9,73 @@ namespace OmadaPOS.Componentes
 {
     public partial class ProductImageControl : UserControl
     {
-        // ── API pública — sin cambios ─────────────────────────────────────
+        // ── API pública ───────────────────────────────────────────────────
         private ProductModel? _product;
         public event EventHandler? ProductClicked;
         public ProductModel? Product => _product;
 
-        // ── Colores de la tarjeta ─────────────────────────────────────────
-        private static readonly Color CardBackground   = Color.White;
-        private static readonly Color ImageBackground  = Color.White;
-        private static readonly Color BorderNormal     = Color.FromArgb(220, 224, 230);
-        private static readonly Color BorderHover      = AppColors.NavyBase;
-        private static readonly Color NameForeground   = AppColors.TextPrimary;
-        private static readonly Color PriceForeground  = AppColors.AccentGreen;
-        private static readonly Color PriceBackground  = Color.FromArgb(240, 252, 245);
-        private static readonly Color AccentBar        = AppColors.AccentGreen;
-
-        private bool _isHovered;
-
-        // Región redondeada de la tarjeta — se crea una sola vez en Load y se
-        // reutiliza. Trackeada explícitamente para poder disponer el objeto GDI
-        // anterior antes de asignar uno nuevo y en Dispose().
-        private Region? _cardRegion;
-
-        // ── Controles internos ────────────────────────────────────────────
-        private PictureBox?      pictureBoxImage;
-        private Label?           labelTitle;
-        private Label?           labelPrice;
-        private Panel?           panelCard;
-        private Panel?           panelImageArea;
-        private Panel?           panelInfo;
-        private Panel?           panelAccent;
-
-        // ── Constantes de tamaño ──────────────────────────────────────────
+        // ── Constantes de tamaño (deben declararse antes de los campos static) ──
         private const int CardW        = 185;
         private const int CardH        = 215;
         private const int Margin       = 6;
         private const int CornerRadius = 14;
         private const int ImageAreaH   = 120;
         private const int AccentH      = 4;
+
+        // ── Colores ───────────────────────────────────────────────────────
+        private static readonly Color CardBackground  = Color.White;
+        private static readonly Color ImageBackground = Color.White;
+        private static readonly Color BorderNormal    = Color.FromArgb(220, 224, 230);
+        private static readonly Color NameForeground  = AppColors.TextPrimary;
+        private static readonly Color PriceForeground = AppColors.AccentGreen;
+        private static readonly Color AccentBar       = AppColors.AccentGreen;
+
+        // ── Recursos GDI compartidos — una sola instancia para TODOS los controles ──
+        // Fuentes: 2 objetos para N tarjetas en lugar de 2×N
+        private static readonly Font       FontTitle    = new("Segoe UI",   10F, FontStyle.Bold);
+        private static readonly Font       FontPrice    = new("Montserrat", 13F, FontStyle.Bold);
+
+        // Brushes/Pens: reutilizados en cada Paint, sin allocations
+        private static readonly SolidBrush CardBrush    = new(Color.White);
+        private static readonly SolidBrush ShadowBrush1 = new(Color.FromArgb(6,  0, 0, 0)); // i=3
+        private static readonly SolidBrush ShadowBrush2 = new(Color.FromArgb(10, 0, 0, 0)); // i=2
+        private static readonly SolidBrush ShadowBrush3 = new(Color.FromArgb(14, 0, 0, 0)); // i=1
+        private static readonly Pen        PenNormal    = new(Color.FromArgb(220, 224, 230), 1f);
+        private static readonly Pen        PenHover     = new(AppColors.NavyBase, 2f);
+
+        // ── Paths GDI pre-computados — tamaño fijo por las constantes ────
+        // El static constructor los crea UNA vez para toda la vida de la app.
+        // El Paint event los reutiliza: 0 allocations GDI por repintado.
+        private static readonly GraphicsPath CardPath;
+        private static readonly GraphicsPath ShadowPath1; // offset 3 (más alejada)
+        private static readonly GraphicsPath ShadowPath2; // offset 2
+        private static readonly GraphicsPath ShadowPath3; // offset 1 (más cercana)
+
+        static ProductImageControl()
+        {
+            var b = new Rectangle(2, 2, CardW - 5, CardH - 5);
+            CardPath    = CreateRoundedPath(b, CornerRadius);
+            ShadowPath1 = CreateRoundedPath(new Rectangle(b.X + 3, b.Y + 3, b.Width, b.Height), CornerRadius);
+            ShadowPath2 = CreateRoundedPath(new Rectangle(b.X + 2, b.Y + 2, b.Width, b.Height), CornerRadius);
+            ShadowPath3 = CreateRoundedPath(new Rectangle(b.X + 1, b.Y + 1, b.Width, b.Height), CornerRadius);
+        }
+
+        // ── Caché de imágenes (app-lifetime) ─────────────────────────────
+        // Evita re-descargar/re-leer la misma imagen al filtrar por letra.
+        // Key = URL/path, Value = Bitmap clonado (no asociado a ningún PictureBox).
+        private static readonly Dictionary<string, Image> _imageCache = [];
+
+        private bool    _isHovered;
+        private Region? _cardRegion;
+
+        // ── Controles internos ────────────────────────────────────────────
+        private PictureBox? pictureBoxImage;
+        private Label?      labelTitle;
+        private Label?      labelPrice;
+        private Panel?      panelCard;
+        private Panel?      panelImageArea;
+        private Panel?      panelInfo;
+        private Panel?      panelAccent;
 
         public ProductImageControl(ProductModel? product)
         {
@@ -55,12 +85,17 @@ namespace OmadaPOS.Componentes
 
         private void InitializeComponent()
         {
-            // ── Outer UserControl ────────────────────────────────────────
+            // Double-buffer el UserControl exterior — elimina flickering al
+            // actualizar el grid completo en el filtro por letra.
+            this.SetStyle(
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.AllPaintingInWmPaint,
+                true);
+
             this.BackColor = Color.Transparent;
             this.Size      = new Size(CardW + Margin * 2, CardH + Margin * 2);
             this.Cursor    = Cursors.Hand;
 
-            // ── Card panel (con sombra + bordes redondeados via Paint) ────
             panelCard = new Panel
             {
                 BackColor = CardBackground,
@@ -73,7 +108,6 @@ namespace OmadaPOS.Componentes
             panelCard.MouseLeave += OnMouseLeaveCard;
             panelCard.Click      += OnCardClick;
 
-            // ── Área de imagen ───────────────────────────────────────────
             panelImageArea = new Panel
             {
                 BackColor = ImageBackground,
@@ -87,18 +121,17 @@ namespace OmadaPOS.Componentes
 
             pictureBoxImage = new PictureBox
             {
-                Dock     = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.Zoom,
+                Dock      = DockStyle.Fill,
+                SizeMode  = PictureBoxSizeMode.Zoom,
                 BackColor = Color.Transparent,
-                Cursor   = Cursors.Hand,
-                Padding  = new Padding(8),
+                Cursor    = Cursors.Hand,
+                Padding   = new Padding(8),
             };
             pictureBoxImage.MouseEnter += OnMouseEnterCard;
             pictureBoxImage.MouseLeave += OnMouseLeaveCard;
             pictureBoxImage.Click      += OnCardClick;
             panelImageArea.Controls.Add(pictureBoxImage);
 
-            // ── Barra de acento verde (separador imagen / info) ──────────
             panelAccent = new Panel
             {
                 BackColor = AccentBar,
@@ -106,9 +139,10 @@ namespace OmadaPOS.Componentes
                 Size      = new Size(CardW, AccentH),
             };
 
-            // ── Área de texto (nombre + precio) ──────────────────────────
             int infoY = ImageAreaH + AccentH;
             int infoH = CardH - infoY;
+            int nameH  = (int)(infoH * 0.55);
+            int priceH = infoH - nameH;
 
             panelInfo = new Panel
             {
@@ -122,16 +156,12 @@ namespace OmadaPOS.Componentes
             panelInfo.MouseLeave += OnMouseLeaveCard;
             panelInfo.Click      += OnCardClick;
 
-            int nameH  = (int)(infoH * 0.55);
-            int priceH = infoH - nameH;
-
             labelTitle = new Label
             {
                 AutoSize  = false,
-                Dock      = DockStyle.None,
                 Location  = new Point(8, 5),
                 Size      = new Size(CardW - 16, nameH - 5),
-                Font      = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Font      = FontTitle,          // ← static compartido
                 ForeColor = NameForeground,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -144,10 +174,9 @@ namespace OmadaPOS.Componentes
             labelPrice = new Label
             {
                 AutoSize  = false,
-                Dock      = DockStyle.None,
                 Location  = new Point(8, nameH),
                 Size      = new Size(CardW - 16, priceH - 4),
-                Font      = new Font("Montserrat", 13F, FontStyle.Bold),
+                Font      = FontPrice,          // ← static compartido
                 ForeColor = PriceForeground,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -168,54 +197,33 @@ namespace OmadaPOS.Componentes
             this.Load += ProductImageControl_Load;
         }
 
-        // ── Región redondeada — se crea una vez, no en cada Paint ────────
+        // ── Región redondeada — se aplica una vez en Load ────────────────
         private void ApplyCardRegion()
         {
             if (panelCard == null) return;
 
             var bounds = new Rectangle(2, 2, panelCard.Width - 5, panelCard.Height - 5);
-            using var path     = CreateRoundedPath(bounds, CornerRadius);
-            var       newRegion = new Region(path);
-
-            // Disponer la región anterior ANTES de asignar la nueva.
-            // Control.Region no hace Dispose automático del objeto anterior.
-            var oldRegion = panelCard.Region;
+            using var path = CreateRoundedPath(bounds, CornerRadius);
+            var newRegion  = new Region(path);
+            var old        = panelCard.Region;
             panelCard.Region = newRegion;
-            oldRegion?.Dispose();
-
+            old?.Dispose();
             _cardRegion = newRegion;
         }
 
-        // ── Dibujar tarjeta: bordes redondeados + sombra suave ───────────
+        // ── Paint: CERO allocations GDI — todo es static pre-computado ───
         private void PanelCard_Paint(object sender, PaintEventArgs e)
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            var bounds = new Rectangle(2, 2, panelCard!.Width - 5, panelCard.Height - 5);
+            // Sombra: 3 capas con paths y brushes estáticos, sin new() aquí
+            g.FillPath(ShadowBrush1, ShadowPath1);
+            g.FillPath(ShadowBrush2, ShadowPath2);
+            g.FillPath(ShadowBrush3, ShadowPath3);
 
-            // Sombra (capas semi-transparentes desplazadas)
-            for (int i = 3; i > 0; i--)
-            {
-                var shadowRect = new Rectangle(bounds.X + i, bounds.Y + i,
-                                               bounds.Width, bounds.Height);
-                using var shadowBrush = new SolidBrush(Color.FromArgb(18 - i * 4, 0, 0, 0));
-                using var shadowPath  = CreateRoundedPath(shadowRect, CornerRadius);
-                g.FillPath(shadowBrush, shadowPath);
-            }
-
-            // Fondo + borde — solo dibujo visual, sin tocar Region aquí.
-            using var cardPath  = CreateRoundedPath(bounds, CornerRadius);
-            using var cardBrush = new SolidBrush(CardBackground);
-            g.FillPath(cardBrush, cardPath);
-
-            var borderColor = _isHovered ? BorderHover : BorderNormal;
-            var borderWidth = _isHovered ? 2f : 1f;
-            using var borderPen = new Pen(borderColor, borderWidth);
-            g.DrawPath(borderPen, cardPath);
-
-            // La Region ya fue aplicada en Load (ApplyCardRegion).
-            // No se asigna Region aquí para evitar el GDI leak por pintura repetida.
+            g.FillPath(CardBrush, CardPath);
+            g.DrawPath(_isHovered ? PenHover : PenNormal, CardPath);
         }
 
         // ── Hover ────────────────────────────────────────────────────────
@@ -228,7 +236,6 @@ namespace OmadaPOS.Componentes
 
         private void OnMouseLeaveCard(object? sender, EventArgs e)
         {
-            // Solo salir del hover si el cursor realmente dejó la tarjeta
             var pos = panelCard!.PointToClient(Cursor.Position);
             if (!panelCard.ClientRectangle.Contains(pos))
             {
@@ -238,46 +245,76 @@ namespace OmadaPOS.Componentes
             }
         }
 
-        // ── Clic unificado en toda la tarjeta ────────────────────────────
+        // ── Clic unificado ────────────────────────────────────────────────
         private void OnCardClick(object? sender, EventArgs e)
         {
             if (_product != null)
                 ProductClicked?.Invoke(this, EventArgs.Empty);
         }
 
-        // ── Carga de datos del producto ───────────────────────────────────
+        // ── Carga de datos ────────────────────────────────────────────────
         private void ProductImageControl_Load(object sender, EventArgs e)
         {
             if (_product == null) return;
 
             pictureBoxImage!.AccessibleName = _product.Id.ToString();
-            labelTitle!.Text  = _product.Name ?? "No Title";
-            labelPrice!.Text  = _product.Price?.ToString("C") ?? "--";
+            labelTitle!.Text = _product.Name ?? "No Title";
+            labelPrice!.Text = _product.Price?.ToString("C") ?? "--";
 
             var url = _product.Image.ConvertUrlString();
             if (!string.IsNullOrEmpty(url))
-                pictureBoxImage.ImageLocation = url;
+                LoadProductImageAsync(url);
 
-            // Aplicar región redondeada una sola vez al cargar el control.
-            // El tamaño de la tarjeta es fijo (CardW × CardH), por lo que
-            // no es necesario recalcularla en cada repaint.
             ApplyCardRegion();
         }
 
-        // ── Liberación de recursos GDI ────────────────────────────────────
+        // ── Carga de imagen con caché ─────────────────────────────────────
+        // Primera carga: LoadAsync (no bloquea el UI thread).
+        // Siguiente carga (misma URL tras filtro de letra): desde cache, instantáneo.
+        private void LoadProductImageAsync(string url)
+        {
+            if (_imageCache.TryGetValue(url, out var cached))
+            {
+                // PictureBox no gestiona el ciclo de vida de imágenes asignadas
+                // directamente via .Image (solo lo hace con las que él mismo carga).
+                pictureBoxImage!.Image = cached;
+                return;
+            }
+
+            pictureBoxImage!.LoadCompleted += PictureBox_LoadCompleted;
+            pictureBoxImage.LoadAsync(url);
+        }
+
+        private void PictureBox_LoadCompleted(object? sender, AsyncCompletedEventArgs e)
+        {
+            pictureBoxImage!.LoadCompleted -= PictureBox_LoadCompleted;
+
+            if (e.Error == null && pictureBoxImage.Image is Image img)
+            {
+                var url = pictureBoxImage.ImageLocation;
+                if (url is not null && !_imageCache.ContainsKey(url))
+                {
+                    // Clonamos: PictureBox es dueño de su copia (la destruirá al
+                    // hacer Dispose). El cache guarda una copia independiente.
+                    _imageCache[url] = new Bitmap(img);
+                }
+            }
+        }
+
+        // ── Dispose ───────────────────────────────────────────────────────
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                // Disponer la Region GDI explícitamente — WinForms NO la libera
-                // automáticamente al hacer Dispose() del control.
+                // NO disponer FontTitle/FontPrice/Brushes/Pens/Paths — son estáticos.
+                // Solo disponer la Region que este control creó.
                 _cardRegion?.Dispose();
                 _cardRegion = null;
             }
             base.Dispose(disposing);
         }
 
-        // ── Estado disponible / agotado — API pública sin cambios ────────
+        // ── Estado disponible / agotado ───────────────────────────────────
         public void SetProductState(bool isAvailable)
         {
             if (isAvailable)
@@ -301,10 +338,10 @@ namespace OmadaPOS.Componentes
         {
             int d    = radius * 2;
             var path = new GraphicsPath();
-            path.AddArc(bounds.X,                   bounds.Y,                    d, d, 180, 90);
-            path.AddArc(bounds.Right - d,            bounds.Y,                    d, d, 270, 90);
-            path.AddArc(bounds.Right - d,            bounds.Bottom - d,           d, d,   0, 90);
-            path.AddArc(bounds.X,                   bounds.Bottom - d,           d, d,  90, 90);
+            path.AddArc(bounds.X,         bounds.Y,          d, d, 180, 90);
+            path.AddArc(bounds.Right - d,  bounds.Y,          d, d, 270, 90);
+            path.AddArc(bounds.Right - d,  bounds.Bottom - d, d, d,   0, 90);
+            path.AddArc(bounds.X,         bounds.Bottom - d, d, d,  90, 90);
             path.CloseFigure();
             return path;
         }

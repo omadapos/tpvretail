@@ -3,121 +3,175 @@ using OmadaPOS.Services;
 using OmadaPOS.Services.Navigation;
 using System.Text.RegularExpressions;
 
-namespace OmadaPOS.Views
+namespace OmadaPOS.Views;
+
+public sealed class frmGiftCard : POSDialog
 {
-    public partial class frmGiftCard : OmadaPOS.Estilos.EstiloFormularioPOS
+    private readonly IGiftCardService         _giftCardService;
+    private readonly IShoppingCart            _shoppingCart;
+    private readonly IHomeInteractionService  _homeInteractionService;
+
+    private readonly int     _tipo;
+    private readonly decimal _totalGlobal;
+    private decimal          _balance;
+    private string           _cardCode = "";
+
+    private TextBox _textCode    = null!;
+    private Label   _lblBalance  = null!;
+    private Label   _lblTotal    = null!;
+
+    public frmGiftCard(
+        decimal totalGlobal,
+        int tipo,
+        IGiftCardService giftCardService,
+        IShoppingCart shoppingCart,
+        IHomeInteractionService homeInteractionService)
     {
-        private readonly IGiftCardService _giftCardService;
-        private readonly IShoppingCart _shoppingCart;
-        private readonly IHomeInteractionService _homeInteractionService;
+        _totalGlobal           = totalGlobal;
+        _tipo                  = tipo;
+        _giftCardService       = giftCardService;
+        _shoppingCart          = shoppingCart;
+        _homeInteractionService = homeInteractionService;
 
-        private int tipo = 0;
-        private decimal totalGlobal = 0.0m;
-        private decimal balance = 0.0m;
-        private string cardCode = "";
+        Shown += (_, _) => _textCode.Focus();
+    }
 
-        public frmGiftCard(
-            decimal totalGlobal,
-            int tipo,
-            IGiftCardService giftCardService,
-            IShoppingCart shoppingCart,
-            IHomeInteractionService homeInteractionService)
+    protected override Color      AccentColor => AppColors.PaymentGiftCard;
+    protected override string     Icon        => "🎁";
+    protected override string     Title       => "Gift Card";
+    protected override string     Subtitle    => "Scan or enter the gift card code";
+    protected override DialogSize Size        => DialogSize.Medium;
+    protected override string?    ConfirmText => "🎁  PAY WITH GIFT CARD";
+    protected override string     CancelText  => "✕  CANCEL";
+
+    protected override Control BuildContent()
+    {
+        var outer = new Panel
         {
-            InitializeComponent();
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.BackgroundPrimary,
+            Padding   = new Padding(20, 16, 20, 8),
+        };
 
-            this.totalGlobal = totalGlobal;
-            this.tipo = tipo;
+        // ── Card code input ───────────────────────────────────────────────────
+        FieldPanel("Gift Card Code", out _textCode, placeholder: "Scan or type code…");
+        _textCode.TextChanged += TextCode_Changed;
+        var fieldPanel = FieldPanel("Gift Card Code", out _textCode, "Scan or type code…");
+        _textCode.TextChanged += TextCode_Changed;
 
-            _giftCardService = giftCardService;
-            _shoppingCart = shoppingCart;
-            _homeInteractionService = homeInteractionService;
+        // ── Balance row ───────────────────────────────────────────────────────
+        var balanceRow = new Panel { Dock = DockStyle.Top, Height = 48, BackColor = Color.Transparent };
 
-            labelTotal.Text = totalGlobal.ToString("C");
+        var lblBalLbl = new Label
+        {
+            Text      = "Available Balance:",
+            Font      = AppTypography.RowLabel,
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Left,
+            Width     = 180,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        _lblBalance = new Label
+        {
+            Text      = "—",
+            Font      = AppTypography.AmountMono,
+            ForeColor = AppColors.AccentGreen,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleRight,
+        };
+
+        balanceRow.Controls.Add(_lblBalance);
+        balanceRow.Controls.Add(lblBalLbl);
+
+        // ── Total due row ─────────────────────────────────────────────────────
+        var totalRow = new Panel { Dock = DockStyle.Top, Height = 48, BackColor = Color.Transparent };
+
+        var lblTotLbl = new Label
+        {
+            Text      = "Total Due:",
+            Font      = AppTypography.RowLabel,
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Left,
+            Width     = 180,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        _lblTotal = new Label
+        {
+            Text      = _totalGlobal.ToString("C"),
+            Font      = AppTypography.AmountMono,
+            ForeColor = AppColors.TextPrimary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleRight,
+        };
+
+        totalRow.Controls.Add(_lblTotal);
+        totalRow.Controls.Add(lblTotLbl);
+
+        // Separator
+        var sep = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = AppColors.SurfaceMuted };
+
+        outer.Controls.Add(balanceRow);
+        outer.Controls.Add(totalRow);
+        outer.Controls.Add(sep);
+        outer.Controls.Add(fieldPanel);
+        return outer;
+    }
+
+    private async void TextCode_Changed(object? sender, EventArgs e)
+    {
+        try
+        {
+            var code    = _textCode.Text;
+            var matches = Regex.Matches(code, @"%(.*?)\?");
+            foreach (Match m in matches)
+                _cardCode = m.Groups[1].Value;
+
+            if (string.IsNullOrWhiteSpace(_cardCode)) return;
+
+            var card = await _giftCardService.GetByCode(_cardCode);
+            if (card != null)
+            {
+                _balance = (decimal)(card.Balance ?? 0);
+                _lblBalance.Text = _balance.ToString("C");
+            }
+            _textCode.Focus();
+        }
+        catch { _lblBalance.Text = "Error reading card"; }
+    }
+
+    protected override async Task<bool> OnConfirmAsync()
+    {
+        if (_shoppingCart.ItemCount <= 0)
+        {
+            MessageBox.Show("No hay productos en el carrito.", "Empty Cart",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
         }
 
-        private void frmGiftCard_Load(object sender, EventArgs e)
+        if (_balance < _totalGlobal)
         {
-            textBoxCode.Focus();
+            MessageBox.Show(
+                $"Insufficient balance.\nAvailable: {_balance:C}\nDue: {_totalGlobal:C}",
+                "Insufficient Balance", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
         }
 
-        private void buttonCancel_Click(object sender, EventArgs e)
+        var card = await _giftCardService.GetByCode(_cardCode);
+        if (card == null)
         {
-            this.Close();
+            MessageBox.Show("Gift card not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
         }
 
-        private async void buttonPay_Click(object sender, EventArgs e)
-        {
-            if (_shoppingCart.ItemCount <= 0)
-            {
-                MessageBox.Show("No hay productos en el carrito.", "Carrito vacío",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (balance < totalGlobal)
-            {
-                MessageBox.Show($"Saldo insuficiente.\nSaldo disponible: {balance:C}\nTotal a pagar: {totalGlobal:C}",
-                    "Saldo insuficiente", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            try
-            {
-                buttonPay.Enabled = false;
-
-                var giftCard = await _giftCardService.GetByCode(cardCode);
-                if (giftCard == null)
-                {
-                    MessageBox.Show("No se encontró la Gift Card.", "Error",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                giftCard.Balance = (double?)(balance - totalGlobal);
-                await _giftCardService.PlaceSaldo(giftCard.Id, giftCard);
-
-                await _homeInteractionService.RequestGiftCardPaymentAsync();
-
-                this.Close();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al procesar el pago: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                buttonPay.Enabled = true;
-            }
-        }
-
-        private async void textBoxCode_TextChanged(object sender, EventArgs e)
-        {
-            try
-            {
-                var code = textBoxCode.Text;
-                string pattern = @"%(.*?)\?";
-                var matches = Regex.Matches(code, pattern);
-
-                foreach (Match match in matches)
-                    cardCode = match.Groups[1].Value;
-
-                if (string.IsNullOrWhiteSpace(cardCode)) return;
-
-                var giftCard = await _giftCardService.GetByCode(cardCode);
-                if (giftCard != null)
-                {
-                    balance = (decimal)(giftCard.Balance ?? 0);
-                    labelSaldo.Text = "Card Balance: " + balance.ToString("C");
-                }
-
-                textBoxCode.Focus();
-            }
-            catch (Exception ex)
-            {
-                labelSaldo.Text = "Error al verificar tarjeta";
-                System.Diagnostics.Debug.WriteLine($"GiftCard lookup error: {ex.Message}");
-            }
-        }
+        card.Balance = (double?)(_balance - _totalGlobal);
+        await _giftCardService.PlaceSaldo(card.Id, card);
+        await _homeInteractionService.RequestGiftCardPaymentAsync();
+        return true;
     }
 }

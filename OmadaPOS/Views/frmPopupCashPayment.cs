@@ -2,83 +2,167 @@ using OmadaPOS.Impresora;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 
-namespace OmadaPOS.Views
+namespace OmadaPOS.Views;
+
+/// <summary>
+/// Shown (modeless) immediately after a cash payment is processed.
+/// Displays the change due and provides a one-click receipt print.
+/// </summary>
+public sealed class frmPopupCashPayment : POSDialog
 {
-    public partial class frmPopupCashPayment: Form
+    private readonly IOrderService   _orderService;
+    private readonly IBranchService  _branchService;
+
+    private readonly int     _orderId;
+    private readonly int     _consecutivo;
+    private readonly decimal _devuelta;
+
+    private Button _btnPrint = null!;
+
+    public frmPopupCashPayment(
+        IOrderService  orderService,
+        IBranchService branchService,
+        int orderId, int consecutivo, decimal devuelta)
     {
-        private readonly IOrderService orderService;
-        private readonly IBranchService branchService;
+        _orderService  = orderService;
+        _branchService = branchService;
+        _orderId       = orderId;
+        _consecutivo   = consecutivo;
+        _devuelta      = devuelta;
+    }
 
-        private readonly int orderId;
-        private readonly int consecutivo;
-        private readonly decimal devuelta;
+    protected override Color      AccentColor => AppColors.AccentGreen;
+    protected override string     Icon        => "💵";
+    protected override string     Title       => "Cash Payment";
+    protected override string     Subtitle    => "Transaction complete — give change to customer";
+    protected override DialogSize Size        => DialogSize.Medium;
+    protected override string?    ConfirmText => "🖨  PRINT RECEIPT";
+    protected override string     CancelText  => "✕  CLOSE";
 
-        public frmPopupCashPayment(int orderId, int consecutivo, decimal devuelta)
+    protected override Control BuildContent()
+    {
+        var outer = new TableLayoutPanel
         {
-            this.orderId = orderId;
-            this.consecutivo = consecutivo;
-            this.devuelta = devuelta;
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 2,
+            BackColor   = AppColors.BackgroundPrimary,
+            Padding     = new Padding(24, 20, 24, 12),
+        };
+        outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        outer.RowStyles.Add(new RowStyle(SizeType.Percent,  60)); // change card
+        outer.RowStyles.Add(new RowStyle(SizeType.Percent,  40)); // invoice info
 
-            InitializeComponent();
-            ElegantButtonStyles.Style(buttonClose, AppColors.NavyBase, AppColors.TextWhite, fontSize: 20f);
-            ElegantButtonStyles.Style(buttonPrint, AppColors.AccentGreen, AppColors.TextWhite, fontSize: 20f);
-
-            // Usar inyección de dependencia si es posible o obtener el servicio de manera centralizada
-            orderService = Program.GetService<IOrderService>();
-            branchService = Program.GetService<IBranchService>();
-
-            UpdateUI();
-
-            // Configuración de los eventos de los botones
-            // Asegúrate de que los botones están correctamente referenciados antes de agregar eventos
-            // SetupEventHandlers();
-        }
-
-        private void UpdateUI()
+        // ── Change Amount Card — TableLayoutPanel so rows are exact ───────────
+        var changeCard = new TableLayoutPanel
         {
-            labelDevuelta.Text = devuelta.ToString("N2");
-            labelInvoice.Text = $"Invoice # {consecutivo}";
-        }
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 2,
+            BackColor   = Color.FromArgb(236, 253, 245),
+            Margin      = new Padding(0, 0, 0, 12),
+        };
+        changeCard.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        changeCard.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));  // "CHANGE DUE" label
+        changeCard.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // amount
 
-        private void buttonClose_Click(object sender, EventArgs e)
+        var lblLegend = new Label
         {
-            this.Close();
-        }
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = "CHANGE DUE",
+            Font      = AppTypography.RowLabel,
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.BottomCenter,
+        };
 
-        private async void buttonPrint_Click(object sender, EventArgs e)
+        var lblAmount = new Label
         {
-            try
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = _devuelta.ToString("C"),
+            Font      = new Font("Montserrat", 44F, FontStyle.Bold),
+            ForeColor = AppColors.AccentGreen,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        changeCard.Controls.Add(lblLegend, 0, 0);
+        changeCard.Controls.Add(lblAmount, 0, 1);
+
+        // ── Invoice info row ──────────────────────────────────────────────────
+        var invoiceRow = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount    = 1,
+            BackColor   = Color.Transparent,
+            Margin      = new Padding(0),
+        };
+        invoiceRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48));
+        invoiceRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        invoiceRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var lblIcon = new Label
+        {
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = "🧾",
+            Font      = new Font("Segoe UI Emoji", 22F),
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        var lblInvoice = new Label
+        {
+            AutoSize  = false,
+            Dock      = DockStyle.Fill,
+            Text      = $"Invoice  #  {_consecutivo}",
+            Font      = AppTypography.SectionTitle,
+            ForeColor = AppColors.TextPrimary,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        invoiceRow.Controls.Add(lblIcon,    0, 0);
+        invoiceRow.Controls.Add(lblInvoice, 1, 0);
+
+        outer.Controls.Add(changeCard, 0, 0);
+        outer.Controls.Add(invoiceRow, 0, 1);
+
+        return outer;
+    }
+
+    protected override async Task<bool> OnConfirmAsync()
+    {
+        try
+        {
+            var order        = await _orderService.GetOrderById(_orderId);
+            var orderDetails = await _orderService.GetOrderDetailsByOrderId(_orderId);
+
+            if (order == null || orderDetails == null)
             {
-                buttonPrint.Enabled = false;
-                var order        = await orderService.GetOrderById(orderId);
-                var orderDetails = await orderService.GetOrderDetailsByOrderId(orderId);
+                MessageBox.Show("Could not retrieve order information.", "Warning",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
 
-                if (order == null || orderDetails == null)
-                {
-                    MessageBox.Show("No se pudo obtener la información del pedido.", "Aviso",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+            var branch = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
+            if (branch != null)
+            {
+                var ticket = new Ticket(_orderId, order.Consecutivo, order, orderDetails,
+                    SessionManager.Name, null, branch.Address, branch.FooterMsg);
+                ticket.Print();
+            }
 
-                var branchInfo = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
-                if (branchInfo != null)
-                {
-                    var ticket = new Ticket(orderId, order.Consecutivo, order, orderDetails, SessionManager.Name,
-                        null, branchInfo.Address, branchInfo.FooterMsg);
-                    ticket.Print();
-                    this.Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al imprimir el recibo:\n{ex.Message}", "Error de Impresión",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                buttonPrint.Enabled = true;
-            }
+            return true;
         }
-
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Print error:\n{ex.Message}", "Print Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
+        }
     }
 }

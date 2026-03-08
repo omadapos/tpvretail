@@ -22,7 +22,7 @@ public sealed class frmSupervisorPin : Form
     public frmSupervisorPin()
     {
         FormBorderStyle = FormBorderStyle.None;
-        StartPosition   = FormStartPosition.CenterParent;
+        StartPosition   = FormStartPosition.CenterScreen;
         BackColor       = AppColors.NavyDark;
         Size            = new Size(380, 530);
         TopMost         = true;

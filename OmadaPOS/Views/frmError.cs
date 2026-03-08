@@ -1,34 +1,41 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
+namespace OmadaPOS.Views;
 
-namespace OmadaPOS.Views
+public sealed class frmError : POSDialog
 {
-    public partial class frmError : Form
-    {  // ← Esta llave faltaba
-        public frmError(string errMsg)
-        {
-            InitializeComponent();
-            this.labelError.Text = errMsg;
-        }
+    private readonly string _message;
 
-        private void buttonOK_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
+    public frmError(string errMsg)
+    {
+        _message = errMsg;
+    }
 
-        private void frmError_Load(object sender, EventArgs e)
-        {
-        }
+    protected override Color       AccentColor => AppColors.Danger;
+    protected override string      Icon        => "⚠";
+    protected override string      Title       => "Error";
+    protected override string      Subtitle    => "An unexpected error occurred";
+    protected override DialogSize  Size        => DialogSize.Compact;
+    protected override string      CancelText  => "✕  CLOSE";
 
-        private void labelError_Click(object sender, EventArgs e)
+    protected override Control BuildContent()
+    {
+        var panel = new Panel
         {
-        }
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.BackgroundPrimary,
+            Padding   = new Padding(24, 20, 24, 10),
+        };
+
+        var lbl = new Label
+        {
+            Text      = _message,
+            Font      = AppTypography.Body,
+            ForeColor = AppColors.TextPrimary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        panel.Controls.Add(lbl);
+        return panel;
     }
 }

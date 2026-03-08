@@ -2,141 +2,70 @@ using OmadaPOS.Impresora;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 
-namespace OmadaPOS.Views
+namespace OmadaPOS.Views;
+
+public sealed class frmCierreDiario : POSDialog
 {
-    public partial class frmCierreDiario : Form
+    private readonly IOrderService  _orderService;
+    private readonly IBranchService _branchService;
+    private DateTimePicker _picker = null!;
+
+    public frmCierreDiario(IOrderService orderService, IBranchService branchService)
     {
-        private IOrderService orderService;
-        private IBranchService branchService;
+        _orderService  = orderService;
+        _branchService = branchService;
+    }
 
-        public frmCierreDiario()
+    protected override Color      AccentColor => AppColors.Danger;
+    protected override string     Icon        => "⏻";
+    protected override string     Title       => "Close Day";
+    protected override string     Subtitle    => "Select date and confirm daily closing";
+    protected override DialogSize Size        => DialogSize.Compact;
+    protected override string?    ConfirmText => "⏻  CLOSE DAY";
+    protected override string     CancelText  => "✕  CANCEL";
+
+    protected override Control BuildContent()
+    {
+        var panel = new Panel
         {
-            InitializeComponent();
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.BackgroundPrimary,
+            Padding   = new Padding(28, 24, 28, 8),
+        };
 
-            orderService  = Program.GetService<IOrderService>();
-            branchService = Program.GetService<IBranchService>();
-
-            this.Load += frmCierreDiario_Load;
-        }
-
-        private void frmCierreDiario_Load(object sender, EventArgs e)
+        var lbl = new Label
         {
-            AplicarEstiloVisual();
-        }
+            Text      = "Select closing date:",
+            Font      = AppTypography.Body,
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Top,
+            Height    = 28,
+        };
 
-        private void AplicarEstiloVisual()
+        _picker = new DateTimePicker
         {
-            ConfigurarTamano(anchoPorc: 0.38, altoPorc: 0.55);
+            Dock      = DockStyle.Top,
+            Font      = new Font("Segoe UI", 16F),
+            Value     = DateTime.Today,
+            Format    = DateTimePickerFormat.Short,
+        };
 
-            this.BackColor = AppColors.BackgroundPrimary;
+        panel.Controls.Add(_picker);
+        panel.Controls.Add(lbl);
+        return panel;
+    }
 
-            // ── Header contextual — Rojo (acción destructiva / fin de jornada) ──
-            AgregarHeader();
+    protected override async Task<bool> OnConfirmAsync()
+    {
+        var sDate  = _picker.Value.ToString("yyyyMMdd");
+        var cierre = await _orderService.CierreDiario(sDate, SessionManager.UserName);
+        if (cierre == null) return false;
 
-            // ── Botón "Close Day" — Danger (confirmar cierre) ──
-            ElegantButtonStyles.Style(buttonClose, AppColors.Danger, AppColors.TextWhite, fontSize: 22f);
-            buttonClose.Text = "⏻  CLOSE DAY";
+        var branch = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
+        if (branch != null)
+            new TicketCierre(cierre, branch.Address ?? "", branch.Name ?? "").print();
 
-            // ── Estilo del DateTimePicker ──
-            dateTimePickerFecha.Font      = new Font("Segoe UI", 16F, FontStyle.Regular);
-            dateTimePickerFecha.CalendarForeColor = AppColors.TextPrimary;
-            dateTimePickerFecha.BackColor = AppColors.BackgroundSecondary;
-        }
-
-        private void AgregarHeader()
-        {
-            var panel = new Panel
-            {
-                Dock      = DockStyle.Top,
-                Height    = 70,
-                BackColor = AppColors.Danger,
-            };
-
-            var lblIcono = new Label
-            {
-                Text      = "⏻",
-                Font      = new Font("Segoe UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(220, 255, 255, 255),
-                AutoSize  = true,
-                Location  = new Point(16, 14),
-                BackColor = Color.Transparent
-            };
-
-            var lblTitulo = new Label
-            {
-                Text      = "Close Day",
-                Font      = new Font("Montserrat", 16F, FontStyle.Bold),
-                ForeColor = Color.White,
-                AutoSize  = true,
-                Location  = new Point(58, 10),
-                BackColor = Color.Transparent
-            };
-
-            var lblSub = new Label
-            {
-                Text      = "Select date and confirm daily closing",
-                Font      = new Font("Segoe UI", 10F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(200, 255, 255, 255),
-                AutoSize  = true,
-                Location  = new Point(59, 38),
-                BackColor = Color.Transparent
-            };
-
-            panel.Paint += (s, e) =>
-            {
-                using var pen = new Pen(Color.FromArgb(80, 0, 0, 0), 2);
-                e.Graphics.DrawLine(pen, 0, panel.Height - 2, panel.Width, panel.Height - 2);
-            };
-
-            panel.Controls.Add(lblIcono);
-            panel.Controls.Add(lblTitulo);
-            panel.Controls.Add(lblSub);
-            this.Controls.Add(panel);
-            panel.BringToFront();
-        }
-
-        private void ConfigurarTamano(double anchoPorc, double altoPorc)
-        {
-            var screen    = Screen.PrimaryScreen!.WorkingArea;
-            this.Width    = (int)(screen.Width  * anchoPorc);
-            this.Height   = (int)(screen.Height * altoPorc);
-            this.Location = new Point(
-                screen.X + (screen.Width  - this.Width)  / 2,
-                screen.Y + (screen.Height - this.Height) / 2);
-        }
-
-        private async void buttonClose_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                buttonClose.Enabled = false;
-                var date  = dateTimePickerFecha.Value;
-                var sDate = date.ToString("yyyyMMdd");
-
-                var cierre = await orderService.CierreDiario(sDate, SessionManager.UserName);
-                if (cierre != null)
-                {
-                    var branchInfo = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
-                    if (branchInfo != null)
-                    {
-                        var ticket = new TicketCierre(cierre, branchInfo.Address ?? "", branchInfo.Name ?? "");
-                        ticket.print();
-                        this.Close();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Error al procesar el cierre diario:\n{ex.Message}\n\nEl cierre puede haberse registrado. Verifique con el administrador.",
-                    "Error — Cierre Diario",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-            }
-            finally
-            {
-                buttonClose.Enabled = true;
-            }
-        }
+        return true;
     }
 }

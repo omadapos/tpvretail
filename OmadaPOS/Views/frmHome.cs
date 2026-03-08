@@ -105,6 +105,19 @@ namespace OmadaPOS.Views
             };
             tableLayoutPanelPayment.Controls.Add(keyPaymentControl1, 0, 1);
 
+            // abecedarioControl1 is declared in the Designer but stripped from
+            // InitializeComponent on every regeneration — create it in code.
+            if (abecedarioControl1 == null)
+            {
+                abecedarioControl1 = new Componentes.AbecedarioControl
+                {
+                    Dock = DockStyle.Fill,
+                    Name = "abecedarioControl1",
+                };
+                abecedarioControl1.LetraClicked += AbecedarioControl1_LetraClicked;
+                tableLayoutPanelCategoria.Controls.Add(abecedarioControl1, 0, 1);
+            }
+
             _scanInputControl = ScanInputControl.Attach(tableLayoutPanel1, textBoxUPC);
             _userSessionControl = UserSessionControl.Attach(this, MaintableLayout, tableLayoutPanel1, labelCashier);
             _userSessionControl.SettingsRequested += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
@@ -814,6 +827,9 @@ namespace OmadaPOS.Views
 
         async Task PaymentSummary(int oId, int consecutivo)
         {
+            // Capturar el cambio ANTES de ClearTotales() que lo resetea a 0.
+            var devuelta = changeValue > 0 ? changeValue : 0m;
+
             _shoppingCart.Clear();
             _paymentSplitService.Clear();
 
@@ -823,8 +839,6 @@ namespace OmadaPOS.Views
             // CRÍTICO: asignar resultado para que el botón muestre el nuevo número de orden
             orderId = await LoadLastInvoiceAsync();
             _posHeaderControl?.SetInvoiceDisplay(orderId);
-
-            var devuelta = changeValue;
 
             _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this);
         }

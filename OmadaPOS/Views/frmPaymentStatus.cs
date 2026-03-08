@@ -1,29 +1,41 @@
-namespace OmadaPOS.Views
+namespace OmadaPOS.Views;
+
+public sealed class frmPaymentStatus : POSDialog
 {
-    public partial class frmPaymentStatus : Form
+    private readonly string _message;
+
+    public frmPaymentStatus(string msg)
     {
-        private string msg = "";
+        _message = msg;
+    }
 
-        public frmPaymentStatus(string msg)
+    protected override Color      AccentColor => AppColors.AccentGreen;
+    protected override string     Icon        => "✔";
+    protected override string     Title       => "Payment Status";
+    protected override string     Subtitle    => "Transaction result";
+    protected override DialogSize Size        => DialogSize.Compact;
+    protected override string     CancelText  => "✕  CLOSE";
+
+    protected override Control BuildContent()
+    {
+        var panel = new Panel
         {
-            InitializeComponent();
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.BackgroundPrimary,
+            Padding   = new Padding(24, 20, 24, 10),
+        };
 
-            this.msg = msg;
-
-            this.BackColor = AppColors.BackgroundPrimary;
-            labelMsg.BackColor = AppColors.BackgroundPrimary;
-            labelMsg.ForeColor = AppColors.TextPrimary;
-            ElegantButtonStyles.Style(buttonClose, AppColors.NavyBase, AppColors.TextWhite, fontSize: 20f);
-        }
-
-        private void frmPaymentStatus_Load(object sender, EventArgs e)
+        var lbl = new Label
         {
-            labelMsg.Text = msg;
-        }
+            Text      = _message,
+            Font      = AppTypography.SectionTitle,
+            ForeColor = AppColors.TextPrimary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
 
-        private void buttonClose_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
+        panel.Controls.Add(lbl);
+        return panel;
     }
 }

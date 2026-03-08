@@ -1,109 +1,118 @@
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Services.Navigation;
 
-namespace OmadaPOS.Views
+namespace OmadaPOS.Views;
+
+public sealed class frmCheckPrice : POSDialog
 {
-    public partial class frmCheckPrice : Form
+    private readonly ICategoryService  _categoryService;
+    private readonly IWindowService    _windowService;
+
+    private TextBox  _textUPC  = null!;
+    private Label    _lblName  = null!;
+    private Label    _lblPrice = null!;
+
+    public frmCheckPrice(ICategoryService categoryService, IWindowService windowService)
     {
-        private readonly ICategoryService _categoryService;
-        private readonly IWindowService _windowService;
+        _categoryService = categoryService;
+        _windowService   = windowService;
 
-        public frmCheckPrice(ICategoryService categoryService, IWindowService windowService)
+        // Focus scan input after form is shown
+        Shown += (_, _) => _textUPC.Focus();
+    }
+
+    protected override Color      AccentColor => AppColors.Info;
+    protected override string     Icon        => "$";
+    protected override string     Title       => "Check Price";
+    protected override string     Subtitle    => "Scan or enter UPC to look up the price";
+    protected override DialogSize Size        => DialogSize.Medium;
+    protected override string     CancelText  => "✔  CLOSE";
+
+    protected override Control BuildContent()
+    {
+        var panel = new Panel
         {
-            InitializeComponent();
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.BackgroundPrimary,
+            Padding   = new Padding(20, 16, 20, 8),
+        };
 
-            _categoryService = categoryService;
-            _windowService   = windowService;
-
-            this.Load += frmCheckPrice_Load;
-        }
-
-        private void frmCheckPrice_Load(object sender, EventArgs e)
+        // ── UPC input ─────────────────────────────────────────────────────────
+        var scanPanel = new Panel
         {
-            AplicarEstiloVisual();
-            textUPC.Focus();
-        }
-
-        private void AplicarEstiloVisual()
+            Dock      = DockStyle.Top,
+            Height    = 52,
+            BackColor = AppColors.SurfaceMuted,
+            Margin    = new Padding(0, 0, 0, 12),
+        };
+        scanPanel.Paint += (_, e) =>
         {
-            PopupHeaderHelper.ConfigureSize(this, widthPct: 0.40, heightPct: 0.65);
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using var path   = ElegantButtonStyles.RoundedPath(new Rectangle(1, 1, scanPanel.Width - 2, scanPanel.Height - 2), 8);
+            using var border = new Pen(AppColors.Info, 1.5f);
+            e.Graphics.DrawPath(border, path);
+        };
 
-            this.BackColor = AppColors.BackgroundPrimary;
-            tableLayoutPanel1.BackColor = AppColors.BackgroundPrimary;
-
-            PopupHeaderHelper.AddHeader(this,
-                color    : AppColors.Info,
-                icon     : "$",
-                title    : "Check Price",
-                subtitle : "Scan or enter UPC to look up the price");
-
-            labelName.Font      = AppTypography.SectionTitle;
-            labelName.ForeColor = AppColors.TextPrimary;
-            labelName.BackColor = AppColors.BackgroundPrimary;
-
-            labelPrice.Font      = AppTypography.AmountHero;
-            labelPrice.ForeColor = AppColors.AccentGreen;
-            labelPrice.BackColor = AppColors.BackgroundPrimary;
-
-            textUPC.BackColor   = AppColors.NavyDark;
-            textUPC.ForeColor   = AppColors.AccentGreen;
-            textUPC.Font        = AppTypography.ScanInput;
-            textUPC.BorderStyle = BorderStyle.None;
-
-            ElegantButtonStyles.Style(buttonOK, AppColors.NavyBase, AppColors.TextWhite, fontSize: 22f);
-            buttonOK.Text = "✔  CLOSE";
-        }
-
-        private void buttonOK_Click(object sender, EventArgs e) => this.Close();
-
-        private void textUPC_TextChanged(object sender, EventArgs e)
+        _textUPC = new TextBox
         {
-            SearchProduct(textUPC.Text);
-        }
+            Dock            = DockStyle.Fill,
+            Font            = AppTypography.ScanInput,
+            BackColor       = AppColors.SurfaceMuted,
+            ForeColor       = AppColors.TextPrimary,
+            BorderStyle     = BorderStyle.None,
+            TextAlign       = HorizontalAlignment.Center,
+            PlaceholderText = "Scan or type UPC…",
+        };
+        _textUPC.TextChanged += (_, _) => SearchProduct(_textUPC.Text);
+        scanPanel.Controls.Add(_textUPC);
 
-        public async void SearchProduct(string upc)
+        // ── Product name ──────────────────────────────────────────────────────
+        _lblName = new Label
         {
-            if (!string.IsNullOrEmpty(upc))
+            Text      = "—",
+            Font      = AppTypography.SectionTitle,
+            ForeColor = AppColors.TextPrimary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Top,
+            Height    = 40,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        // ── Price ─────────────────────────────────────────────────────────────
+        _lblPrice = new Label
+        {
+            Text      = "—",
+            Font      = new Font("Montserrat", 42F, FontStyle.Bold),
+            ForeColor = AppColors.AccentGreen,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        panel.Controls.Add(_lblPrice);
+        panel.Controls.Add(_lblName);
+        panel.Controls.Add(scanPanel);
+        return panel;
+    }
+
+    private async void SearchProduct(string upc)
+    {
+        if (string.IsNullOrWhiteSpace(upc)) return;
+        try
+        {
+            if (upc.Length > 2 && upc.StartsWith("20"))
             {
-                if (upc.Length > 2 && upc.Substring(0, 2) == "20")
-                {
-                    try
-                    {
-                        string  sPrice = upc.Substring(7, 4);
-                        decimal price  = decimal.Parse(sPrice) / 100;
-                        string  code   = upc.Substring(1, 5);
-
-                        var plu = await _categoryService.LoadProductByUPC_Promotion(code);
-                        if (plu != null)
-                        {
-                            labelName.Text  = plu.Name;
-                            labelPrice.Text = price.ToString("C");
-                            textUPC.Text    = "";
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _windowService.OpenError(ex.Message);
-                    }
-                }
-                else
-                {
-                    try
-                    {
-                        var plu = await _categoryService.LoadProductByUPC_Promotion(upc);
-                        if (plu != null)
-                        {
-                            labelName.Text  = plu.Name;
-                            labelPrice.Text = plu.Price?.ToString("C") ?? "—";
-                            textUPC.Text    = "";
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _windowService.OpenError(ex.Message);
-                    }
-                }
+                decimal price = decimal.Parse(upc.Substring(7, 4)) / 100;
+                string  code  = upc.Substring(1, 5);
+                var plu = await _categoryService.LoadProductByUPC_Promotion(code);
+                if (plu != null) { _lblName.Text = plu.Name; _lblPrice.Text = price.ToString("C"); _textUPC.Clear(); }
+            }
+            else
+            {
+                var plu = await _categoryService.LoadProductByUPC_Promotion(upc);
+                if (plu != null) { _lblName.Text = plu.Name; _lblPrice.Text = plu.Price?.ToString("C") ?? "—"; _textUPC.Clear(); }
             }
         }
+        catch (Exception ex) { _windowService.OpenError(ex.Message); }
     }
 }

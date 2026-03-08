@@ -57,7 +57,7 @@ public abstract class NumericPadDialog : Form
     {
         // ── Form chrome ───────────────────────────────────────────────────────
         FormBorderStyle = FormBorderStyle.None;
-        StartPosition   = FormStartPosition.CenterParent;
+        StartPosition   = FormStartPosition.CenterScreen;
         Size            = new Size(FormW, FormH);
         MinimumSize     = new Size(FormW, FormH);
         MaximumSize     = new Size(FormW, FormH);

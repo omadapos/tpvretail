@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Models;
@@ -169,14 +169,19 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         DELETE FROM HoldCartItems WHERE HoldId = @HoldId";
 
     private const string SELECT_HELD_CARTS_BY_SESSION_SQL = @"
-        SELECT HoldId, SessionId
-        FROM HoldCarts
-        WHERE SessionId = @SessionId";
+        SELECT h.HoldId, h.LastModified, COUNT(i.ProductId) AS ItemCount
+        FROM HoldCarts h
+        LEFT JOIN HoldCartItems i ON h.HoldId = i.HoldId
+        WHERE h.SessionId = @SessionId
+        GROUP BY h.HoldId, h.LastModified
+        ORDER BY h.LastModified DESC";
 
     private const string SELECT_HELD_CARTS_BY_ID_SQL = @"
-        SELECT HoldId, SessionId
-        FROM HoldCarts
-        WHERE HoldId = @HoldId";
+        SELECT h.HoldId, h.LastModified, COUNT(i.ProductId) AS ItemCount
+        FROM HoldCarts h
+        LEFT JOIN HoldCartItems i ON h.HoldId = i.HoldId
+        WHERE h.HoldId = @HoldId
+        GROUP BY h.HoldId, h.LastModified";
 
     public SqliteManager(string dbFileName = "sqliteomada.db", ILogger<SqliteManager>? logger = null)
     {
@@ -607,13 +612,21 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
 
             await using var reader = await command.ExecuteReaderAsync();
 
-            var holdIdOrdinal = reader.GetOrdinal("HoldId");
+            var holdIdOrdinal       = reader.GetOrdinal("HoldId");
+            var lastModifiedOrdinal = reader.GetOrdinal("LastModified");
+            var itemCountOrdinal    = reader.GetOrdinal("ItemCount");
 
             while (await reader.ReadAsync())
             {
                 var heldCart = new HoldCartModel
                 {
-                    HoldId = reader.GetString(holdIdOrdinal),
+                    HoldId       = reader.GetString(holdIdOrdinal),
+                    LastModified = reader.IsDBNull(lastModifiedOrdinal)
+                                       ? DateTime.Now
+                                       : reader.GetDateTime(lastModifiedOrdinal),
+                    ItemCount    = reader.IsDBNull(itemCountOrdinal)
+                                       ? 0
+                                       : reader.GetInt32(itemCountOrdinal),
                 };
                 heldCarts.Add(heldCart);
             }
@@ -644,13 +657,21 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
 
             await using var reader = await command.ExecuteReaderAsync();
 
-            var holdIdOrdinal = reader.GetOrdinal("HoldId");
+            var holdIdOrdinal       = reader.GetOrdinal("HoldId");
+            var lastModifiedOrdinal = reader.GetOrdinal("LastModified");
+            var itemCountOrdinal    = reader.GetOrdinal("ItemCount");
 
             if (await reader.ReadAsync())
             {
                 heldCart = new HoldCartModel
                 {
-                    HoldId = reader.GetString(holdIdOrdinal),
+                    HoldId       = reader.GetString(holdIdOrdinal),
+                    LastModified = reader.IsDBNull(lastModifiedOrdinal)
+                                       ? DateTime.Now
+                                       : reader.GetDateTime(lastModifiedOrdinal),
+                    ItemCount    = reader.IsDBNull(itemCountOrdinal)
+                                       ? 0
+                                       : reader.GetInt32(itemCountOrdinal),
                 };
             }
 
