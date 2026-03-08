@@ -15,7 +15,6 @@ namespace OmadaPOS.Views
         private readonly ZebraScannerService? _zebraScannerService;
 
         private POSHeaderControl? _posHeaderControl;
-        private ScanInputControl? _scanInputControl;
         private CartListViewControl? _cartListViewControl;
         private CartTotalsControl? _cartTotalsControl;
         private PaymentPanelControl? _paymentPanelControl;
@@ -28,7 +27,6 @@ namespace OmadaPOS.Views
 
         decimal totalGlobal = 0;
         decimal changeValue = 0;
-        bool bDesc = false;
         double weight = 0.0;
 
         private TabPage? _selectedTab;
@@ -118,7 +116,7 @@ namespace OmadaPOS.Views
                 tableLayoutPanelCategoria.Controls.Add(abecedarioControl1, 0, 1);
             }
 
-            _scanInputControl = ScanInputControl.Attach(tableLayoutPanel1, textBoxUPC);
+            ScanInputControl.Attach(tableLayoutPanel1, textBoxUPC);
             _userSessionControl = UserSessionControl.Attach(this, MaintableLayout, tableLayoutPanel1, labelCashier);
             _userSessionControl.SettingsRequested += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
             _userSessionControl.DailyCloseRequested += (_, _) => labelCashier_ClickInternal();
@@ -792,7 +790,7 @@ namespace OmadaPOS.Views
 
         private async Task GiftCardPayAsync()
         {
-            var orderResponse = await _paymentCoordinatorService.ProcessGiftCardAsync(changeValue, bDesc);
+            var orderResponse = await _paymentCoordinatorService.ProcessGiftCardAsync(changeValue, false);
 
             if (orderResponse != null)
             {
@@ -804,7 +802,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, keyPaymentControl1.ValueCents, changeValue, bDesc);
+                var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, keyPaymentControl1.ValueCents, changeValue, false);
 
                 if (!result.IsValidAmount)
                 {
@@ -865,7 +863,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                var result = await _paymentCoordinatorService.ProcessTerminalPaymentAsync(paymentType, totalGlobal, bDesc);
+                var result = await _paymentCoordinatorService.ProcessTerminalPaymentAsync(paymentType, totalGlobal, false);
 
                 if (result.PaymentResponse != null)
                 {
@@ -945,7 +943,7 @@ namespace OmadaPOS.Views
 
         private async Task ProcessPaymentMultipleAsync()
         {
-            var orderResponse = await _paymentCoordinatorService.ProcessMultiplePaymentsAsync(changeValue, bDesc);
+            var orderResponse = await _paymentCoordinatorService.ProcessMultiplePaymentsAsync(changeValue, false);
 
             if (orderResponse != null)
             {

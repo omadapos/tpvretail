@@ -120,6 +120,7 @@ namespace OmadaPOS.Views
             buttonOk.TabIndex = 7;
             buttonOk.Text = "OK";
             buttonOk.UseVisualStyleBackColor = true;
+            buttonOk.Click += buttonSave_Click;
             // 
             // label1
             // 

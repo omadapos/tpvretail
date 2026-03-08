@@ -8,9 +8,6 @@
     <Compile Update="Componentes\AbecedarioControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Componentes\AutocompleteProductUserControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Update="Componentes\NumericPadControl.cs">
       <SubType>UserControl</SubType>
     </Compile>

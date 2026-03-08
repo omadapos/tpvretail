@@ -40,10 +40,9 @@ public static class AppColors
     // ─────────────────────────────────────────────
     // COLORES FUNCIONALES SEMÁNTICOS
     // ─────────────────────────────────────────────
-    public static readonly Color Success = Color.FromArgb(5,  150, 105);  // emerald-600
-    public static readonly Color Danger  = Color.FromArgb(220,  38,  38); // red-600 — más vivo y claro que el anterior
-    public static readonly Color Warning = Color.FromArgb(217, 119,   6); // amber-600 — dorado, menos naranja
-    public static readonly Color Info    = Color.FromArgb(37,  99,  235); // blue-600 — digital, moderno
+    public static readonly Color Danger  = Color.FromArgb(220,  38,  38); // red-600
+    public static readonly Color Warning = Color.FromArgb(217, 119,   6); // amber-600
+    public static readonly Color Info    = Color.FromArgb(37,  99,  235); // blue-600
 
     // ─────────────────────────────────────────────
     // MÉTODOS DE PAGO
@@ -73,24 +72,7 @@ public static class AppColors
     // ─────────────────────────────────────────────
     // COLORES ADICIONALES (overlays, variantes semánticas)
     // ─────────────────────────────────────────────
-    public static readonly Color DangerDark          = Color.FromArgb(185,  28,  28); // red-700 — logout / danger hover
-    public static readonly Color OverlayLight        = Color.FromArgb(200, 255, 255, 255); // overlay blanco semitransparente
-    public static readonly Color OverlaySemiDark     = Color.FromArgb( 80,   0,   0,   0); // overlay oscuro — borders sobre gradiente
-    public static readonly Color SeparatorOnDark     = Color.FromArgb( 60, 255, 255, 255); // separador/borde sobre fondo oscuro
-    public static readonly Color ShadowSubtle        = Color.FromArgb( 12,   0,   0,   0); // sombra suave — tarjetas / paneles
-
-    // ─────────────────────────────────────────────
-    // GRADIENTES UTILITARIOS
-    // ─────────────────────────────────────────────
-    public static LinearGradientBrush HeaderGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, NavyDark, NavyBase, LinearGradientMode.Vertical);
-
-    public static LinearGradientBrush AccentGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, AccentGreen, AccentGreenDark, LinearGradientMode.Vertical);
-
-    public static LinearGradientBrush DangerGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, Danger, Color.FromArgb(185, 28, 28), LinearGradientMode.Vertical);
-
-    public static LinearGradientBrush SurfaceGradient(Rectangle bounds) =>
-        new LinearGradientBrush(bounds, BackgroundSecondary, BackgroundPrimary, LinearGradientMode.Vertical);
+    public static readonly Color OverlayLight    = Color.FromArgb(200, 255, 255, 255); // overlay blanco semitransparente
+    public static readonly Color SeparatorOnDark = Color.FromArgb( 60, 255, 255, 255); // separador/borde sobre fondo oscuro
+    public static readonly Color ShadowSubtle    = Color.FromArgb( 12,   0,   0,   0); // sombra suave — tarjetas / paneles
 }

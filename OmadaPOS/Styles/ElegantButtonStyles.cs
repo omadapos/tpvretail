@@ -13,26 +13,17 @@ public static class ElegantButtonStyles
     // ─────────────────────────────────────────────
 
     // 30% — Slate (estructura, headers, teclado)
-    public static readonly Color HeaderNavy      = AppColors.NavyDark;
-    public static readonly Color HeaderDark      = AppColors.NavyDark;
-    public static readonly Color Keypad          = AppColors.NavyBase;
-    public static readonly Color KeypadHover     = AppColors.NavyLight;
-    public static readonly Color ProductPrices   = AppColors.NavyBase;
-    public static readonly Color PriceText       = AppColors.NavyBase;
-    public static readonly Color DebitGray       = AppColors.SlateBlue;
-    public static readonly Color RewardsButton   = AppColors.SlateBlue;
-    public static readonly Color AlphabetButtons = Color.FromArgb(100, 116, 139); // slate-500
+    public static readonly Color HeaderNavy  = AppColors.NavyDark;
+    public static readonly Color Keypad      = AppColors.NavyBase;
+    public static readonly Color DebitGray   = AppColors.SlateBlue;
 
     // 10% — Emerald (acciones principales)
-    public static readonly Color CashGreen        = AppColors.AccentGreen;
-    public static readonly Color Buttonok         = AppColors.AccentGreen;
-    public static readonly Color MoneyButtonGreen = AppColors.AccentGreenDark;
-    public static readonly Color BackgroundLight  = AppColors.BackgroundPrimary;
+    public static readonly Color CashGreen   = AppColors.AccentGreen;
+    public static readonly Color Buttonok    = AppColors.AccentGreen;
 
     // Funcionales semánticos
     public static readonly Color AlertRed         = AppColors.Danger;
     public static readonly Color ButtonCacnel     = AppColors.Danger;
-    public static readonly Color AlertRedGlass    = Color.FromArgb(80, 220, 38, 38);
     public static readonly Color WarningOrange    = AppColors.Warning;
     public static readonly Color EBTOrange        = AppColors.PaymentEBT;
     public static readonly Color EBTBalanceOrange = AppColors.Warning;
@@ -40,10 +31,8 @@ public static class ElegantButtonStyles
     public static readonly Color SplitBlueLight   = AppColors.PaymentSplit;
     public static readonly Color GiftPurple       = AppColors.PaymentGiftCard;
 
-    // Texto y sombra
-    public static readonly Color TextWhite    = AppColors.TextWhite;
-    public static readonly Color ButtonShadow = Color.FromArgb(40, 0, 0, 0);
-    public static readonly Color HoverOverlay = Color.FromArgb(30, 15, 23, 42);
+    // Texto
+    public static readonly Color TextWhite = AppColors.TextWhite;
 
     // HashSet para rastrear botones ya estilizados sin tocar su Tag
     private static readonly HashSet<Button> _styledButtons = new();

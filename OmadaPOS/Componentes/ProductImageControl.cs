@@ -314,25 +314,6 @@ namespace OmadaPOS.Componentes
             base.Dispose(disposing);
         }
 
-        // ── Estado disponible / agotado ───────────────────────────────────
-        public void SetProductState(bool isAvailable)
-        {
-            if (isAvailable)
-            {
-                panelImageArea!.BackColor = ImageBackground;
-                labelTitle!.ForeColor     = NameForeground;
-                labelPrice!.ForeColor     = PriceForeground;
-                this.Enabled = true;
-            }
-            else
-            {
-                panelImageArea!.BackColor = Color.FromArgb(240, 240, 240);
-                labelTitle!.ForeColor     = Color.FromArgb(160, 160, 160);
-                labelPrice!.ForeColor     = Color.FromArgb(160, 160, 160);
-                this.Enabled = false;
-            }
-        }
-
         // ── Helper: path con esquinas redondeadas ─────────────────────────
         private static GraphicsPath CreateRoundedPath(Rectangle bounds, int radius)
         {
