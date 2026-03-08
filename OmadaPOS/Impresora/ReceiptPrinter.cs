@@ -57,7 +57,8 @@ public sealed class ReceiptPrinter
     private readonly string  _storeAddress;
     private readonly string? _storePhone;
     private readonly string? _footerMsg;
-    private readonly PaymentResponseModel? _paymentResponse;
+    private readonly PaymentResponseModel?  _paymentResponse;
+    private readonly List<PaymentModel>?    _splitPayments;
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public ReceiptPrinter(
@@ -66,9 +67,10 @@ public sealed class ReceiptPrinter
         string  cashier,
         string  storeName,
         string  storeAddress,
-        string? storePhone       = null,
-        string? footerMsg        = null,
-        PaymentResponseModel? paymentResponse = null)
+        string? storePhone              = null,
+        string? footerMsg               = null,
+        PaymentResponseModel? paymentResponse = null,
+        List<PaymentModel>?   splitPayments   = null)
     {
         _order           = order;
         _details         = details;
@@ -78,6 +80,7 @@ public sealed class ReceiptPrinter
         _storePhone      = storePhone;
         _footerMsg       = footerMsg;
         _paymentResponse = paymentResponse;
+        _splitPayments   = splitPayments;
     }
 
     // ── Public entry point ────────────────────────────────────────────────────
@@ -114,8 +117,17 @@ public sealed class ReceiptPrinter
         PrintMeta(b);
         PrintItems(b);
         PrintTotals(b);
-        PrintPayment(b);
-        PrintTransactionDetails(b);
+
+        bool isSplit = _splitPayments is { Count: > 0 };
+        if (isSplit)
+            PrintSplitPayments(b);
+        else
+            PrintPayment(b);
+
+        // Transaction details (card / EBT) — only for single-method payments
+        if (!isSplit)
+            PrintTransactionDetails(b);
+
         PrintQrAndBarcode(b);
         PrintFooter(b);
 
@@ -234,6 +246,37 @@ public sealed class ReceiptPrinter
 
         if (_order.Balance > 0)
             b.TwoCol("Balance Due:", _order.Balance.ToString("C"));
+
+        b.Separator('-').NewLine();
+    }
+
+    /// <summary>
+    /// Prints each split-payment line (method + amount), a subtotal, and
+    /// the change due when applicable. Called in place of PrintPayment
+    /// when _splitPayments is populated.
+    /// </summary>
+    private void PrintSplitPayments(EscPosBuilder b)
+    {
+        b.Separator('=')
+         .Center().Bold(true).Line("SPLIT PAYMENT").NormalStyle().Left()
+         .Separator('-');
+
+        decimal paidTotal = 0;
+        foreach (var p in _splitPayments!)
+        {
+            if (p.Total <= 0) continue;
+            string label = $"  {FormatPaymentMethod(p.PaymentType)}:";
+            b.TwoCol(label, p.Total.ToString("C"));
+            paidTotal += p.Total;
+        }
+
+        b.Separator('-');
+        b.Bold(true).TwoCol("TOTAL PAID:", paidTotal.ToString("C")).NormalStyle();
+
+        if (_order.Devuelta > 0)
+            b.Bold(true)
+             .TwoCol("CHANGE:", _order.Devuelta.ToString("C"))
+             .NormalStyle();
 
         b.Separator('-').NewLine();
     }

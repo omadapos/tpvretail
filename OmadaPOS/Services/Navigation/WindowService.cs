@@ -53,12 +53,14 @@ public class WindowService : IWindowService
     public void OpenKeyLookup(IWin32Window? owner = null)
         => ShowModeless(CreateForm<frmKeyLookup>());
 
-    public void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null, PaymentResponseModel? paymentResponse = null)
+    public void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null, PaymentResponseModel? paymentResponse = null, List<PaymentModel>? splitPayments = null)
     {
-        // ActivatorUtilities cannot match a typed null — only pass paymentResponse when it has a value
-        var form = paymentResponse is not null
-            ? CreateForm<frmPopupCashPayment>(orderId, consecutivo, devuelta, paymentResponse)
-            : CreateForm<frmPopupCashPayment>(orderId, consecutivo, devuelta);
+        // ActivatorUtilities cannot resolve typed null params — build arg list explicitly
+        var args = new List<object> { (object)orderId, consecutivo, devuelta };
+        if (paymentResponse is not null) args.Add(paymentResponse);
+        if (splitPayments   is not null) args.Add(splitPayments);
+
+        var form = CreateForm<frmPopupCashPayment>([.. args]);
         ShowModeless(form);
     }
 

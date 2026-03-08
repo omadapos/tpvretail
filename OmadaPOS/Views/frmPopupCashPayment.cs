@@ -9,13 +9,15 @@ namespace OmadaPOS.Views;
 /// - Cash:         displays change due in green.
 /// - Credit/Debit: displays approval + masked card number + reference.
 /// - EBT:          displays approval + remaining EBT balance.
+/// - Split:        displays each payment method with its amount.
 /// Always offers one-click receipt print.
 /// </summary>
 public sealed class frmPopupCashPayment : POSDialog
 {
-    private readonly IOrderService        _orderService;
-    private readonly IBranchService       _branchService;
+    private readonly IOrderService         _orderService;
+    private readonly IBranchService        _branchService;
     private readonly PaymentResponseModel? _paymentResponse;
+    private readonly List<PaymentModel>?   _splitPayments;
 
     private readonly int     _orderId;
     private readonly int     _consecutivo;
@@ -24,18 +26,18 @@ public sealed class frmPopupCashPayment : POSDialog
     private Button _btnPrint = null!;
 
     // ── Payment type helpers ──────────────────────────────────────────────────
-    private string  Method     => (_paymentResponse?.PaymentCardType is not null ? "CARD" :
-                                   _devuelta > 0                                  ? "CASH" : "OTHER");
-    private bool    IsCash     => _devuelta > 0 && _paymentResponse == null;
-    private bool    IsEbt      => _paymentResponse?.Balance > 0 &&
-                                  string.IsNullOrWhiteSpace(_paymentResponse?.PaymentCardType);
-    private bool    IsCard     => !IsCash && !IsEbt && _paymentResponse != null;
+    private bool IsSplit => _splitPayments is { Count: > 0 };
+    private bool IsCash  => !IsSplit && _devuelta > 0 && _paymentResponse == null;
+    private bool IsEbt   => !IsSplit && _paymentResponse?.Balance > 0 &&
+                            string.IsNullOrWhiteSpace(_paymentResponse?.PaymentCardType);
+    private bool IsCard  => !IsSplit && !IsCash && !IsEbt && _paymentResponse != null;
 
     public frmPopupCashPayment(
-        IOrderService         orderService,
-        IBranchService        branchService,
+        IOrderService          orderService,
+        IBranchService         branchService,
         int orderId, int consecutivo, decimal devuelta,
-        PaymentResponseModel? paymentResponse = null)
+        PaymentResponseModel?  paymentResponse = null,
+        List<PaymentModel>?    splitPayments   = null)
     {
         _orderService    = orderService;
         _branchService   = branchService;
@@ -43,20 +45,25 @@ public sealed class frmPopupCashPayment : POSDialog
         _consecutivo     = consecutivo;
         _devuelta        = devuelta;
         _paymentResponse = paymentResponse;
+        _splitPayments   = splitPayments;
     }
 
-    protected override Color  AccentColor => IsEbt  ? AppColors.AccentGreen
-                                           : IsCard ? AppColors.SlateBlue
-                                           :          AppColors.AccentGreen;
-    protected override string Icon        => IsEbt  ? "🏦"
-                                           : IsCard ? "💳"
-                                           :          "💵";
-    protected override string Title       => IsEbt  ? "EBT Payment"
-                                           : IsCard ? "Card Payment"
-                                           :          "Cash Payment";
-    protected override string Subtitle    => IsEbt  ? "Approved — EBT balance printed on receipt"
-                                           : IsCard ? "Approved — transaction details printed on receipt"
-                                           :          "Transaction complete — give change to customer";
+    protected override Color  AccentColor => IsEbt   ? AppColors.AccentGreen
+                                           : IsCard  ? AppColors.SlateBlue
+                                           : IsSplit ? AppColors.SlateBlue
+                                           :           AppColors.AccentGreen;
+    protected override string Icon        => IsEbt   ? "🏦"
+                                           : IsCard  ? "💳"
+                                           : IsSplit ? "🔀"
+                                           :           "💵";
+    protected override string Title       => IsEbt   ? "EBT Payment"
+                                           : IsCard  ? "Card Payment"
+                                           : IsSplit ? "Split Payment"
+                                           :           "Cash Payment";
+    protected override string Subtitle    => IsEbt   ? "Approved — EBT balance printed on receipt"
+                                           : IsCard  ? "Approved — transaction details printed on receipt"
+                                           : IsSplit ? "Payment complete — all methods printed on receipt"
+                                           :           "Transaction complete — give change to customer";
     protected override DialogSize Size        => DialogSize.Medium;
     protected override string?    ConfirmText => "🖨  PRINT RECEIPT";
     protected override string     CancelText  => "✕  CLOSE";
@@ -83,10 +90,112 @@ public sealed class frmPopupCashPayment : POSDialog
     // ── Main card — adapts to payment type ───────────────────────────────────
     private Control BuildMainCard()
     {
-        if (IsCash)   return BuildCashCard();
-        if (IsEbt)    return BuildEbtCard();
+        if (IsSplit) return BuildSplitCard();
+        if (IsCash)  return BuildCashCard();
+        if (IsEbt)   return BuildEbtCard();
         return BuildCardApprovalCard();
     }
+
+    private Control BuildSplitCard()
+    {
+        var card = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 0,
+            BackColor   = Color.FromArgb(239, 246, 255),
+            Margin      = new Padding(0, 0, 0, 12),
+            AutoSize    = false,
+        };
+        card.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+        // Header caption
+        card.RowCount++;
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        card.Controls.Add(MakeCaption("PAYMENT BREAKDOWN"), 0, card.RowCount - 1);
+
+        // One row per payment line
+        foreach (var p in _splitPayments!)
+        {
+            if (p.Total <= 0) continue;
+            string method = FormatMethod(p.PaymentType);
+
+            var row = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+                BackColor = Color.Transparent, Margin = new Padding(8, 2, 8, 2),
+            };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+            row.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            row.Controls.Add(new Label
+            {
+                AutoSize = false, Dock = DockStyle.Fill,
+                Text = method, Font = AppTypography.Body,
+                ForeColor = AppColors.TextPrimary, BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleLeft,
+            }, 0, 0);
+            row.Controls.Add(new Label
+            {
+                AutoSize = false, Dock = DockStyle.Fill,
+                Text = p.Total.ToString("C"), Font = AppTypography.Body,
+                ForeColor = AppColors.TextPrimary, BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleRight,
+            }, 1, 0);
+
+            card.RowCount++;
+            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+            card.Controls.Add(row, 0, card.RowCount - 1);
+        }
+
+        // Change due line (if any)
+        if (_devuelta > 0)
+        {
+            card.RowCount++;
+            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+
+            var changeRow = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1,
+                BackColor = Color.FromArgb(220, 252, 231), Margin = new Padding(0, 4, 0, 0),
+            };
+            changeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
+            changeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
+            changeRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            changeRow.Controls.Add(new Label
+            {
+                AutoSize = false, Dock = DockStyle.Fill,
+                Text = "CHANGE DUE", Font = AppTypography.Body,
+                ForeColor = AppColors.AccentGreen, BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleLeft,
+            }, 0, 0);
+            changeRow.Controls.Add(new Label
+            {
+                AutoSize = false, Dock = DockStyle.Fill,
+                Text = _devuelta.ToString("C"), Font = new Font("Montserrat", 14F, FontStyle.Bold),
+                ForeColor = AppColors.AccentGreen, BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleRight,
+            }, 1, 0);
+            card.Controls.Add(changeRow, 0, card.RowCount - 1);
+        }
+
+        return card;
+    }
+
+    private static string FormatMethod(string? method) =>
+        method?.ToUpperInvariant() switch
+        {
+            "CASH"        => "💵  Cash",
+            "CREDIT"      => "💳  Credit Card",
+            "CREDIT_CARD" => "💳  Credit Card",
+            "DEBIT"       => "💳  Debit Card",
+            "DEBIT_CARD"  => "💳  Debit Card",
+            "EBT"         => "🏦  EBT",
+            "GIFTCARD"    => "🎁  Gift Card",
+            null          => "—",
+            var m         => m,
+        };
 
     private Control BuildCashCard()
     {
@@ -239,7 +348,8 @@ public sealed class frmPopupCashPayment : POSDialog
                     storeAddress:    branch.Address ?? "",
                     storePhone:      branch.Contact,
                     footerMsg:       branch.FooterMsg,
-                    paymentResponse: _paymentResponse).Print();
+                    paymentResponse: _paymentResponse,
+                    splitPayments:   _splitPayments).Print();
             }
 
             return true;

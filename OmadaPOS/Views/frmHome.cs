@@ -802,7 +802,8 @@ namespace OmadaPOS.Views
         }
 
         async Task PaymentSummary(int oId, int consecutivo,
-            OmadaPOS.Libreria.Models.PaymentResponseModel? paymentResponse = null)
+            OmadaPOS.Libreria.Models.PaymentResponseModel? paymentResponse = null,
+            List<OmadaPOS.Libreria.Models.PaymentModel>?   splitPayments   = null)
         {
             // Capturar el cambio ANTES de ClearTotales() que lo resetea a 0.
             var devuelta = changeValue > 0 ? changeValue : 0m;
@@ -816,7 +817,7 @@ namespace OmadaPOS.Views
             // CRÍTICO: asignar resultado para que el botón muestre el nuevo número de orden
             orderId = await LoadLastInvoiceAsync();
 
-            _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this, paymentResponse);
+            _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this, paymentResponse, splitPayments);
         }
 
         private void buttonGiftCard_Click(object sender, EventArgs e)
@@ -919,11 +920,16 @@ namespace OmadaPOS.Views
 
         private async Task ProcessPaymentMultipleAsync()
         {
+            // Capture split payments BEFORE ProcessMultiplePaymentsAsync so we
+            // have them available for the receipt even after the session is cleared.
+            var splitPayments = await _paymentSplitService.GetSessionPaymentsAsync();
+
             var orderResponse = await _paymentCoordinatorService.ProcessMultiplePaymentsAsync(changeValue, false);
 
             if (orderResponse != null)
             {
-                await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
+                await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo,
+                    splitPayments: splitPayments.Count > 0 ? splitPayments : null);
             }
         }
 
