@@ -6,19 +6,35 @@ using System.Drawing.Text;
 namespace OmadaPOS.Views;
 
 /// <summary>
-/// Invoice history browser: filter by date, select an invoice to view details,
-/// and reprint the receipt. Migrated from Designer to POSDialog.
+/// Invoice history browser — search by date range, view item details, reprint receipts.
+///
+/// Invoice list columns:
+///   Invoice # | Date & Time | Subtotal | Tax | Total | Payment | [🖨 Print]
+///
+/// Detail columns (right panel, populated on row selection):
+///   Product | Qty | Unit Price | Tax | Line Total
 /// </summary>
 public sealed class frmPrintInvoice : POSDialog
 {
     private readonly IOrderService  _orderService;
     private readonly IBranchService _branchService;
 
-    private ListView     _lvInvoices = null!;
-    private ListView     _lvProducts = null!;
-    private DateTimePicker _dtFrom   = null!;
-    private DateTimePicker _dtTo     = null!;
-    private Button       _btnSearch  = null!;
+    // ── Controls ──────────────────────────────────────────────────────────────
+    private ListView       _lvInvoices  = null!;
+    private ListView       _lvDetails   = null!;
+    private DateTimePicker _dtFrom      = null!;
+    private DateTimePicker _dtTo        = null!;
+    private Button         _btnSearch   = null!;
+    private Label          _lblSummary  = null!;  // selected-invoice summary strip
+
+    // ── Column index constants ────────────────────────────────────────────────
+    private const int COL_INV_NUM     = 0;
+    private const int COL_INV_DATE    = 1;
+    private const int COL_INV_SUB     = 2;
+    private const int COL_INV_TAX     = 3;
+    private const int COL_INV_TOTAL   = 4;
+    private const int COL_INV_PAY     = 5;
+    private const int COL_INV_PRINT   = 6;  // always last
 
     public frmPrintInvoice(IOrderService orderService, IBranchService branchService)
     {
@@ -30,117 +46,224 @@ public sealed class frmPrintInvoice : POSDialog
 
     protected override Color      AccentColor => AppColors.SlateBlue;
     protected override string     Icon        => "🧾";
-    protected override string     Title       => "Print Invoice";
-    protected override string     Subtitle    => "Search and reprint past transactions";
+    protected override string     Title       => "Invoice History";
+    protected override string     Subtitle    => "Search · View Details · Reprint";
     protected override DialogSize Size        => DialogSize.ExtraWide;
     protected override string?    ConfirmText => null;
     protected override string     CancelText  => "✕  CLOSE";
 
+    // ── Layout ────────────────────────────────────────────────────────────────
     protected override Control BuildContent()
     {
-        var outer = new TableLayoutPanel
+        var root = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount    = 2,
+            RowCount    = 3,
             BackColor   = AppColors.BackgroundPrimary,
             Padding     = new Padding(0),
-        };
-        outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        outer.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));  // filter bar
-        outer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // lists
-
-        // ── Filter bar ────────────────────────────────────────────────────────
-        var filterBar = new TableLayoutPanel
-        {
-            Dock        = DockStyle.Fill,
-            ColumnCount = 4,
-            RowCount    = 1,
-            BackColor   = AppColors.SurfaceMuted,
-            Padding     = new Padding(12, 8, 12, 8),
             Margin      = new Padding(0),
         };
-        filterBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
-        filterBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
-        filterBar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10)); // spacer
-        filterBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-        filterBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // filter bar
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // lists
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));  // summary strip
 
+        root.Controls.Add(BuildFilterBar(), 0, 0);
+        root.Controls.Add(BuildLists(),     0, 1);
+        root.Controls.Add(BuildSummary(),   0, 2);
+
+        return root;
+    }
+
+    // ── Filter bar ────────────────────────────────────────────────────────────
+    private Control BuildFilterBar()
+    {
+        var bar = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.SurfaceMuted,
+            Padding   = new Padding(14, 10, 14, 10),
+        };
+        bar.Paint += (_, e) =>
+        {
+            using var bottom = new Pen(Color.FromArgb(20, 0, 0, 0), 1f);
+            e.Graphics.DrawLine(bottom, 0, bar.Height - 1, bar.Width, bar.Height - 1);
+        };
+
+        // Left group: From — To
+        var lblFrom = FilterLabel("From:");
         _dtFrom = new DateTimePicker
         {
-            Dock   = DockStyle.Fill,
             Format = DateTimePickerFormat.Short,
             Font   = AppTypography.Body,
-            Margin = new Padding(0, 0, 4, 0),
+            Width  = 120,
+            Value  = DateTime.Today,
         };
 
+        var lblTo = FilterLabel("To:");
         _dtTo = new DateTimePicker
         {
-            Dock   = DockStyle.Fill,
             Format = DateTimePickerFormat.Short,
             Font   = AppTypography.Body,
-            Margin = new Padding(0, 0, 4, 0),
+            Width  = 120,
+            Value  = DateTime.Today,
         };
 
-        var spacer = new Label { Dock = DockStyle.Fill, BackColor = Color.Transparent };
-
-        _btnSearch = new Button { Text = "🔍  SEARCH", Dock = DockStyle.Fill, Margin = new Padding(0) };
-        ElegantButtonStyles.Style(_btnSearch, AppColors.SlateBlue, AppColors.TextWhite, fontSize: 13f);
+        _btnSearch = new Button { Text = "🔍  SEARCH", Width = 130, Dock = DockStyle.Right };
+        ElegantButtonStyles.Style(_btnSearch, AppColors.SlateBlue, AppColors.TextWhite, fontSize: 12f);
         _btnSearch.Click += async (_, _) => await SearchAsync();
 
-        filterBar.Controls.Add(_dtFrom,    0, 0);
-        filterBar.Controls.Add(_dtTo,      1, 0);
-        filterBar.Controls.Add(spacer,     2, 0);
-        filterBar.Controls.Add(_btnSearch, 3, 0);
+        var btnToday = new Button { Text = "🗓  TODAY", Width = 110, Dock = DockStyle.Right };
+        ElegantButtonStyles.Style(btnToday, AppColors.NavyBase, AppColors.TextWhite, fontSize: 12f);
+        btnToday.Click += async (_, _) =>
+        {
+            _dtFrom.Value = DateTime.Today;
+            _dtTo.Value   = DateTime.Today;
+            await SearchAsync();
+        };
 
-        // ── Two-column list area ──────────────────────────────────────────────
-        var lists = new TableLayoutPanel
+        // Arrange left-to-right manually since Panel + Dock.Left is simplest
+        int x = 0;
+        void Place(Control c, int gap = 6) { c.Left = x; c.Top = (bar.Height - c.Height) / 2; bar.Controls.Add(c); x += c.Width + gap; }
+
+        Place(lblFrom,   4);
+        Place(_dtFrom,   16);
+        Place(lblTo,     4);
+        Place(_dtTo,     0);
+
+        bar.Controls.Add(_btnSearch);
+        bar.Controls.Add(btnToday);
+
+        return bar;
+    }
+
+    private static Label FilterLabel(string text) => new()
+    {
+        Text      = text,
+        Font      = new Font("Segoe UI", 9F, FontStyle.Bold),
+        ForeColor = AppColors.TextSecondary,
+        BackColor = Color.Transparent,
+        AutoSize  = true,
+    };
+
+    // ── Two-column list area ──────────────────────────────────────────────────
+    private Control BuildLists()
+    {
+        var grid = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 2,
             RowCount    = 2,
             BackColor   = AppColors.BackgroundPrimary,
             Padding     = new Padding(0),
+            Margin      = new Padding(0),
         };
-        lists.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-        lists.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-        lists.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));   // column headings
-        lists.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // lists
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58)); // invoices
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42)); // details
+        grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34)); // section headers
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent,  100)); // lists
 
-        var lblLeft  = SectionLabel("Invoices");
-        var lblRight = SectionLabel("Invoice Details");
+        grid.Controls.Add(BuildSectionHeader("📋  Invoices",        AppColors.NavyDark, false), 0, 0);
+        grid.Controls.Add(BuildSectionHeader("🔎  Invoice Details",  AppColors.NavyBase, true),  1, 0);
 
         _lvInvoices = BuildListView();
         InitInvoiceColumns();
         _lvInvoices.SelectedIndexChanged += async (_, _) => await LoadDetailsAsync();
-        _lvInvoices.MouseClick += LvInvoices_MouseClick;
+        _lvInvoices.MouseClick           += LvInvoices_MouseClick;
+        grid.Controls.Add(_lvInvoices, 0, 1);
 
-        _lvProducts = BuildListView();
-        InitProductColumns();
+        _lvDetails = BuildListView();
+        InitDetailColumns();
+        grid.Controls.Add(_lvDetails, 1, 1);
 
-        lists.Controls.Add(lblLeft,     0, 0);
-        lists.Controls.Add(lblRight,    1, 0);
-        lists.Controls.Add(_lvInvoices, 0, 1);
-        lists.Controls.Add(_lvProducts, 1, 1);
-
-        outer.Controls.Add(filterBar, 0, 0);
-        outer.Controls.Add(lists,     0, 1);
-
-        return outer;
+        return grid;
     }
 
-    // ── List initialisation ───────────────────────────────────────────────────
-    private static Label SectionLabel(string text) => new()
+    private static Panel BuildSectionHeader(string text, Color bg, bool rightSide)
     {
-        Text      = text,
-        Font      = AppTypography.RowLabel,
-        ForeColor = AppColors.TextSecondary,
-        BackColor = AppColors.SurfaceMuted,
-        Dock      = DockStyle.Fill,
-        Padding   = new Padding(12, 0, 0, 0),
-        TextAlign = ContentAlignment.MiddleLeft,
-    };
+        var panel = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = bg,
+        };
+        if (rightSide)
+        {
+            panel.Paint += (_, e) =>
+            {
+                using var sep = new Pen(Color.FromArgb(50, 255, 255, 255), 1f);
+                e.Graphics.DrawLine(sep, 0, 4, 0, panel.Height - 4);
+            };
+        }
 
+        var lbl = new Label
+        {
+            Text      = text,
+            Font      = new Font("Montserrat", 9F, FontStyle.Bold),
+            ForeColor = AppColors.TextWhite,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Padding   = new Padding(12, 0, 0, 0),
+        };
+        panel.Controls.Add(lbl);
+        return panel;
+    }
+
+    // ── Summary strip (bottom) ────────────────────────────────────────────────
+    private Control BuildSummary()
+    {
+        var panel = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyDark,
+            Padding   = new Padding(16, 0, 16, 0),
+        };
+        panel.Paint += (_, e) =>
+        {
+            using var top = new Pen(AppColors.AccentGreen, 2f);
+            e.Graphics.DrawLine(top, 0, 0, panel.Width, 0);
+        };
+
+        _lblSummary = new Label
+        {
+            Text      = "Select an invoice to see its summary",
+            Font      = new Font("Segoe UI", 9F),
+            ForeColor = AppColors.TextMuted,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        panel.Controls.Add(_lblSummary);
+        return panel;
+    }
+
+    // ── Column definitions ────────────────────────────────────────────────────
+    private void InitInvoiceColumns()
+    {
+        _lvInvoices.Columns.Add("Invoice #", 88,  HorizontalAlignment.Center);
+        _lvInvoices.Columns.Add("Date",      155, HorizontalAlignment.Center);
+        _lvInvoices.Columns.Add("Subtotal",  90,  HorizontalAlignment.Right);
+        _lvInvoices.Columns.Add("Tax",       72,  HorizontalAlignment.Right);
+        _lvInvoices.Columns.Add("Total",     90,  HorizontalAlignment.Right);
+        _lvInvoices.Columns.Add("Payment",   80,  HorizontalAlignment.Center);
+        _lvInvoices.Columns.Add("",          64,  HorizontalAlignment.Center); // print button
+        AttachOwnerDraw(_lvInvoices, printColIndex: COL_INV_PRINT);
+        _lvInvoices.Resize += (_, _) => DistributeInvoiceColumns();
+    }
+
+    private void InitDetailColumns()
+    {
+        _lvDetails.Columns.Add("Product",    200, HorizontalAlignment.Left);
+        _lvDetails.Columns.Add("Qty",         52, HorizontalAlignment.Center);
+        _lvDetails.Columns.Add("Unit Price",  90, HorizontalAlignment.Right);
+        _lvDetails.Columns.Add("Tax",         72, HorizontalAlignment.Right);
+        _lvDetails.Columns.Add("Line Total",  90, HorizontalAlignment.Right);
+        AttachOwnerDraw(_lvDetails);
+        _lvDetails.Resize += (_, _) => DistributeDetailColumns();
+    }
+
+    // ── ListView factory ──────────────────────────────────────────────────────
     private static ListView BuildListView() => new()
     {
         Dock              = DockStyle.Fill,
@@ -157,28 +280,7 @@ public sealed class frmPrintInvoice : POSDialog
         OwnerDraw         = true,
     };
 
-    private void InitInvoiceColumns()
-    {
-        _lvInvoices.Columns.Add("#",         80,  HorizontalAlignment.Center);
-        _lvInvoices.Columns.Add("Invoice",   90,  HorizontalAlignment.Center);
-        _lvInvoices.Columns.Add("Amount",   100,  HorizontalAlignment.Right);
-        _lvInvoices.Columns.Add("Date",     160,  HorizontalAlignment.Center);
-        _lvInvoices.Columns.Add("Change",   100,  HorizontalAlignment.Right);
-        _lvInvoices.Columns.Add("",          72,  HorizontalAlignment.Center); // print
-        AttachOwnerDraw(_lvInvoices, printColIndex: 5);
-        _lvInvoices.Resize += (_, _) => DistributeColumns(_lvInvoices);
-    }
-
-    private void InitProductColumns()
-    {
-        _lvProducts.Columns.Add("Id",      60, HorizontalAlignment.Center);
-        _lvProducts.Columns.Add("Product", 180, HorizontalAlignment.Left);
-        _lvProducts.Columns.Add("Price",   80,  HorizontalAlignment.Right);
-        AttachOwnerDraw(_lvProducts);
-        _lvProducts.Resize += (_, _) => DistributeColumns(_lvProducts);
-    }
-
-    // ── Owner-draw: navy header + alternating rows ────────────────────────────
+    // ── Owner-draw ────────────────────────────────────────────────────────────
     private static void AttachOwnerDraw(ListView lv, int printColIndex = -1)
     {
         lv.DrawColumnHeader += (_, e) =>
@@ -186,7 +288,6 @@ public sealed class frmPrintInvoice : POSDialog
             e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             using var bg = new SolidBrush(AppColors.NavyDark);
             e.Graphics.FillRectangle(bg, e.Bounds);
-
             using var tb = new SolidBrush(AppColors.TextWhite);
             using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             e.Graphics.DrawString(e.Header.Text, AppTypography.RowLabel, tb, e.Bounds, sf);
@@ -196,7 +297,9 @@ public sealed class frmPrintInvoice : POSDialog
         {
             bool isAlt = e.ItemIndex % 2 == 1;
             bool isSel = (e.State & ListViewItemStates.Selected) == ListViewItemStates.Selected;
-            var  bg    = isSel ? AppColors.NavyBase : isAlt ? Color.FromArgb(247, 249, 252) : Color.White;
+            var  bg    = isSel ? AppColors.NavyBase
+                       : isAlt ? Color.FromArgb(247, 249, 252)
+                       : Color.White;
             using var br = new SolidBrush(bg);
             e.Graphics.FillRectangle(br, e.Bounds);
         };
@@ -206,45 +309,72 @@ public sealed class frmPrintInvoice : POSDialog
             e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             bool isSel = (e.ItemState & ListViewItemStates.Selected) != 0;
 
-            // Print button column
+            // Print button cell
             if (printColIndex >= 0 && e.ColumnIndex == printColIndex)
             {
-                using var btnBrush = new SolidBrush(AppColors.AccentGreen);
+                using var btnBrush = new SolidBrush(isSel ? AppColors.AccentGreenDark : AppColors.AccentGreen);
                 var btnRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y + 3, e.Bounds.Width - 8, e.Bounds.Height - 6);
-                using var path = ElegantButtonStyles.RoundedPath(btnRect, 6);
+                using var path = ElegantButtonStyles.RoundedPath(btnRect, 5);
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 e.Graphics.FillPath(btnBrush, path);
                 using var tw = new SolidBrush(Color.White);
                 using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                e.Graphics.DrawString("🖨 Print", AppTypography.Caption, tw, btnRect, sf);
+                e.Graphics.DrawString("🖨", AppTypography.Caption, tw, btnRect, sf);
                 return;
             }
 
+            // Numeric columns: right-align; others center
+            var colAlign  = e.ColumnIndex < lv.Columns.Count
+                            ? lv.Columns[e.ColumnIndex].TextAlign
+                            : HorizontalAlignment.Left;
+            var strAlign  = colAlign == HorizontalAlignment.Right  ? StringAlignment.Far
+                          : colAlign == HorizontalAlignment.Center ? StringAlignment.Center
+                          : StringAlignment.Near;
+
             Color fg = isSel ? AppColors.TextWhite : AppColors.TextPrimary;
             using var textBrush = new SolidBrush(fg);
-            using var fmt       = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter };
-            var rect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height);
+            using var fmt       = new StringFormat
+            {
+                Alignment     = strAlign,
+                LineAlignment = StringAlignment.Center,
+                Trimming      = StringTrimming.EllipsisCharacter,
+            };
+            int pad = colAlign == HorizontalAlignment.Right ? 8 : 4;
+            var rect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - pad - 4, e.Bounds.Height);
             e.Graphics.DrawString(e.SubItem.Text, lv.Font, textBrush, rect, fmt);
         };
     }
 
-    private static void DistributeColumns(ListView lv)
+    // ── Column distribution ───────────────────────────────────────────────────
+    private void DistributeInvoiceColumns()
     {
-        int total = lv.ClientSize.Width;
-        if (lv.Columns.Count == 0 || total <= 0) return;
+        int total  = _lvInvoices.ClientSize.Width;
+        int printW = 64;
+        int payW   = 80;
+        int taxW   = 72;
+        int fixed_ = printW + payW + taxW;
+        int dateW  = 155;
+        int amtW   = 90;
+        // Invoice # takes remaining
+        int invoiceW = Math.Max(total - fixed_ - dateW - amtW * 2, 70);
 
-        // Keep last column fixed if it's a print button
-        bool hasPrintCol = lv.Columns.Count == 6;
-        int  printW      = hasPrintCol ? 72 : 0;
-        int  rem         = total - printW;
-        int  perCol      = rem / (lv.Columns.Count - (hasPrintCol ? 1 : 0));
+        int[] widths = { invoiceW, dateW, amtW, taxW, amtW, payW, printW };
+        for (int i = 0; i < Math.Min(widths.Length, _lvInvoices.Columns.Count); i++)
+            _lvInvoices.Columns[i].Width = widths[i];
+    }
 
-        for (int i = 0; i < lv.Columns.Count; i++)
-        {
-            if (hasPrintCol && i == lv.Columns.Count - 1)
-                lv.Columns[i].Width = printW;
-            else
-                lv.Columns[i].Width = perCol;
-        }
+    private void DistributeDetailColumns()
+    {
+        int total  = _lvDetails.ClientSize.Width;
+        int qtyW   = 52;
+        int taxW   = 72;
+        int priceW = 90;
+        int totW   = 90;
+        int nameW  = Math.Max(total - qtyW - taxW - priceW - totW, 80);
+
+        int[] widths = { nameW, qtyW, priceW, taxW, totW };
+        for (int i = 0; i < Math.Min(widths.Length, _lvDetails.Columns.Count); i++)
+            _lvDetails.Columns[i].Width = widths[i];
     }
 
     // ── Data loading ──────────────────────────────────────────────────────────
@@ -254,28 +384,38 @@ public sealed class frmPrintInvoice : POSDialog
         {
             _btnSearch.Enabled = false;
             _lvInvoices.Items.Clear();
+            _lvDetails.Items.Clear();
+            _lblSummary.Text = "Loading…";
             Cursor = Cursors.WaitCursor;
 
             var list = from != null && to != null
                 ? await _orderService.GetOrderTop(from, to)
                 : await _orderService.GetOrderTop();
 
-            if (list == null) return;
+            if (list == null || list.Count == 0)
+            {
+                _lblSummary.Text = "No invoices found for the selected period.";
+                return;
+            }
 
             foreach (var item in list)
             {
-                var lvi = new ListViewItem(item.Id.ToString());
-                lvi.SubItems.Add(item.Consecutivo.ToString());
-                lvi.SubItems.Add(item.Order_Amount.ToString("N2"));
-                lvi.SubItems.Add(item.Created_At.ToString("yyyy-MM-dd HH:mm"));
-                lvi.SubItems.Add(item.Devuelta.ToString("N2"));
-                lvi.SubItems.Add(""); // print button cell
-                lvi.Tag = item.Id;
+                var lvi = new ListViewItem(item.Consecutivo.ToString());
+                lvi.SubItems.Add(item.Created_At.ToString("MM/dd/yyyy  HH:mm"));
+                lvi.SubItems.Add(item.SubTotal.ToString("C"));
+                lvi.SubItems.Add(item.Total_Tax_Amount.ToString("C"));
+                lvi.SubItems.Add(item.Order_Amount.ToString("C"));
+                lvi.SubItems.Add(FormatPayment(item.Payment_Method));
+                lvi.SubItems.Add(""); // print button
+                lvi.Tag = item;       // store full model for details + print
                 _lvInvoices.Items.Add(lvi);
             }
+
+            _lblSummary.Text = $"{list.Count} invoice{(list.Count == 1 ? "" : "s")} found.  Select one to view details and reprint.";
         }
         catch (Exception ex)
         {
+            _lblSummary.Text = $"Error: {ex.Message}";
             MessageBox.Show($"Error loading invoices:\n{ex.Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -296,23 +436,41 @@ public sealed class frmPrintInvoice : POSDialog
     private async Task LoadDetailsAsync()
     {
         if (_lvInvoices.SelectedItems.Count == 0) return;
-        if (!int.TryParse(_lvInvoices.SelectedItems[0].Tag?.ToString(), out int orderId)) return;
+        if (_lvInvoices.SelectedItems[0].Tag is not OrderModel order) return;
 
         try
         {
-            _lvProducts.Items.Clear();
+            _lvDetails.Items.Clear();
             Cursor = Cursors.WaitCursor;
 
-            var list = await _orderService.GetOrderDetailsByOrderId(orderId);
+            var list = await _orderService.GetOrderDetailsByOrderId(order.Id);
             if (list == null) return;
 
+            double lineTotal = 0;
             foreach (var item in list)
             {
-                var lvi = new ListViewItem(item.Product_Id.ToString());
-                lvi.SubItems.Add(item.Product_Name);
-                lvi.SubItems.Add(item.Price.ToString("N2"));
-                _lvProducts.Items.Add(lvi);
+                double sub = item.Price * item.Quantity;
+                lineTotal += sub + item.Tax_Amount;
+
+                var lvi = new ListViewItem(item.Product_Name ?? "—");
+                lvi.SubItems.Add(item.Quantity % 1 == 0
+                    ? ((int)item.Quantity).ToString()
+                    : item.Quantity.ToString("N2"));
+                lvi.SubItems.Add(item.Price.ToString("C"));
+                lvi.SubItems.Add(item.Tax_Amount.ToString("C"));
+                lvi.SubItems.Add((sub + item.Tax_Amount).ToString("C"));
+                _lvDetails.Items.Add(lvi);
             }
+
+            // Update summary strip with full invoice breakdown
+            _lblSummary.Text =
+                $"Invoice #{order.Consecutivo}   ·   " +
+                $"Subtotal: {order.SubTotal:C}   " +
+                $"Tax: {order.Total_Tax_Amount:C}   " +
+                $"Total: {order.Order_Amount:C}   " +
+                $"Payment: {FormatPayment(order.Payment_Method)}   " +
+                (order.Devuelta > 0 ? $"Change: {order.Devuelta:C}   " : "") +
+                $"Date: {order.Created_At:MM/dd/yyyy HH:mm}";
         }
         catch (Exception ex)
         {
@@ -330,21 +488,17 @@ public sealed class frmPrintInvoice : POSDialog
     {
         var info = _lvInvoices.HitTest(e.Location);
         if (info.Item == null || info.SubItem == null) return;
-        if (info.Item.SubItems.IndexOf(info.SubItem) != 5) return; // not print column
-
-        if (!int.TryParse(info.Item.Tag?.ToString(), out int orderId)) return;
+        if (info.Item.SubItems.IndexOf(info.SubItem) != COL_INV_PRINT) return;
+        if (info.Item.Tag is not OrderModel order) return;
 
         try
         {
             Cursor = Cursors.WaitCursor;
-            var order  = await _orderService.GetOrderById(orderId);
-            if (order == null) return;
-
             var branch  = await _branchService.LoadBranch(SessionManager.BranchId ?? 0);
-            var details = await _orderService.GetOrderDetailsByOrderId(orderId);
+            var details = await _orderService.GetOrderDetailsByOrderId(order.Id);
             if (branch != null)
             {
-                var ticket = new Ticket(orderId, order.Consecutivo, order, details,
+                var ticket = new Ticket(order.Id, order.Consecutivo, order, details,
                     SessionManager.Name, null, branch.Address, branch.Name);
                 ticket.Print();
             }
@@ -359,4 +513,17 @@ public sealed class frmPrintInvoice : POSDialog
             Cursor = Cursors.Default;
         }
     }
+
+    // ── Helper ────────────────────────────────────────────────────────────────
+    private static string FormatPayment(string? method) =>
+        method?.ToUpperInvariant() switch
+        {
+            "CASH"   => "💵 Cash",
+            "CREDIT" => "💳 Credit",
+            "DEBIT"  => "💳 Debit",
+            "EBT"    => "🏦 EBT",
+            "SPLIT"  => "⚡ Split",
+            null     => "—",
+            _        => method,
+        };
 }

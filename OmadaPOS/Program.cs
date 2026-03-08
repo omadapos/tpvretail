@@ -10,55 +10,61 @@ namespace OmadaPOS;
 
 internal static class Program
 {
-    public static IServiceProvider? ServiceProvider { get; set; }
+    // Internal — only read, never replaced after startup.
+    internal static IServiceProvider ServiceProvider { get; private set; } = null!;
 
     static void ConfigureServices()
     {
         var services = new ServiceCollection();
 
-        // Configuración básica de logging
         services.AddLogging();
 
-        // Motor de cálculo de precios — fuente única de verdad para subtotal, tax y total
-        services.AddSingleton<IPricingEngine, PricingEngine>();
-
-        // Registrar SqliteManager como Singleton
+        // ── Infrastructure — Singletons (shared across the whole app lifetime) ─────
         services.AddSingleton<ISqliteManager, SqliteManager>();
-        services.AddScoped<IShoppingCart, ShoppingCart>();
-        
-        services.AddScoped<IUserService, UserService>();
-        services.AddScoped<ICategoryService, CategoryService>();
-        services.AddScoped<IOrderService, OrderService>();
-        services.AddScoped<IBannerService, BannerService>();
-        services.AddScoped<IGiftCardService, GiftCardService>();
-
         services.AddSingleton<IPaymentTerminalService, PaymentTerminalService>();
-        services.AddScoped<IPaymentService, PaymentService>();
-        services.AddScoped<IPaymentSplitService, PaymentSplitService>();
-
-        services.AddScoped<IBranchService, BranchService>();
-        services.AddScoped<IAdminSettingService, AdminSettingService>();
-        services.AddScoped<IHoldService, HoldService>();
-
-        services.AddScoped<IOrderApplicationService, OrderApplicationService>();
-        services.AddScoped<IProductApplicationService, ProductApplicationService>();
-        services.AddScoped<IHomeInitializationService, HomeInitializationService>();
-        services.AddScoped<IBarcodeSaleService, BarcodeSaleService>();
-        services.AddScoped<IPaymentCoordinatorService, PaymentCoordinatorService>();
-        services.AddScoped<IHomeHoldCartService, HoldCartService>();
-        services.AddScoped<ICashDrawerService, CashDrawerService>();
         services.AddSingleton<IWindowService, WindowService>();
         services.AddSingleton<IHomeInteractionService, HomeInteractionService>();
-
+        services.AddSingleton<IPricingEngine, PricingEngine>();
         services.AddSingleton<HttpClient>();
-         
+        services.AddSingleton<ZebraScannerService>();
+
+        // ── Session state — Singleton (one cart per POS session) ─────────────────
+        // ShoppingCart is shared between frmHome and frmCustomerScreen so
+        // both see the same items in real time.
+        services.AddSingleton<IShoppingCart, ShoppingCart>();
+
+        // ── Stateless API / DB services — Transient (no shared mutable state) ────
+        services.AddTransient<IUserService, UserService>();
+        services.AddTransient<ICategoryService, CategoryService>();
+        services.AddTransient<IOrderService, OrderService>();
+        services.AddTransient<IBannerService, BannerService>();
+        services.AddTransient<IGiftCardService, GiftCardService>();
+        services.AddTransient<IPaymentService, PaymentService>();
+        services.AddTransient<IPaymentSplitService, PaymentSplitService>();
+        services.AddTransient<IBranchService, BranchService>();
+        services.AddTransient<IAdminSettingService, AdminSettingService>();
+        services.AddTransient<IHoldService, HoldService>();
+
+        // ── Application services — Transient ──────────────────────────────────────
+        services.AddTransient<IOrderApplicationService, OrderApplicationService>();
+        services.AddTransient<IProductApplicationService, ProductApplicationService>();
+        services.AddTransient<IHomeInitializationService, HomeInitializationService>();
+        services.AddTransient<IBarcodeSaleService, BarcodeSaleService>();
+        services.AddTransient<IPaymentCoordinatorService, PaymentCoordinatorService>();
+        services.AddTransient<IHomeHoldCartService, HoldCartService>();
+        services.AddTransient<ICashDrawerService, CashDrawerService>();
+
+        // ── Forms ─────────────────────────────────────────────────────────────────
+        // frmSignIn: Singleton so the same instance is shown/hidden across sessions.
+        // frmCustomerScreen: Singleton — one display per machine, lifecycle tied to frmHome.
+        // All other forms: Transient — fresh instance each time they are opened.
+        services.AddSingleton<frmSignIn>();
+        services.AddSingleton<frmCustomerScreen>();
         services.AddTransient<frmHome>();
-        services.AddTransient<frmSignIn>();
         services.AddTransient<frmSplit>();
         services.AddTransient<frmHold>();
         services.AddTransient<frmCheckPrice>();
         services.AddTransient<frmProductNew>();
-        services.AddSingleton<frmCustomerScreen>(); // Singleton — one instance per session, opened by frmHome
         services.AddTransient<frmSetting>();
         services.AddTransient<frmCierreDiario>();
         services.AddTransient<frmPopupQuantity>();
@@ -70,15 +76,13 @@ internal static class Program
         services.AddTransient<frmKeyLookup>();
         services.AddTransient<frmError>();
 
-        services.AddSingleton<ZebraScannerService>();
-
         ServiceProvider = services.BuildServiceProvider();
     }
 
-    public static T GetService<T>() where T : class
-    {
-        return (T)ServiceProvider.GetService(typeof(T));
-    }
+    // Kept for legacy call-sites that use the service locator pattern.
+    // Prefer constructor injection for new code.
+    internal static T GetService<T>() where T : class
+        => ServiceProvider.GetRequiredService<T>();
 
     [STAThread]
     static async Task Main()

@@ -20,9 +20,6 @@ namespace OmadaPOS.Views
         private PaymentPanelControl? _paymentPanelControl;
         private UserSessionControl? _userSessionControl;
 
-        // Initialized in code so the WinForms Designer cannot remove it on regeneration.
-        private NumericPadControl keyPaymentControl1 = null!;
-
         int orderId = 0;
 
         decimal totalGlobal = 0;
@@ -91,23 +88,15 @@ namespace OmadaPOS.Views
             _zebraScannerService = zebraScannerService;
 
             _zebraScannerService.OnBarcodeDataReceived += _zebraScannerService_OnBarcodeDataReceived;
-            _zebraScannerService.OnWeightUpdated += _zebraScannerService_OnWeightUpdated;
+            _zebraScannerService.OnWeightUpdated       += _zebraScannerService_OnWeightUpdated;
 
-            lblScalStatusDesc.Text = zebraScannerService.Initialize();
+            // Report scale connection status into the payment panel's scale zone.
+            _paymentPanelControl!.SetScaleStatus(zebraScannerService.Initialize());
         }
 
         private void InicializarControlesUI()
         {
-            // Create the payment numpad in code so the Designer cannot overwrite it.
-            keyPaymentControl1 = new NumericPadControl(NumericPadControl.PadMode.MoneyWithBills)
-            {
-                Dock = DockStyle.Fill,
-                Name = "keyPaymentControl1"
-            };
-            tableLayoutPanelPayment.Controls.Add(keyPaymentControl1, 0, 1);
-
-            // abecedarioControl1 is declared in the Designer but stripped from
-            // InitializeComponent on every regeneration — create it in code.
+            // ── Abecedario (stripped by Designer on each regeneration) ────────
             if (abecedarioControl1 == null)
             {
                 abecedarioControl1 = new Componentes.AbecedarioControl
@@ -119,22 +108,18 @@ namespace OmadaPOS.Views
                 tableLayoutPanelCategoria.Controls.Add(abecedarioControl1, 0, 1);
             }
 
+            // ── Header / scan bar / user session controls ─────────────────────
             ScanInputControl.Attach(tableLayoutPanel1, textBoxUPC);
             _userSessionControl = UserSessionControl.Attach(this, MaintableLayout, tableLayoutPanel1, labelCashier);
-            _userSessionControl.SettingsRequested += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
-            _userSessionControl.DailyCloseRequested += (_, _) => labelCashier_ClickInternal();
-            _userSessionControl.LogoutRequested += async (_, _) => await EjecutarLogout();
+            _userSessionControl.SettingsRequested     += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
+            _userSessionControl.DailyCloseRequested   += (_, _) => labelCashier_ClickInternal();
+            _userSessionControl.LogoutRequested       += async (_, _) => await EjecutarLogout();
 
             _posHeaderControl = POSHeaderControl.Attach(
-                MaintableLayout,
-                tableLayoutPanel1,
-                buttonInvoice,
-                ButtonSettings,
-                buttonClose);
+                MaintableLayout, tableLayoutPanel1,
+                buttonInvoice, ButtonSettings, buttonClose);
 
-            // roundedPanel1/roundedPanel2 are declared in the Designer but
-            // the Designer strips their initialization from InitializeComponent.
-            // We create them in code to guarantee they are never null.
+            // ── Cart totals panel (roundedPanel1 is also stripped by Designer) ─
             if (roundedPanel1 == null)
             {
                 roundedPanel1 = new Componentes.RoundedPanel { Dock = DockStyle.Fill };
@@ -143,45 +128,30 @@ namespace OmadaPOS.Views
                 tableLayoutPanelCart.Controls.Add(roundedPanel1, 0, 1);
             }
 
-            if (roundedPanel2 == null)
-            {
-                roundedPanel2 = new Componentes.RoundedPanel { Dock = DockStyle.Fill };
-                tableLayoutPanel4.Dock = DockStyle.Fill;
-                roundedPanel2.Controls.Add(tableLayoutPanel4);
-                tableLayoutPanelPayment.Controls.Add(roundedPanel2, 0, 2);
-            }
-
             _cartListViewControl = CartListViewControl.Attach(tableLayoutPanelCart, listViewCart);
-            _cartTotalsControl = CartTotalsControl.Attach(
-                tableLayoutPanelCart,
-                roundedPanel1,
-                label1,
-                label2,
-                label3,
-                labelSubTotal,
-                labelTotalTax,
-                labelTotalValue);
+            _cartTotalsControl   = CartTotalsControl.Attach(
+                tableLayoutPanelCart, roundedPanel1,
+                label1, label2, label3,
+                labelSubTotal, labelTotalTax, labelTotalValue);
 
-            _paymentPanelControl = PaymentPanelControl.Attach(
-                tableLayoutPanelMain,
-                tableLayoutPanelPayment,
-                tableLayoutPanel2,
-                keyPaymentControl1,
-                roundedPanel2,
-                tableLayoutPanel4,
-                label4,
-                label5,
-                labelInputValue,
-                labelChangeValue,
-                tableLayoutPanel3,
-                splitContainerScale,
-                tableLayoutPanelPesado,
-                labelWeight,
-                labelPesaProduct,
-                lblScalStatusDesc,
-                pictureBoxPesado);
+            // ── Payment panel — self-contained code-only replacement ──────────
+            // PaymentPanelControl.Attach() finds tableLayoutPanelPayment in
+            // tableLayoutPanelMain, removes and disposes it, then inserts itself
+            // at the same grid position. No Designer controls are needed.
+            _paymentPanelControl = PaymentPanelControl.Attach(tableLayoutPanelMain, tableLayoutPanelPayment);
 
-            keyPaymentControl1.ValueChanged += (_, _) => DisplayTotales();
+            _paymentPanelControl.CashPayClicked     += buttonPayCash_Click;
+            _paymentPanelControl.CreditPayClicked   += buttonPayCreditCard_Click;
+            _paymentPanelControl.DebitPayClicked    += buttonPayDebitCard_Click;
+            _paymentPanelControl.EBTFoodClicked     += buttonEBTFood_Click;
+            _paymentPanelControl.EBTBalanceClicked  += buttonEBTBalance_Click;
+            _paymentPanelControl.SplitPayClicked    += buttonSplit_Click;
+            _paymentPanelControl.GiftCardClicked    += buttonGiftCard_Click;
+            _paymentPanelControl.OpenDrawerClicked  += buttonOpenDrawer_Click;
+            _paymentPanelControl.QuickSaleClicked   += buttonProductNoTax_Click;
+            _paymentPanelControl.UPCLookupClicked   += buttonLookup_Click;
+            _paymentPanelControl.ScalePictureClicked+= pictureBoxPesado_Click;
+            _paymentPanelControl.NumpadValueChanged += (_, _) => DisplayTotales();
         }
 
         private void ConfigureUI()
@@ -210,40 +180,8 @@ namespace OmadaPOS.Views
             ElegantButtonStyles.Style(buttonDeleteItem,     ElegantButtonStyles.AlertRed,    fontSize: 16f);
             ElegantButtonStyles.Style(buttonHold,           ElegantButtonStyles.WarningOrange, fontSize: 16f);
 
-            // ═══════════════════════════════════════════════════════════
-            // GRUPO 3 — Herramientas (Quick Sale / Lookup)
-            // ═══════════════════════════════════════════════════════════
-            // Quick Sale → verde: es una acción de venta directa (generar ingreso)
-            ElegantButtonStyles.Style(buttonQsale,  ElegantButtonStyles.CashGreen, fontSize: 16f);
-            // Lookup UPC → navy: es una consulta/búsqueda informativa
-            ElegantButtonStyles.Style(buttonLookup, ElegantButtonStyles.Keypad,    fontSize: 16f);
-
-            buttonQsale.Text  = "⚡  QUICK SALE";
-            buttonLookup.Text = "🔍  LOOKUP UPC";
-
-            // ── Fila 1: métodos de pago principales ──────────────────────
-            ElegantButtonStyles.Style(buttonPayCash,       ElegantButtonStyles.CashGreen,       fontSize: 22f);
-            ElegantButtonStyles.Style(buttonPayCreditCard, ElegantButtonStyles.CreditBlue,      fontSize: 18f);
-            ElegantButtonStyles.Style(buttonPayDebitCard,  ElegantButtonStyles.DebitGray,       fontSize: 18f);
-            ElegantButtonStyles.Style(buttonSplit,         ElegantButtonStyles.SplitBlueLight,  fontSize: 18f);
-
-            // ── Fila 2: métodos secundarios ───────────────────────────────
-            ElegantButtonStyles.Style(buttonEBTBalance,    ElegantButtonStyles.EBTBalanceOrange, fontSize: 16f);
-            ElegantButtonStyles.Style(buttonEBTFood,       ElegantButtonStyles.EBTOrange,        fontSize: 16f);
-            ElegantButtonStyles.Style(buttonOpenDrawer,    ElegantButtonStyles.HeaderNavy,       fontSize: 16f);
-            ElegantButtonStyles.Style(buttonGiftCard,      ElegantButtonStyles.GiftPurple,       fontSize: 16f);
-
-            // Textos con iconos — uniformes y reconocibles de un vistazo
-            buttonPayCash.Text       = "💵  CASH";
-            buttonPayCreditCard.Text = "💳  CREDIT";
-            buttonPayDebitCard.Text  = "💳  DEBIT";
-            buttonSplit.Text         = "⇌  SPLIT PAY";
-            buttonEBTBalance.Text    = "⚖  EBT BAL";
-            buttonEBTFood.Text       = "🌿  EBT FOOD";
-            buttonOpenDrawer.Text    = "🗄  DRAWER";
-            buttonGiftCard.Text      = "🎁  GIFT CARD";
-
-            ElegantButtonStyles.StyleSplitContainer(splitContainerScale);
+            // Payment buttons, Quick Sale, Lookup UPC and Scale are now
+            // owned and styled entirely by PaymentPanelControl.
 
             EstilizarTabControl();
         }
@@ -368,6 +306,7 @@ namespace OmadaPOS.Views
                 Phone   = SessionManager.Phone
             });
             _supervisorApproved = true;   // Tell FormClosing this close is authorised.
+            _isLoggingOut      = true;    // Tell FormClosing NOT to exit the app.
             _windowService.OpenSignIn();
             this.Close();
         }
@@ -440,8 +379,11 @@ namespace OmadaPOS.Views
             }
         }
 
-        // Set to true by EjecutarLogout() so FormClosing knows it is an authorised close.
+        // _supervisorApproved: set by EjecutarLogout() so FormClosing skips the PIN prompt.
+        // _isLoggingOut: set by EjecutarLogout() so FormClosing knows it's a session
+        //                switch (not a full application exit).
         private bool _supervisorApproved = false;
+        private bool _isLoggingOut       = false;
 
         private void frmHome_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -457,10 +399,19 @@ namespace OmadaPOS.Views
                 return;
             }
 
-            // Authorised close — close customer display and clean up singleton subscriptions.
+            // ── Customer screen ──────────────────────────────────────────────
+            // On logout: hide the customer screen so it's ready for the next
+            // session (the Singleton must NOT be disposed or Close()'d here).
+            // On full exit: close it so it disappears before the process ends.
             if (!_customerScreen.IsDisposed)
-                _customerScreen.Close();
+            {
+                if (_isLoggingOut)
+                    _customerScreen.Hide();
+                else
+                    _customerScreen.Close();
+            }
 
+            // ── Unsubscribe per-session event handlers ───────────────────────
             _shoppingCart.CartChanged -= ShoppingCart_CartChanged;
 
             if (_zebraScannerService != null)
@@ -471,6 +422,10 @@ namespace OmadaPOS.Views
             }
 
             _homeInteractionService.ClearHandlers();
+
+            // On full exit (not a logout) tear down the app cleanly.
+            if (!_isLoggingOut)
+                Application.Exit();
         }
 
         // CRÍTICO: async Task para poder ser awaited — evita race condition con UpdateProductsDisplay
@@ -586,9 +541,10 @@ namespace OmadaPOS.Views
 
                             if (selection.IsWeighted)
                             {
-                                labelPesaProduct.Text = selection.WeightDisplayText ?? string.Empty;
-                                labelPesaProduct.AccessibleName = selection.ProductIdText ?? string.Empty;
-                                pictureBoxPesado.ImageLocation = selection.ImageLocation;
+                                _paymentPanelControl?.SetScaleProduct(
+                                    selection.WeightDisplayText ?? string.Empty,
+                                    selection.ProductIdText     ?? string.Empty,
+                                    selection.ImageLocation     ?? string.Empty);
                             }
                             else if (selection.AddedToCart)
                             {
@@ -609,20 +565,18 @@ namespace OmadaPOS.Views
 
         private void DisplayTotales()
         {
-            var tendered  = keyPaymentControl1.ValueDecimal;
-            changeValue   = tendered - totalGlobal;
+            if (_paymentPanelControl == null) return;
+            var tendered   = _paymentPanelControl.ValueDecimal;
+            changeValue    = tendered - totalGlobal;
             var safeChange = changeValue > 0 ? changeValue : 0.0m;
-
-            _paymentPanelControl?.UpdatePaymentValues(tendered, safeChange);
+            _paymentPanelControl.UpdatePaymentValues(tendered, safeChange);
         }
 
         private void ClearTotales(bool all = false)
         {
-            keyPaymentControl1.Reset();
+            _paymentPanelControl?.Reset();
             changeValue = 0;
-
             _cartTotalsControl?.ResetTotals(includeGrandTotal: all);
-            _paymentPanelControl?.ResetPaymentValues();
         }
 
         private void _zebraScannerService_OnBarcodeDataReceived(string barcodeData)
@@ -639,17 +593,9 @@ namespace OmadaPOS.Views
 
         private void _zebraScannerService_OnWeightUpdated(string weightStatus, double w)
         {
-            weight = w;
+            weight                = w;
             SharedData.WeightUnit = weightStatus;
-
-            if (labelWeight.InvokeRequired)
-            {
-                labelWeight.Invoke(new Action(() => labelWeight.Text = weightStatus));
-            }
-            else
-            {
-                labelWeight.Text = weightStatus;
-            }
+            _paymentPanelControl?.SetScaleWeight(weightStatus);
         }
 
         private void textBoxUPC_TextChanged(object sender, EventArgs e)
@@ -816,7 +762,7 @@ namespace OmadaPOS.Views
         {
             try
             {
-                var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, keyPaymentControl1.ValueCents, changeValue, false);
+                var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, (int)(_paymentPanelControl?.ValueCents ?? 0L), changeValue, false);
 
                 if (!result.IsValidAmount)
                 {
@@ -969,25 +915,20 @@ namespace OmadaPOS.Views
         {
             try
             {
-                if (labelPesaProduct.Text != "" && weight > 0)
+                if (_paymentPanelControl == null) return;
+                if (_paymentPanelControl.ScaleProductDisplayText == "" || weight <= 0) return;
+
+                if (!string.IsNullOrEmpty(_paymentPanelControl.ScaleProductId))
                 {
-                    if (!string.IsNullOrEmpty(labelPesaProduct.AccessibleName))
+                    int productId = int.Parse(_paymentPanelControl.ScaleProductId);
+                    var result    = await _barcodeSaleService.AddWeightedProductAsync(productId, weight);
+
+                    if (result.AddedToCart)
                     {
-                        int productId = int.Parse(labelPesaProduct.AccessibleName);
-                        var result = await _barcodeSaleService.AddWeightedProductAsync(productId, weight);
-
-                        if (result.AddedToCart)
-                        {
-                            labelProductName.Text = result.ProductName ?? string.Empty;
-                            UpdateCartDisplay();
-
-                            labelPesaProduct.Text = "";
-                            labelPesaProduct.AccessibleName = "";
-                            labelWeight.Text = "";
-                            weight = 0.0;
-
-                            pictureBoxPesado.Image = null;
-                        }
+                        labelProductName.Text = result.ProductName ?? string.Empty;
+                        UpdateCartDisplay();
+                        weight = 0.0;
+                        _paymentPanelControl.ClearScaleProduct();
                     }
                 }
             }

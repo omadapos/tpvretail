@@ -12,18 +12,14 @@ public class WindowService : IWindowService
         _provider = provider;
     }
 
-    public frmHome OpenHome()
+    public void OpenHome()
     {
-        var form = _provider.GetRequiredService<frmHome>();
-        form.Show();
-        return form;
+        _provider.GetRequiredService<frmHome>().Show();
     }
 
-    public frmSignIn OpenSignIn()
+    public void OpenSignIn()
     {
-        var form = _provider.GetRequiredService<frmSignIn>();
-        form.Show();
-        return form;
+        _provider.GetRequiredService<frmSignIn>().Show();
     }
 
     public void OpenSplitPayment(IWin32Window? owner = null)
@@ -43,20 +39,6 @@ public class WindowService : IWindowService
 
     public void OpenProductNew(bool applyTax, IWin32Window? owner = null)
         => ShowModeless(CreateForm<frmProductNew>(applyTax));
-
-    public void OpenCustomerScreen()
-    {
-        var form = CreateForm<frmCustomerScreen>();
-        form.StartPosition = FormStartPosition.Manual;
-
-        if (Screen.AllScreens.Length > 1)
-        {
-            var secondary = Screen.AllScreens[1];
-            form.Bounds = secondary.Bounds;
-        }
-
-        ShowModeless(form);
-    }
 
     public void OpenSettings(IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmSetting>(), owner);

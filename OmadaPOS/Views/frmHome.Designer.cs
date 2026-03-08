@@ -39,27 +39,11 @@ namespace OmadaPOS.Views
             tableLayoutPanelCategoria = new TableLayoutPanel();
             tabControlMenuCategories = new TabControl();
             tableLayoutPanelPayment = new TableLayoutPanel();
-            tableLayoutPanel2 = new TableLayoutPanel();
             textBoxUPC = new TextBox();
             buttonInvoice = new Button();
             buttonClose = new Button();
             labelCashier = new Button();
             ButtonSettings = new Button();
-            splitContainerScale = new SplitContainer();
-            tableLayoutPanelPesado = new TableLayoutPanel();
-            labelWeight = new Label();
-            labelPesaProduct = new Label();
-            lblScalStatusDesc = new Label();
-            pictureBoxPesado = new PictureBox();
-            tableLayoutPanel3 = new TableLayoutPanel();
-            buttonEBTFood = new Button();
-            buttonPayDebitCard = new Button();
-            buttonPayCreditCard = new Button();
-            buttonEBTBalance = new Button();
-            buttonOpenDrawer = new Button();
-            buttonGiftCard = new Button();
-            buttonPayCash = new Button();
-            buttonSplit = new Button();
             tableLayoutPanelTotal = new TableLayoutPanel();
             label1 = new Label();
             label2 = new Label();
@@ -67,13 +51,6 @@ namespace OmadaPOS.Views
             labelSubTotal = new Label();
             labelTotalTax = new Label();
             labelTotalValue = new Label();
-            tableLayoutPanel4 = new TableLayoutPanel();
-            buttonQsale = new Button();
-            buttonLookup = new Button();
-            label5 = new Label();
-            labelInputValue = new Label();
-            label4 = new Label();
-            labelChangeValue = new Label();
             labelProductName = new Label();
             tableLayoutPanel1 = new TableLayoutPanel();
             MaintableLayout = new TableLayoutPanel();
@@ -82,17 +59,8 @@ namespace OmadaPOS.Views
             tableLayoutPanelCart.SuspendLayout();
             tableLayoutPanelButtonCart.SuspendLayout();
             tableLayoutPanelCategoria.SuspendLayout();
-            tableLayoutPanelPayment.SuspendLayout();
-            tableLayoutPanel2.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)splitContainerScale).BeginInit();
-            splitContainerScale.Panel1.SuspendLayout();
-            splitContainerScale.Panel2.SuspendLayout();
-            splitContainerScale.SuspendLayout();
-            tableLayoutPanelPesado.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)pictureBoxPesado).BeginInit();
-            tableLayoutPanel3.SuspendLayout();
             tableLayoutPanelTotal.SuspendLayout();
-            tableLayoutPanel4.SuspendLayout();
+            tableLayoutPanel1.SuspendLayout();
             MaintableLayout.SuspendLayout();
             pnlProductStrip.SuspendLayout();
             SuspendLayout();
@@ -241,49 +209,14 @@ namespace OmadaPOS.Views
             tabControlMenuCategories.TabIndex = 0;
             tabControlMenuCategories.SelectedIndexChanged += tabControlMenuCategories_SelectedIndexChanged;
             // 
-            // tableLayoutPanelPayment
+            // tableLayoutPanelPayment — minimal placeholder; replaced at runtime by
+            // PaymentPanelControl.Attach() which uses GetPositionFromControl to locate
+            // it in tableLayoutPanelMain, then removes and disposes it.
             // 
-            tableLayoutPanelPayment.BackColor = Color.WhiteSmoke;
-            tableLayoutPanelPayment.ColumnCount = 1;
-            tableLayoutPanelPayment.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            tableLayoutPanelPayment.Controls.Add(tableLayoutPanel2, 0, 0);
-            tableLayoutPanelPayment.Controls.Add(splitContainerScale, 0, 3);
-            tableLayoutPanelPayment.Controls.Add(tableLayoutPanel3, 0, 4);
-            tableLayoutPanelPayment.Dock = DockStyle.Fill;
-            tableLayoutPanelPayment.Location = new Point(1451, 2);
-            tableLayoutPanelPayment.Margin = new Padding(2);
-            tableLayoutPanelPayment.Name = "tableLayoutPanelPayment";
-            tableLayoutPanelPayment.RowCount = 5;
-            tableLayoutPanelPayment.RowStyles.Add(new RowStyle(SizeType.Percent, 8.072917F));
-            tableLayoutPanelPayment.RowStyles.Add(new RowStyle(SizeType.Percent, 46.875F));
-            tableLayoutPanelPayment.RowStyles.Add(new RowStyle(SizeType.Percent, 15F));
-            tableLayoutPanelPayment.RowStyles.Add(new RowStyle(SizeType.Percent, 15F));
-            tableLayoutPanelPayment.RowStyles.Add(new RowStyle(SizeType.Percent, 15F));
-            tableLayoutPanelPayment.Size = new Size(617, 768);
+            tableLayoutPanelPayment.Dock     = DockStyle.Fill;
+            tableLayoutPanelPayment.Margin   = new Padding(2);
+            tableLayoutPanelPayment.Name     = "tableLayoutPanelPayment";
             tableLayoutPanelPayment.TabIndex = 2;
-            // 
-            // tableLayoutPanel2
-            // 
-            tableLayoutPanel2.BackColor = Color.WhiteSmoke;
-            tableLayoutPanel2.ColumnCount = 5;
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12.3980427F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 13.5399675F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 21.37031F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52.69168F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 168F));
-            tableLayoutPanel2.Controls.Add(textBoxUPC, 4, 0);
-            tableLayoutPanel2.Controls.Add(buttonInvoice, 0, 0);
-            tableLayoutPanel2.Controls.Add(buttonClose, 3, 0);
-            tableLayoutPanel2.Controls.Add(labelCashier, 2, 0);
-            tableLayoutPanel2.Controls.Add(ButtonSettings, 1, 0);
-            tableLayoutPanel2.Dock = DockStyle.Fill;
-            tableLayoutPanel2.Location = new Point(2, 2);
-            tableLayoutPanel2.Margin = new Padding(2);
-            tableLayoutPanel2.Name = "tableLayoutPanel2";
-            tableLayoutPanel2.RowCount = 1;
-            tableLayoutPanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanel2.Size = new Size(613, 58);
-            tableLayoutPanel2.TabIndex = 11;
             // 
             // textBoxUPC
             // 
@@ -303,8 +236,7 @@ namespace OmadaPOS.Views
             // 
             // buttonInvoice
             // 
-            buttonInvoice.Dock = DockStyle.Fill;
-            buttonInvoice.Location = new Point(2, 2);
+            buttonInvoice.Location = new Point(1353, 2);
             buttonInvoice.Margin = new Padding(2);
             buttonInvoice.Name = "buttonInvoice";
             buttonInvoice.Size = new Size(51, 54);
@@ -315,25 +247,24 @@ namespace OmadaPOS.Views
             // 
             // buttonClose
             // 
-            buttonClose.Dock = DockStyle.Fill;
-            buttonClose.Location = new Point(212, 2);
+            buttonClose.BackColor = Color.IndianRed;
+            buttonClose.Location = new Point(623, 2);
             buttonClose.Margin = new Padding(2);
             buttonClose.Name = "buttonClose";
-            buttonClose.Size = new Size(230, 54);
+            buttonClose.Size = new Size(128, 54);
             buttonClose.TabIndex = 6;
             buttonClose.Text = "Close";
-            buttonClose.UseVisualStyleBackColor = true;
+            buttonClose.UseVisualStyleBackColor = false;
             buttonClose.Click += buttonLogout_Click;
             // 
             // labelCashier
             // 
             labelCashier.BackColor = Color.Transparent;
-            labelCashier.Dock = DockStyle.Fill;
             labelCashier.FlatAppearance.BorderColor = Color.YellowGreen;
             labelCashier.FlatStyle = FlatStyle.Flat;
             labelCashier.Font = new Font("Microsoft Sans Serif", 12F);
             labelCashier.ForeColor = Color.FromArgb(59, 130, 246);
-            labelCashier.Location = new Point(118, 3);
+            labelCashier.Location = new Point(994, 3);
             labelCashier.Name = "labelCashier";
             labelCashier.Size = new Size(89, 52);
             labelCashier.TabIndex = 3;
@@ -343,239 +274,10 @@ namespace OmadaPOS.Views
             // 
             // ButtonSettings
             // 
-            ButtonSettings.Dock = DockStyle.Fill;
-            ButtonSettings.Location = new Point(57, 2);
-            ButtonSettings.Margin = new Padding(2);
+            ButtonSettings.Location = new Point(0, 0);
             ButtonSettings.Name = "ButtonSettings";
-            ButtonSettings.Size = new Size(56, 54);
-            ButtonSettings.TabIndex = 11;
-            ButtonSettings.Text = "Settings";
-            ButtonSettings.UseVisualStyleBackColor = true;
-            ButtonSettings.Click += ButtonSettings_Click;
-            // 
-            // splitContainerScale
-            // 
-            splitContainerScale.Dock = DockStyle.Fill;
-            splitContainerScale.Font = new Font("Verdana", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            splitContainerScale.ForeColor = Color.Black;
-            splitContainerScale.IsSplitterFixed = true;
-            splitContainerScale.Location = new Point(8, 545);
-            splitContainerScale.Margin = new Padding(8);
-            splitContainerScale.Name = "splitContainerScale";
-            // 
-            // splitContainerScale.Panel1
-            // 
-            splitContainerScale.Panel1.Controls.Add(tableLayoutPanelPesado);
-            // 
-            // splitContainerScale.Panel2
-            // 
-            splitContainerScale.Panel2.Controls.Add(pictureBoxPesado);
-            splitContainerScale.Size = new Size(601, 99);
-            splitContainerScale.SplitterDistance = 319;
-            splitContainerScale.SplitterWidth = 6;
-            splitContainerScale.TabIndex = 5;
-            // 
-            // tableLayoutPanelPesado
-            // 
-            tableLayoutPanelPesado.BackColor = Color.White;
-            tableLayoutPanelPesado.ColumnCount = 1;
-            tableLayoutPanelPesado.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 87.0646744F));
-            tableLayoutPanelPesado.Controls.Add(labelWeight, 0, 0);
-            tableLayoutPanelPesado.Controls.Add(labelPesaProduct, 0, 1);
-            tableLayoutPanelPesado.Controls.Add(lblScalStatusDesc, 0, 2);
-            tableLayoutPanelPesado.Dock = DockStyle.Fill;
-            tableLayoutPanelPesado.Location = new Point(0, 0);
-            tableLayoutPanelPesado.Margin = new Padding(3, 2, 3, 2);
-            tableLayoutPanelPesado.Name = "tableLayoutPanelPesado";
-            tableLayoutPanelPesado.RowCount = 3;
-            tableLayoutPanelPesado.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tableLayoutPanelPesado.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
-            tableLayoutPanelPesado.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            tableLayoutPanelPesado.Size = new Size(319, 99);
-            tableLayoutPanelPesado.TabIndex = 5;
-            // 
-            // labelWeight
-            // 
-            labelWeight.AutoSize = true;
-            labelWeight.BackColor = Color.Transparent;
-            labelWeight.Dock = DockStyle.Fill;
-            labelWeight.Font = new Font("Microsoft Sans Serif", 21.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelWeight.ForeColor = Color.FromArgb(251, 140, 0);
-            labelWeight.Location = new Point(3, 0);
-            labelWeight.Name = "labelWeight";
-            labelWeight.Size = new Size(313, 23);
-            labelWeight.TabIndex = 1;
-            labelWeight.Text = "Weight";
-            labelWeight.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // labelPesaProduct
-            // 
-            labelPesaProduct.AutoSize = true;
-            labelPesaProduct.BackColor = Color.Transparent;
-            labelPesaProduct.Dock = DockStyle.Top;
-            labelPesaProduct.Font = new Font("Cascadia Mono", 15.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelPesaProduct.Location = new Point(3, 23);
-            labelPesaProduct.Name = "labelPesaProduct";
-            labelPesaProduct.Size = new Size(313, 43);
-            labelPesaProduct.TabIndex = 0;
-            labelPesaProduct.Text = "Product";
-            labelPesaProduct.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // lblScalStatusDesc
-            // 
-            lblScalStatusDesc.AutoSize = true;
-            lblScalStatusDesc.Dock = DockStyle.Bottom;
-            lblScalStatusDesc.Font = new Font("Tahoma", 8.25F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            lblScalStatusDesc.ForeColor = Color.Red;
-            lblScalStatusDesc.Location = new Point(3, 78);
-            lblScalStatusDesc.Name = "lblScalStatusDesc";
-            lblScalStatusDesc.Size = new Size(313, 21);
-            lblScalStatusDesc.TabIndex = 2;
-            lblScalStatusDesc.Text = "Status";
-            lblScalStatusDesc.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // pictureBoxPesado
-            // 
-            pictureBoxPesado.BackColor = Color.White;
-            pictureBoxPesado.Dock = DockStyle.Fill;
-            pictureBoxPesado.Location = new Point(0, 0);
-            pictureBoxPesado.Margin = new Padding(3, 2, 3, 2);
-            pictureBoxPesado.Name = "pictureBoxPesado";
-            pictureBoxPesado.Size = new Size(276, 99);
-            pictureBoxPesado.SizeMode = PictureBoxSizeMode.Zoom;
-            pictureBoxPesado.TabIndex = 1;
-            pictureBoxPesado.TabStop = false;
-            pictureBoxPesado.Click += pictureBoxPesado_Click;
-            // 
-            // tableLayoutPanel3
-            // 
-            tableLayoutPanel3.ColumnCount = 4;
-            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            tableLayoutPanel3.Controls.Add(buttonEBTFood, 1, 1);
-            tableLayoutPanel3.Controls.Add(buttonPayDebitCard, 1, 0);
-            tableLayoutPanel3.Controls.Add(buttonPayCreditCard, 0, 0);
-            tableLayoutPanel3.Controls.Add(buttonEBTBalance, 0, 1);
-            tableLayoutPanel3.Controls.Add(buttonOpenDrawer, 2, 1);
-            tableLayoutPanel3.Controls.Add(buttonGiftCard, 3, 1);
-            tableLayoutPanel3.Controls.Add(buttonPayCash, 3, 0);
-            tableLayoutPanel3.Controls.Add(buttonSplit, 2, 0);
-            tableLayoutPanel3.Dock = DockStyle.Fill;
-            tableLayoutPanel3.Location = new Point(3, 654);
-            tableLayoutPanel3.Margin = new Padding(3, 2, 3, 2);
-            tableLayoutPanel3.Name = "tableLayoutPanel3";
-            tableLayoutPanel3.RowCount = 2;
-            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel3.Size = new Size(611, 112);
-            tableLayoutPanel3.TabIndex = 4;
-            // 
-            // buttonEBTFood
-            // 
-            buttonEBTFood.Dock = DockStyle.Fill;
-            buttonEBTFood.FlatStyle = FlatStyle.System;
-            buttonEBTFood.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonEBTFood.Location = new Point(155, 59);
-            buttonEBTFood.Name = "buttonEBTFood";
-            buttonEBTFood.Size = new Size(146, 50);
-            buttonEBTFood.TabIndex = 2;
-            buttonEBTFood.Text = "EBT";
-            buttonEBTFood.UseVisualStyleBackColor = true;
-            buttonEBTFood.Click += buttonEBTFood_Click;
-            // 
-            // buttonPayDebitCard
-            // 
-            buttonPayDebitCard.BackColor = Color.RoyalBlue;
-            buttonPayDebitCard.Dock = DockStyle.Fill;
-            buttonPayDebitCard.FlatStyle = FlatStyle.System;
-            buttonPayDebitCard.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonPayDebitCard.Location = new Point(155, 3);
-            buttonPayDebitCard.Name = "buttonPayDebitCard";
-            buttonPayDebitCard.Size = new Size(146, 50);
-            buttonPayDebitCard.TabIndex = 1;
-            buttonPayDebitCard.Text = "Debit Card";
-            buttonPayDebitCard.UseVisualStyleBackColor = false;
-            buttonPayDebitCard.Click += buttonPayDebitCard_Click;
-            // 
-            // buttonPayCreditCard
-            // 
-            buttonPayCreditCard.Dock = DockStyle.Fill;
-            buttonPayCreditCard.FlatStyle = FlatStyle.System;
-            buttonPayCreditCard.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonPayCreditCard.Location = new Point(3, 3);
-            buttonPayCreditCard.Name = "buttonPayCreditCard";
-            buttonPayCreditCard.Size = new Size(146, 50);
-            buttonPayCreditCard.TabIndex = 0;
-            buttonPayCreditCard.Text = "Credit Card";
-            buttonPayCreditCard.UseVisualStyleBackColor = false;
-            buttonPayCreditCard.Click += buttonPayCreditCard_Click;
-            // 
-            // buttonEBTBalance
-            // 
-            buttonEBTBalance.Dock = DockStyle.Fill;
-            buttonEBTBalance.FlatStyle = FlatStyle.System;
-            buttonEBTBalance.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonEBTBalance.Location = new Point(3, 59);
-            buttonEBTBalance.Name = "buttonEBTBalance";
-            buttonEBTBalance.Size = new Size(146, 50);
-            buttonEBTBalance.TabIndex = 9;
-            buttonEBTBalance.Text = "EBT Balance";
-            buttonEBTBalance.UseVisualStyleBackColor = true;
-            buttonEBTBalance.Click += buttonEBTBalance_Click;
-            // 
-            // buttonOpenDrawer
-            // 
-            buttonOpenDrawer.Dock = DockStyle.Fill;
-            buttonOpenDrawer.FlatStyle = FlatStyle.System;
-            buttonOpenDrawer.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonOpenDrawer.Location = new Point(307, 59);
-            buttonOpenDrawer.Name = "buttonOpenDrawer";
-            buttonOpenDrawer.Size = new Size(146, 50);
-            buttonOpenDrawer.TabIndex = 7;
-            buttonOpenDrawer.Text = "Open Drawer";
-            buttonOpenDrawer.UseVisualStyleBackColor = true;
-            buttonOpenDrawer.Click += buttonOpenDrawer_Click;
-            // 
-            // buttonGiftCard
-            // 
-            buttonGiftCard.Dock = DockStyle.Fill;
-            buttonGiftCard.FlatStyle = FlatStyle.System;
-            buttonGiftCard.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonGiftCard.Location = new Point(459, 59);
-            buttonGiftCard.Name = "buttonGiftCard";
-            buttonGiftCard.Size = new Size(149, 50);
-            buttonGiftCard.TabIndex = 3;
-            buttonGiftCard.Text = "Gift Card";
-            buttonGiftCard.UseVisualStyleBackColor = false;
-            buttonGiftCard.Click += buttonGiftCard_Click;
-            // 
-            // buttonPayCash
-            // 
-            buttonPayCash.Dock = DockStyle.Fill;
-            buttonPayCash.FlatStyle = FlatStyle.System;
-            buttonPayCash.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonPayCash.Location = new Point(459, 3);
-            buttonPayCash.Name = "buttonPayCash";
-            buttonPayCash.Size = new Size(149, 50);
-            buttonPayCash.TabIndex = 4;
-            buttonPayCash.Text = "Pay Cash";
-            buttonPayCash.UseVisualStyleBackColor = true;
-            buttonPayCash.Click += buttonPayCash_Click;
-            // 
-            // buttonSplit
-            // 
-            buttonSplit.Dock = DockStyle.Fill;
-            buttonSplit.FlatStyle = FlatStyle.Flat;
-            buttonSplit.Font = new Font("Microsoft Sans Serif", 8.25F);
-            buttonSplit.Location = new Point(307, 3);
-            buttonSplit.Name = "buttonSplit";
-            buttonSplit.Size = new Size(146, 50);
-            buttonSplit.TabIndex = 8;
-            buttonSplit.Text = "Split Pay";
-            buttonSplit.UseVisualStyleBackColor = true;
-            buttonSplit.Click += buttonSplit_Click;
+            ButtonSettings.Size = new Size(75, 23);
+            ButtonSettings.TabIndex = 0;
             // 
             // tableLayoutPanelTotal
             // 
@@ -674,106 +376,6 @@ namespace OmadaPOS.Views
             labelTotalValue.Text = "0.00";
             labelTotalValue.TextAlign = ContentAlignment.MiddleRight;
             // 
-            // tableLayoutPanel4
-            // 
-            tableLayoutPanel4.ColumnCount = 3;
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            tableLayoutPanel4.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            tableLayoutPanel4.Controls.Add(buttonQsale, 0, 0);
-            tableLayoutPanel4.Controls.Add(buttonLookup, 0, 1);
-            tableLayoutPanel4.Controls.Add(label5, 1, 1);
-            tableLayoutPanel4.Controls.Add(labelInputValue, 2, 0);
-            tableLayoutPanel4.Controls.Add(label4, 1, 0);
-            tableLayoutPanel4.Controls.Add(labelChangeValue, 2, 1);
-            tableLayoutPanel4.Dock = DockStyle.Fill;
-            tableLayoutPanel4.Location = new Point(20, 20);
-            tableLayoutPanel4.Margin = new Padding(2);
-            tableLayoutPanel4.Name = "tableLayoutPanel4";
-            tableLayoutPanel4.Padding = new Padding(3);
-            tableLayoutPanel4.RowCount = 2;
-            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel4.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tableLayoutPanel4.Size = new Size(571, 69);
-            tableLayoutPanel4.TabIndex = 0;
-            // 
-            // buttonQsale
-            // 
-            buttonQsale.Dock = DockStyle.Fill;
-            buttonQsale.Location = new Point(5, 5);
-            buttonQsale.Margin = new Padding(2);
-            buttonQsale.Name = "buttonQsale";
-            buttonQsale.Size = new Size(222, 27);
-            buttonQsale.TabIndex = 7;
-            buttonQsale.Text = "Quick Sale";
-            buttonQsale.UseVisualStyleBackColor = true;
-            buttonQsale.Click += buttonProductNoTax_Click;
-            // 
-            // buttonLookup
-            // 
-            buttonLookup.Dock = DockStyle.Fill;
-            buttonLookup.Location = new Point(5, 36);
-            buttonLookup.Margin = new Padding(2);
-            buttonLookup.Name = "buttonLookup";
-            buttonLookup.Size = new Size(222, 28);
-            buttonLookup.TabIndex = 5;
-            buttonLookup.Text = "LookUp UPC";
-            buttonLookup.UseVisualStyleBackColor = false;
-            buttonLookup.Click += buttonLookup_Click;
-            // 
-            // label5
-            // 
-            label5.AutoSize = true;
-            label5.Dock = DockStyle.Fill;
-            label5.FlatStyle = FlatStyle.Flat;
-            label5.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
-            label5.Location = new Point(232, 34);
-            label5.Name = "label5";
-            label5.Size = new Size(163, 32);
-            label5.TabIndex = 2;
-            label5.Text = "Due";
-            label5.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // labelInputValue
-            // 
-            labelInputValue.AutoSize = true;
-            labelInputValue.Dock = DockStyle.Fill;
-            labelInputValue.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
-            labelInputValue.Location = new Point(406, 11);
-            labelInputValue.Margin = new Padding(8);
-            labelInputValue.Name = "labelInputValue";
-            labelInputValue.Size = new Size(154, 15);
-            labelInputValue.TabIndex = 1;
-            labelInputValue.Text = "0.00";
-            labelInputValue.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // label4
-            // 
-            label4.AutoSize = true;
-            label4.Dock = DockStyle.Fill;
-            label4.FlatStyle = FlatStyle.Flat;
-            label4.Font = new Font("Microsoft Sans Serif", 27.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label4.Location = new Point(231, 5);
-            label4.Margin = new Padding(2);
-            label4.Name = "label4";
-            label4.Size = new Size(165, 27);
-            label4.TabIndex = 0;
-            label4.Text = "Tender";
-            label4.TextAlign = ContentAlignment.MiddleCenter;
-            // 
-            // labelChangeValue
-            // 
-            labelChangeValue.AutoSize = true;
-            labelChangeValue.Dock = DockStyle.Fill;
-            labelChangeValue.Font = new Font("Consolas", 27.75F, FontStyle.Bold);
-            labelChangeValue.ForeColor = Color.DarkBlue;
-            labelChangeValue.Location = new Point(401, 34);
-            labelChangeValue.Name = "labelChangeValue";
-            labelChangeValue.Size = new Size(164, 32);
-            labelChangeValue.TabIndex = 3;
-            labelChangeValue.Text = "0.00";
-            labelChangeValue.TextAlign = ContentAlignment.MiddleCenter;
-            // 
             // labelProductName
             // 
             labelProductName.Font = new Font("Segoe UI", 12F);
@@ -796,6 +398,9 @@ namespace OmadaPOS.Views
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 360F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 317F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 402F));
+            tableLayoutPanel1.Controls.Add(buttonInvoice, 3, 0);
+            tableLayoutPanel1.Controls.Add(buttonClose, 1, 0);
+            tableLayoutPanel1.Controls.Add(labelCashier, 2, 0);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.Location = new Point(3, 2);
             tableLayoutPanel1.Margin = new Padding(3, 2, 3, 2);
@@ -856,21 +461,9 @@ namespace OmadaPOS.Views
             tableLayoutPanelCart.ResumeLayout(false);
             tableLayoutPanelButtonCart.ResumeLayout(false);
             tableLayoutPanelCategoria.ResumeLayout(false);
-            tableLayoutPanelPayment.ResumeLayout(false);
-            tableLayoutPanel2.ResumeLayout(false);
-            tableLayoutPanel2.PerformLayout();
-            splitContainerScale.Panel1.ResumeLayout(false);
-            splitContainerScale.Panel2.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)splitContainerScale).EndInit();
-            splitContainerScale.ResumeLayout(false);
-            tableLayoutPanelPesado.ResumeLayout(false);
-            tableLayoutPanelPesado.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)pictureBoxPesado).EndInit();
-            tableLayoutPanel3.ResumeLayout(false);
             tableLayoutPanelTotal.ResumeLayout(false);
             tableLayoutPanelTotal.PerformLayout();
-            tableLayoutPanel4.ResumeLayout(false);
-            tableLayoutPanel4.PerformLayout();
+            tableLayoutPanel1.ResumeLayout(false);
             MaintableLayout.ResumeLayout(false);
             pnlProductStrip.ResumeLayout(false);
             ResumeLayout(false);
@@ -895,41 +488,17 @@ namespace OmadaPOS.Views
         private Label labelTotalValue;
         private TableLayoutPanel tableLayoutPanelCategoria;
         private TabControl tabControlMenuCategories;
-        private TableLayoutPanel tableLayoutPanelPayment;
-        private TableLayoutPanel tableLayoutPanel2;
-        private Label label4;
-        private Label labelInputValue;
-        private Label labelChangeValue;
-        private Label label5;
+        private TableLayoutPanel tableLayoutPanelPayment; // placeholder — disposed by PaymentPanelControl.Attach()
         private TableLayoutPanel tableLayoutPanel1;
-        private Button buttonEBTBalance;
-        private Button buttonSplit;
-        private Button buttonOpenDrawer;
         private Button labelCashier;
         private Componentes.AbecedarioControl abecedarioControl1;
-        private TableLayoutPanel tableLayoutPanel3;
-        private Button buttonPayCash;
-        private Button buttonGiftCard;
-        private Button buttonEBTFood;
-        private Button buttonPayDebitCard;
-        private Button buttonPayCreditCard;
-        private TableLayoutPanel tableLayoutPanelPesado;
-        private PictureBox pictureBoxPesado;
-        private Label labelPesaProduct;
-        private Label labelWeight;
-        private Label lblScalStatusDesc;
-        private SplitContainer splitContainerScale;
         private TableLayoutPanel MaintableLayout;
         private TextBox textBoxUPC;
-        private Button buttonInvoice;
-        private Button ButtonSettings;
         private Panel pnlProductStrip;
-        private Button buttonLookup;
         private Button buttonClose;
-        private Button buttonQsale;
         private ListView listViewCart;
         private Componentes.RoundedPanel roundedPanel1;
-        private Componentes.RoundedPanel roundedPanel2;
-        private TableLayoutPanel tableLayoutPanel4;
+        private Button buttonInvoice;
+        private Button ButtonSettings;
     }
 }
