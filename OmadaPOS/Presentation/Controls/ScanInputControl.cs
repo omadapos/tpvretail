@@ -19,16 +19,18 @@ public class ScanInputControl : UserControl
         Controls.Add(BuildScanPanel());
     }
 
-    public static ScanInputControl Attach(TableLayoutPanel headerLayout, TextBox textBox)
+    // Column 1 = scan zone in the 6-column header layout.
+    // We use a fixed column instead of GetPositionFromControl so the Designer
+    // can place textBox anywhere without breaking the layout on regeneration.
+    public static ScanInputControl Attach(TableLayoutPanel headerLayout, TextBox textBox, int column = 1)
     {
         ArgumentNullException.ThrowIfNull(headerLayout);
         ArgumentNullException.ThrowIfNull(textBox);
 
-        var pos = headerLayout.GetPositionFromControl(textBox);
-        headerLayout.Controls.Remove(textBox);
+        textBox.Parent?.Controls.Remove(textBox);
 
         var control = new ScanInputControl(textBox);
-        headerLayout.Controls.Add(control, pos.Column, pos.Row);
+        headerLayout.Controls.Add(control, column, 0);
 
         return control;
     }
@@ -44,8 +46,8 @@ public class ScanInputControl : UserControl
         var scanPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = AppColors.NavyBase,
-            Margin = new Padding(4, 5, 4, 5),
+            BackColor = AppColors.SurfaceMuted,
+            Margin = new Padding(8, 6, 8, 6),
             Cursor = Cursors.IBeam,
         };
 
@@ -89,8 +91,8 @@ public class ScanInputControl : UserControl
         btnClear.Click += (s, e) => ClearInput();
 
         _textBox.Dock = DockStyle.Fill;
-        _textBox.BackColor       = AppColors.NavyBase;
-        _textBox.ForeColor       = AppColors.AccentGreen;
+        _textBox.BackColor       = AppColors.SurfaceMuted;
+        _textBox.ForeColor       = AppColors.TextPrimary;
         _textBox.Font            = AppTypography.ScanInput;
         _textBox.BorderStyle     = BorderStyle.None;
         _textBox.TextAlign       = HorizontalAlignment.Center;

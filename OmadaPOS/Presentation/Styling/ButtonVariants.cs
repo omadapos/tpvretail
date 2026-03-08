@@ -76,6 +76,18 @@ public static class ButtonVariants
     public static void KeypadAction(Button button, float fontSize = 18f) =>
         ElegantButtonStyles.Style(button, AppColors.NavyLight, AppColors.TextWhite, AppRadii.Medium, fontSize);
 
+    // ─── Alphabet / search bar ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Letter-filter button in the product search alphabet bar.
+    /// Slate-gray default, emerald on hover/active — styled via FlatStyle.Flat
+    /// (no Paint override) for performance over a full-width row.
+    /// Delegates to <see cref="ModernAlphabetButtonStyle.Apply"/> so there
+    /// is a single source of truth for alphabet button appearance.
+    /// </summary>
+    public static void Alphabet(Button button) =>
+        ModernAlphabetButtonStyle.Apply(button);
+
     // ─── Utility ─────────────────────────────────────────────────────────────
 
     /// <summary>EBT balance enquiry — amber warning tone.</summary>

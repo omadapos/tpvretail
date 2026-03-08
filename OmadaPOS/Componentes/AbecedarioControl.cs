@@ -31,11 +31,10 @@ namespace OmadaPOS.Componentes
 
         private void AplicarEstilo()
         {
-            // Contenedor — navy oscuro como barra de búsqueda
-            tableLayoutPanelButton.BackColor       = AppColors.NavyDark;
+            tableLayoutPanelButton.BackColor       = AppColors.SurfaceMuted;
             tableLayoutPanelButton.Padding         = new Padding(4, 3, 4, 3);
             tableLayoutPanelButton.CellBorderStyle = TableLayoutPanelCellBorderStyle.None;
-            this.BackColor = AppColors.NavyDark;
+            this.BackColor = AppColors.SurfaceMuted;
 
             foreach (var btn in allButtons)
             {
@@ -88,7 +87,7 @@ namespace OmadaPOS.Componentes
         {
             if (buttonActive != null)
             {
-                buttonActive.BackColor = AppColors.NavyBase;
+                buttonActive.BackColor = ModernAlphabetButtonStyle.DefaultBack;
                 buttonActive.ForeColor = AppColors.TextWhite;
                 buttonActive = null;
             }

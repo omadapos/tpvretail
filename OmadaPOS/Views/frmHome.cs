@@ -118,6 +118,25 @@ namespace OmadaPOS.Views
                 ButtonSettings,
                 buttonClose);
 
+            // roundedPanel1/roundedPanel2 are declared in the Designer but
+            // the Designer strips their initialization from InitializeComponent.
+            // We create them in code to guarantee they are never null.
+            if (roundedPanel1 == null)
+            {
+                roundedPanel1 = new Componentes.RoundedPanel { Dock = DockStyle.Fill };
+                tableLayoutPanelTotal.Dock = DockStyle.Fill;
+                roundedPanel1.Controls.Add(tableLayoutPanelTotal);
+                tableLayoutPanelCart.Controls.Add(roundedPanel1, 0, 1);
+            }
+
+            if (roundedPanel2 == null)
+            {
+                roundedPanel2 = new Componentes.RoundedPanel { Dock = DockStyle.Fill };
+                tableLayoutPanel4.Dock = DockStyle.Fill;
+                roundedPanel2.Controls.Add(tableLayoutPanel4);
+                tableLayoutPanelPayment.Controls.Add(roundedPanel2, 0, 2);
+            }
+
             _cartListViewControl = CartListViewControl.Attach(tableLayoutPanelCart, listViewCart);
             _cartTotalsControl = CartTotalsControl.Attach(
                 tableLayoutPanelCart,
@@ -334,6 +353,7 @@ namespace OmadaPOS.Views
                 AdminId = SessionManager.AdminId ?? 0,
                 Phone   = SessionManager.Phone
             });
+            _supervisorApproved = true;   // Tell FormClosing this close is authorised.
             _windowService.OpenSignIn();
             this.Close();
         }
@@ -398,10 +418,24 @@ namespace OmadaPOS.Views
             }
         }
 
+        // Set to true by EjecutarLogout() so FormClosing knows it is an authorised close.
+        private bool _supervisorApproved = false;
+
         private void frmHome_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // Desuscribir eventos de singletons ANTES de cerrar para evitar
-            // que IShoppingCart y ZebraScannerService retengan esta instancia en memoria.
+            // Block any user-initiated close (Alt+F4, task-bar close, etc.)
+            // unless the supervisor PIN was already verified via EjecutarLogout().
+            if (!_supervisorApproved && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                if (!VerificarPinSupervisor()) return;
+
+                // PIN accepted — run logout and let it close cleanly.
+                _ = EjecutarLogout();
+                return;
+            }
+
+            // Authorised close — clean up singleton event subscriptions.
             _shoppingCart.CartChanged -= ShoppingCart_CartChanged;
 
             if (_zebraScannerService != null)
@@ -671,12 +705,22 @@ namespace OmadaPOS.Views
 
         private async void buttonLogout_Click(object sender, EventArgs e)
         {
+            if (!VerificarPinSupervisor()) return;
             try { await EjecutarLogout(); }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error during logout: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        /// <summary>
+        /// Shows the supervisor PIN dialog. Returns true when the correct PIN is entered.
+        /// </summary>
+        private bool VerificarPinSupervisor()
+        {
+            using var dlg = new frmSupervisorPin();
+            return dlg.ShowDialog(this) == DialogResult.OK;
         }
 
         private void buttonProductNoTax_Click(object sender, EventArgs e)

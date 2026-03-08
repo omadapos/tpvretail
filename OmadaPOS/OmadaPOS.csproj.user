@@ -11,9 +11,6 @@
     <Compile Update="Componentes\AutocompleteProductUserControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Componentes\FormularioPopupBase.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Update="Componentes\NumericPadControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -93,5 +90,12 @@
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Compile Update="Views\frmSupervisorPin.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\NumericPadDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
 </Project>

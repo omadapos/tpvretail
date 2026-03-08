@@ -83,6 +83,17 @@ internal static class Program
     [STAThread]
     static async Task Main()
     {
+        // ── Global crash logging ──────────────────────────────────────────────
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+            "OmadaPOS_crash.txt");
+
+        Application.ThreadException += (_, e) => LogCrash(logPath, e.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            LogCrash(logPath, e.ExceptionObject as Exception ?? new Exception(e.ExceptionObject?.ToString()));
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        { LogCrash(logPath, e.Exception); e.SetObserved(); };
+
         Application.SetHighDpiMode(HighDpiMode.SystemAware);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -108,5 +119,25 @@ internal static class Program
         }
 
         Application.Run(ServiceProvider.GetRequiredService<frmSignIn>());
+    }
+
+    private static void LogCrash(string path, Exception? ex)
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"=== CRASH {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
+            sb.AppendLine($"Type   : {ex?.GetType().FullName}");
+            sb.AppendLine($"Message: {ex?.Message}");
+            sb.AppendLine($"Stack  :\n{ex?.StackTrace}");
+            if (ex?.InnerException != null)
+            {
+                sb.AppendLine($"Inner  : {ex.InnerException.GetType().FullName}: {ex.InnerException.Message}");
+                sb.AppendLine(ex.InnerException.StackTrace);
+            }
+            sb.AppendLine();
+            File.AppendAllText(path, sb.ToString());
+        }
+        catch { /* never crash the crash handler */ }
     }
 }

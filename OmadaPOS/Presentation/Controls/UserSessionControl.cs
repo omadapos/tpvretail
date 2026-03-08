@@ -40,18 +40,19 @@ public class UserSessionControl : UserControl
         _dismissSurface.MouseClick += (_, _) => HideMenu();
     }
 
-    public static UserSessionControl Attach(Form ownerForm, Control dismissSurface, TableLayoutPanel headerLayout, Button userButton)
+    // Column 4 = user session zone in the 6-column header layout.
+    // Fixed column avoids dependency on Designer-assigned position.
+    public static UserSessionControl Attach(Form ownerForm, Control dismissSurface, TableLayoutPanel headerLayout, Button userButton, int column = 4)
     {
         ArgumentNullException.ThrowIfNull(ownerForm);
         ArgumentNullException.ThrowIfNull(dismissSurface);
         ArgumentNullException.ThrowIfNull(headerLayout);
         ArgumentNullException.ThrowIfNull(userButton);
 
-        var pos = headerLayout.GetPositionFromControl(userButton);
-        headerLayout.Controls.Remove(userButton);
+        userButton.Parent?.Controls.Remove(userButton);
 
         var control = new UserSessionControl(ownerForm, dismissSurface, userButton);
-        headerLayout.Controls.Add(control, pos.Column, pos.Row);
+        headerLayout.Controls.Add(control, column, 0);
 
         return control;
     }

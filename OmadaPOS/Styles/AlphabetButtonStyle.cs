@@ -10,18 +10,20 @@ namespace OmadaPOS.Presentation.Styling;
 /// </summary>
 public static class ModernAlphabetButtonStyle
 {
+    /// <summary>Default background so <c>ResetearBotonActivo</c> can restore it.</summary>
+    public static readonly Color DefaultBack = AppColors.SlateBlue;
+
     public static void Apply(Button button)
     {
         button.FlatStyle  = FlatStyle.Flat;
-        button.BackColor  = AppColors.NavyBase;
+        button.BackColor  = DefaultBack;
         button.ForeColor  = AppColors.TextWhite;
         button.Font       = new Font("Segoe UI", 11F, FontStyle.Bold);
         button.TextAlign  = ContentAlignment.MiddleCenter;
         button.Cursor     = Cursors.Hand;
         button.UseVisualStyleBackColor = false;
 
-        button.FlatAppearance.BorderSize            = 1;
-        button.FlatAppearance.BorderColor           = AppColors.NavyLight;
+        button.FlatAppearance.BorderSize            = 0;
         button.FlatAppearance.MouseOverBackColor    = AppColors.AccentGreen;
         button.FlatAppearance.MouseDownBackColor    = AppColors.AccentGreenDark;
     }
