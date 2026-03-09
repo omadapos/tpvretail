@@ -311,7 +311,7 @@ public sealed class frmSplit : Form
                 AutoSize  = false,
                 Dock      = DockStyle.Fill,
                 Text      = t,
-                Font      = new Font("Montserrat", 14F, FontStyle.Bold),
+                Font      = new Font("Consolas", 14F, FontStyle.Bold),
                 ForeColor = fg,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleRight,
@@ -354,13 +354,13 @@ public sealed class frmSplit : Form
         col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // EBT BALANCE
         col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // CLOSE
 
-        void AddPayBtn(string icon, string label, string tag, Color color, int row)
+        void AddPayBtn(string label, string tag, Color color, int row)
         {
             var b = new Button
             {
                 AutoSize = false,
                 Dock     = DockStyle.Fill,
-                Text     = $"{icon}  {label}",
+                Text     = label,
                 Margin   = new Padding(0, 0, 0, 8),
                 Tag      = tag,
             };
@@ -369,22 +369,22 @@ public sealed class frmSplit : Form
             col.Controls.Add(b, 0, row);
         }
 
-        AddPayBtn("💵", "CASH",        "CASH",   AppColors.AccentGreen, 0);
-        AddPayBtn("💳", "CREDIT CARD", "CREDIT", AppColors.SlateBlue,   1);
-        AddPayBtn("💳", "DEBIT CARD",  "DEBIT",  AppColors.SlateBlue,   2);
-        AddPayBtn("🏦", "EBT",         "EBT",    AppColors.SlateBlue,   3);
+        AddPayBtn("CASH",        "CASH",   AppColors.AccentGreen, 0);
+        AddPayBtn("CREDIT CARD", "CREDIT", AppColors.SlateBlue,   1);
+        AddPayBtn("DEBIT CARD",  "DEBIT",  AppColors.SlateBlue,   2);
+        AddPayBtn("EBT",         "EBT",    AppColors.SlateBlue,   3);
 
         // Spacer
         col.Controls.Add(new Label { Dock = DockStyle.Fill, BackColor = Color.Transparent }, 0, 4);
 
         // Load Remaining
-        var btnRemain = new Button { Dock = DockStyle.Fill, Text = "⚡  LOAD REMAINING", Margin = new Padding(0, 0, 0, 6) };
+        var btnRemain = new Button { Dock = DockStyle.Fill, Text = "LOAD REMAINING", Margin = new Padding(0, 0, 0, 6) };
         ElegantButtonStyles.Style(btnRemain, AppColors.Warning, AppColors.TextWhite, fontSize: 13f);
         btnRemain.Click += (_, _) => _numPad.ValueCents = (int)(_remainingAmount * 100);
         col.Controls.Add(btnRemain, 0, 5);
 
         // EBT Eligible
-        var btnCalcEbt = new Button { Dock = DockStyle.Fill, Text = "🧮  EBT ELIGIBLE", Margin = new Padding(0, 0, 0, 6) };
+        var btnCalcEbt = new Button { Dock = DockStyle.Fill, Text = "EBT ELIGIBLE", Margin = new Padding(0, 0, 0, 6) };
         ElegantButtonStyles.Style(btnCalcEbt, AppColors.NavyBase, AppColors.TextWhite, fontSize: 13f);
         btnCalcEbt.Click += (_, _) =>
         {
@@ -394,7 +394,7 @@ public sealed class frmSplit : Form
         col.Controls.Add(btnCalcEbt, 0, 6);
 
         // EBT Balance
-        var btnEbtBal = new Button { Dock = DockStyle.Fill, Text = "📋  EBT BALANCE", Margin = new Padding(0, 0, 0, 6) };
+        var btnEbtBal = new Button { Dock = DockStyle.Fill, Text = "EBT BALANCE", Margin = new Padding(0, 0, 0, 6) };
         ElegantButtonStyles.Style(btnEbtBal, AppColors.NavyBase, AppColors.TextWhite, fontSize: 13f);
         btnEbtBal.Click += async (_, _) => await QueryEbtBalanceAsync(btnEbtBal);
         col.Controls.Add(btnEbtBal, 0, 7);

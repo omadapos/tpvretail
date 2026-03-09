@@ -33,7 +33,7 @@ namespace OmadaPOS.Componentes
         // ── Recursos GDI compartidos — una sola instancia para TODOS los controles ──
         // Fuentes: 2 objetos para N tarjetas en lugar de 2×N
         private static readonly Font       FontTitle    = new("Segoe UI",   10F, FontStyle.Bold);
-        private static readonly Font       FontPrice    = new("Montserrat", 13F, FontStyle.Bold);
+        private static readonly Font       FontPrice    = new("Consolas", 13F, FontStyle.Bold);
 
         // Brushes/Pens: reutilizados en cada Paint, sin allocations
         private static readonly SolidBrush CardBrush    = new(Color.White);

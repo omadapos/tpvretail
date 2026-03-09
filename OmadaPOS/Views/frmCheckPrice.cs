@@ -96,7 +96,7 @@ public sealed class frmCheckPrice : POSDialog
         _lblPrice = new Label
         {
             Text      = "—",
-            Font      = new Font("Montserrat", 42F, FontStyle.Bold),
+            Font      = new Font("Consolas", 42F, FontStyle.Bold),
             ForeColor = AppColors.AccentGreen,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,

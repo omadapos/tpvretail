@@ -115,13 +115,13 @@ public class CartListViewControl : UserControl
             var g = e.Graphics;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            bool selected = e.Item!.Selected;
-            Color fg = selected ? AppColors.TextWhite : AppColors.TextPrimary;
+            bool  selected = e.Item!.Selected;
+            Color fg       = selected ? AppColors.TextWhite : AppColors.TextPrimary;
 
-            // Price and Total columns right-aligned for better scanability
-            StringAlignment align = e.ColumnIndex >= 3
-                ? StringAlignment.Far
-                : StringAlignment.Center;
+            // Price (col 3) and Total (col 4) → right-aligned; Product (col 1) → left
+            StringAlignment align = e.ColumnIndex == 1 ? StringAlignment.Near
+                                  : e.ColumnIndex >= 3 ? StringAlignment.Far
+                                  :                      StringAlignment.Center;
 
             using var sf = new StringFormat
             {
@@ -130,15 +130,12 @@ public class CartListViewControl : UserControl
                 Trimming      = StringTrimming.EllipsisCharacter,
             };
 
+            // Minimal horizontal padding so prices have full column width
             var textRect = new Rectangle(
-                e.Bounds.X + 6,
+                e.Bounds.X + 2,
                 e.Bounds.Y,
-                e.Bounds.Width - 10,
+                e.Bounds.Width - 4,
                 e.Bounds.Height);
-
-            // Product name (col 1) left-aligned for readability
-            if (e.ColumnIndex == 1)
-                sf.Alignment = StringAlignment.Near;
 
             using var brush = new SolidBrush(fg);
             g.DrawString(e.SubItem!.Text, AppTypography.ListItem, brush, textRect, sf);
@@ -187,14 +184,23 @@ public class CartListViewControl : UserControl
 
     private void AdjustColumns()
     {
-        int totalWidth = _listView.ClientSize.Width;
-        int columnCount = _listView.Columns.Count;
-        if (columnCount == 0) return;
+        int w = _listView.ClientSize.Width;
+        if (w <= 0 || _listView.Columns.Count != 5) return;
 
-        int columnWidth = totalWidth / columnCount;
-        int lastColumnWidth = totalWidth - (columnWidth * (columnCount - 1));
+        // Fixed narrow columns for # and Qty; Price/Total get guaranteed minimums;
+        // Product absorbs the remaining space.
+        int numW     = Math.Max(28, (int)(w * 0.08));   // #
+        int qtyW     = Math.Max(36, (int)(w * 0.10));   // Qty
+        int priceW   = Math.Max(72, (int)(w * 0.20));   // Price
+        int totalW   = Math.Max(72, (int)(w * 0.20));   // Total
+        int productW = Math.Max(50, w - numW - qtyW - priceW - totalW); // Product
 
-        for (int i = 0; i < columnCount; i++)
-            _listView.Columns[i].Width = (i == columnCount - 1) ? lastColumnWidth : columnWidth;
+        _listView.BeginUpdate();
+        _listView.Columns[0].Width = numW;
+        _listView.Columns[1].Width = productW;
+        _listView.Columns[2].Width = qtyW;
+        _listView.Columns[3].Width = priceW;
+        _listView.Columns[4].Width = totalW;
+        _listView.EndUpdate();
     }
 }

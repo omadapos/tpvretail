@@ -242,7 +242,7 @@ public sealed class frmPrintInvoice : POSDialog
         var lbl = new Label
         {
             Text      = text,
-            Font      = new Font("Montserrat", 9F, FontStyle.Bold),
+            Font      = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,

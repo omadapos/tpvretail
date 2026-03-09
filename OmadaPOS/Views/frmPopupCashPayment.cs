@@ -177,7 +177,7 @@ public sealed class frmPopupCashPayment : POSDialog
             changeRow.Controls.Add(new Label
             {
                 AutoSize = false, Dock = DockStyle.Fill,
-                Text = _devuelta.ToString("C"), Font = new Font("Montserrat", 14F, FontStyle.Bold),
+                Text = _devuelta.ToString("C"), Font = new Font("Consolas", 14F, FontStyle.Bold),
                 ForeColor = AppColors.AccentGreen, BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleRight,
             }, 1, 0);
@@ -308,7 +308,7 @@ public sealed class frmPopupCashPayment : POSDialog
     private static Label MakeBigAmount(string text, Color color) => new()
     {
         AutoSize = false, Dock = DockStyle.Fill, Text = text,
-        Font = new Font("Montserrat", 36F, FontStyle.Bold),
+        Font = new Font("Consolas", 36F, FontStyle.Bold),
         ForeColor = color, BackColor = Color.Transparent,
         TextAlign = ContentAlignment.MiddleCenter,
     };

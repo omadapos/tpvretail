@@ -139,8 +139,8 @@ public sealed class PaymentPanelControl : UserControl
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var btnQsale  = MakeButton("⚡  QUICK SALE",  ElegantButtonStyles.CashGreen, 13f, 0, 3);
-        var btnLookup = MakeButton("🔍  LOOKUP UPC",  ElegantButtonStyles.Keypad,    13f, 3, 0);
+        var btnQsale  = MakeButton("QUICK SALE",  ElegantButtonStyles.CashGreen, 13f, 0, 3);
+        var btnLookup = MakeButton("LOOKUP UPC",  ElegantButtonStyles.Keypad,    13f, 3, 0);
 
         btnQsale.Click  += (s, e) => QuickSaleClicked?.Invoke(s, e);
         btnLookup.Click += (s, e) => UPCLookupClicked?.Invoke(s, e);
@@ -285,10 +285,10 @@ public sealed class PaymentPanelControl : UserControl
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
         // Row 0 — primary payment methods
-        var btnCredit = PayBtn("💳  CREDIT", AppColors.PaymentCredit,    22f);
-        var btnDebit  = PayBtn("💳  DEBIT",  ElegantButtonStyles.DebitGray, 18f);
-        var btnSplit  = PayBtn("⇌  SPLIT",  AppColors.PaymentSplit,      18f);
-        var btnCash   = PayBtn("💵  CASH",   AppColors.AccentGreen,       22f);
+        var btnCredit = PayBtn("CREDIT", AppColors.PaymentCredit,       22f);
+        var btnDebit  = PayBtn("DEBIT",  ElegantButtonStyles.DebitGray, 18f);
+        var btnSplit  = PayBtn("SPLIT",  AppColors.PaymentSplit,        18f);
+        var btnCash   = PayBtn("CASH",   AppColors.AccentGreen,         22f);
 
         btnCredit.Click += (s, e) => CreditPayClicked?.Invoke(s, e);
         btnDebit.Click  += (s, e) => DebitPayClicked?.Invoke(s, e);
@@ -301,10 +301,10 @@ public sealed class PaymentPanelControl : UserControl
         grid.Controls.Add(btnCash,   3, 0);
 
         // Row 1 — secondary methods
-        var btnEBTBal = PayBtn("⚖  EBT BAL",  AppColors.Warning,          16f);
-        var btnEBTFd  = PayBtn("🌿  EBT FOOD", AppColors.PaymentEBT,       16f);
-        var btnDrawer = PayBtn("🗄  DRAWER",   AppColors.NavyDark,         16f);
-        var btnGift   = PayBtn("🎁  GIFT",     AppColors.PaymentGiftCard,  16f);
+        var btnEBTBal = PayBtn("EBT BAL",  AppColors.Warning,         16f);
+        var btnEBTFd  = PayBtn("EBT FOOD", AppColors.PaymentEBT,      16f);
+        var btnDrawer = PayBtn("DRAWER",   AppColors.NavyLight,       16f);
+        var btnGift   = PayBtn("GIFT",     AppColors.PaymentGiftCard, 16f);
 
         btnEBTBal.Click += (s, e) => EBTBalanceClicked?.Invoke(s, e);
         btnEBTFd.Click  += (s, e) => EBTFoodClicked?.Invoke(s, e);

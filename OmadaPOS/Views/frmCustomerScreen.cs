@@ -52,14 +52,14 @@ public sealed class frmCustomerScreen : Form
     private System.Windows.Forms.Timer? _timerClock;
 
     // ── Static GDI resources (allocated once, never disposed mid-run) ─────────
-    private static readonly Font _fontHero     = new("Montserrat", 38F, FontStyle.Bold);
-    private static readonly Font _fontMeta     = new("Montserrat", 11F, FontStyle.Bold);
-    private static readonly Font _fontItems    = new("Montserrat", 15F, FontStyle.Bold);
-    private static readonly Font _fontDetail   = new("Segoe UI",   10F);
-    private static readonly Font _fontHeader   = new("Montserrat", 13F, FontStyle.Bold);
-    private static readonly Font _fontClock    = new("Montserrat", 11F);
-    private static readonly Font _fontList     = new("Segoe UI",   12F);
-    private static readonly Font _fontListHdr  = new("Montserrat",  9F, FontStyle.Bold);
+    private static readonly Font _fontHero     = new("Consolas",  38F, FontStyle.Bold);  // hero amount — monospaced
+    private static readonly Font _fontMeta     = new("Segoe UI",  11F, FontStyle.Bold);  // labels
+    private static readonly Font _fontItems    = new("Segoe UI",  15F, FontStyle.Bold);  // item names
+    private static readonly Font _fontDetail   = new("Segoe UI",  10F);
+    private static readonly Font _fontHeader   = new("Segoe UI",  13F, FontStyle.Bold);  // store header
+    private static readonly Font _fontClock    = new("Consolas",  11F);                  // clock = numbers
+    private static readonly Font _fontList     = new("Segoe UI",  12F);
+    private static readonly Font _fontListHdr  = new("Segoe UI",   9F, FontStyle.Bold);  // column headers
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public frmCustomerScreen(IBannerService bannerService, IShoppingCart shoppingCart)
@@ -172,7 +172,7 @@ public sealed class frmCustomerScreen : Form
         var lblWelcome = new Label
         {
             Text      = "✦  WELCOME  ✦",
-            Font      = new Font("Montserrat", 12F, FontStyle.Bold),
+            Font      = new Font("Segoe UI", 12F, FontStyle.Bold),
             ForeColor = AppColors.AccentGreen,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
@@ -241,7 +241,7 @@ public sealed class frmCustomerScreen : Form
         var lblTitle = new Label
         {
             Text      = "🛒  YOUR ORDER",
-            Font      = new Font("Montserrat", 10F, FontStyle.Bold),
+            Font      = new Font("Segoe UI", 10F, FontStyle.Bold),
             ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,

@@ -5,92 +5,99 @@ namespace OmadaPOS.Presentation.Styling;
 /// <summary>
 /// Centralised font tokens for the POS Design System.
 ///
-/// Font families in use:
-///   Montserrat — brand headlines, totals, actionable numbers (high visual weight)
-///   Segoe UI   — body text, labels, column headers (system-native legibility)
-///   Consolas   — monospaced amounts, scan input, UPC codes (digit alignment)
+/// Two-font system — optimised for 15" Elo touch POS terminal:
 ///
-/// Scale: Caption (9) → Small (11) → Body (12-13) → Section (14) → Header (18-24)
+///   Segoe UI  — all UI text: labels, buttons, menus, headers, captions.
+///               Microsoft's native Windows screen font; ClearType-tuned;
+///               supports emoji; no installation required.
+///
+///   Consolas  — all numeric values: amounts, prices, totals, UPC/barcodes,
+///               time displays, keypad input.
+///               Monospaced — every digit takes identical width, so
+///               currency columns stay perfectly aligned in the cart.
+///               No installation required on any Windows machine.
+///
+/// Scale: Caption (9) → Small (11) → Body (12-13) → Section (14) → Display (20-56)
 /// </summary>
 public static class AppTypography
 {
-    // ─── Brand / Display ─────────────────────────────────────────────────────
+    // ─── Segoe UI — Display / Headers ────────────────────────────────────────
 
-    /// <summary>Grand total amounts — customer-facing, maximum visual weight.</summary>
-    public static readonly Font AmountGrand    = new("Montserrat", 24F, FontStyle.Bold);
+    /// <summary>Application header / logo bar — 13px bold.</summary>
+    public static readonly Font AppHeader      = new("Segoe UI", 13F, FontStyle.Bold);
 
-    /// <summary>Payment tender / change display — large payment screen numbers.</summary>
-    public static readonly Font AmountDisplay  = new("Montserrat", 22F, FontStyle.Bold);
-
-    /// <summary>Customer screen total — largest display amount.</summary>
-    public static readonly Font AmountHero     = new("Montserrat", 56F, FontStyle.Bold);
-
-    /// <summary>Weight display on payment and customer panels.</summary>
-    public static readonly Font WeightDisplay  = new("Montserrat", 20F, FontStyle.Bold);
-
-    /// <summary>Customer screen weight hero.</summary>
-    public static readonly Font WeightHero     = new("Montserrat", 32F, FontStyle.Bold);
-
-    /// <summary>Application header / logo bar.</summary>
-    public static readonly Font AppHeader      = new("Montserrat", 13F, FontStyle.Bold);
-
-    // ─── Segoe UI — Section & Body ───────────────────────────────────────────
-
-    /// <summary>Panel section titles with strong emphasis.</summary>
+    /// <summary>Panel section titles — 14px bold.</summary>
     public static readonly Font SectionTitle   = new("Segoe UI", 14F, FontStyle.Bold);
 
-    /// <summary>Tender / Due labels in payment summary.</summary>
+    /// <summary>Popup / dialog title — 16px bold.</summary>
+    public static readonly Font PopupTitle     = new("Segoe UI", 16F, FontStyle.Bold);
+
+    /// <summary>Customer screen welcome greeting — 30px bold.</summary>
+    public static readonly Font Welcome        = new("Segoe UI", 30F, FontStyle.Bold);
+
+    // ─── Segoe UI — Body & Labels ────────────────────────────────────────────
+
+    /// <summary>Tender / Due labels in payment summary — 13px bold.</summary>
     public static readonly Font PaymentLabel   = new("Segoe UI", 13F, FontStyle.Bold);
 
-    /// <summary>Cart list view rows, product lists.</summary>
+    /// <summary>Cart list view rows, product lists — 13px regular.</summary>
     public static readonly Font ListItem       = new("Segoe UI", 13F, FontStyle.Regular);
 
-    /// <summary>Subtotal / tax row labels.</summary>
+    /// <summary>Subtotal / tax row labels — 14px regular.</summary>
     public static readonly Font RowLabel       = new("Segoe UI", 14F, FontStyle.Regular);
 
-    /// <summary>General body — form labels, inputs.</summary>
+    /// <summary>General body — form labels, inputs — 12px regular.</summary>
     public static readonly Font Body           = new("Segoe UI", 12F, FontStyle.Regular);
 
-    /// <summary>Smaller body — secondary information.</summary>
+    /// <summary>Smaller body — secondary info — 11px regular.</summary>
     public static readonly Font BodySmall      = new("Segoe UI", 11F, FontStyle.Regular);
 
-    /// <summary>Alphabet / keyboard buttons.</summary>
-    public static readonly Font KeyboardButton = new("Segoe UI", 11F, FontStyle.Bold);
-
-    /// <summary>Column headers in list views.</summary>
+    /// <summary>Column headers in list views — 12px bold.</summary>
     public static readonly Font ColumnHeader   = new("Segoe UI", 12F, FontStyle.Bold);
 
-    /// <summary>Header icon buttons (emoji glyphs).</summary>
+    /// <summary>Alphabet / keyboard filter buttons — 11px bold.</summary>
+    public static readonly Font KeyboardButton = new("Segoe UI", 11F, FontStyle.Bold);
+
+    /// <summary>Header icon buttons (⚙ ✕ glyphs) — 18px.</summary>
     public static readonly Font HeaderIcon     = new("Segoe UI", 18F);
 
-    /// <summary>Close / power icon in header.</summary>
+    /// <summary>Power / close icon in header — 20px.</summary>
     public static readonly Font HeaderIconLg   = new("Segoe UI", 20F);
 
-    /// <summary>Status lines, auxiliary hints.</summary>
+    /// <summary>Status lines, auxiliary hints — 9px italic.</summary>
     public static readonly Font Caption        = new("Segoe UI", 9F, FontStyle.Italic);
 
-    /// <summary>Welcome / customer greeting.</summary>
-    public static readonly Font Welcome        = new("Montserrat", 30F, FontStyle.Bold);
+    /// <summary>Small dropdown chevron glyph — 10px regular.</summary>
+    public static readonly Font ChevronIcon    = new("Segoe UI", 10F, FontStyle.Regular);
 
-    /// <summary>Customer clock display.</summary>
-    public static readonly Font Clock          = new("Montserrat", 26F, FontStyle.Bold);
+    // ─── Consolas — Numeric Display ──────────────────────────────────────────
+    // Monospaced: every digit 0-9 is exactly the same width.
+    // Essential for currency columns, totals, UPC codes.
 
-    // ─── Consolas — Monospaced ────────────────────────────────────────────────
+    /// <summary>Grand total — customer-facing primary amount — 26px bold.</summary>
+    public static readonly Font AmountGrand    = new("Consolas", 26F, FontStyle.Bold);
 
-    /// <summary>UPC scan text box — monospaced for code readability.</summary>
-    public static readonly Font ScanInput      = new("Consolas", 15F, FontStyle.Bold);
+    /// <summary>Payment tender / change display — 22px bold.</summary>
+    public static readonly Font AmountDisplay  = new("Consolas", 22F, FontStyle.Bold);
 
-    /// <summary>Subtotal and tax values inside totals panel.</summary>
+    /// <summary>Customer screen total hero — largest display — 52px bold.</summary>
+    public static readonly Font AmountHero     = new("Consolas", 52F, FontStyle.Bold);
+
+    /// <summary>Weight display on payment and scale panels — 20px bold.</summary>
+    public static readonly Font WeightDisplay  = new("Consolas", 20F, FontStyle.Bold);
+
+    /// <summary>Customer screen weight hero — 32px bold.</summary>
+    public static readonly Font WeightHero     = new("Consolas", 32F, FontStyle.Bold);
+
+    /// <summary>Subtotal and tax values inside totals panel — 16px regular.</summary>
     public static readonly Font AmountMono     = new("Consolas", 16F, FontStyle.Regular);
 
-    /// <summary>Keypad numeric display (PIN / GiftCard entry).</summary>
-    public static readonly Font KeypadDisplay  = new("Consolas", 30F, FontStyle.Bold);
+    /// <summary>UPC scan text box — 15px bold for barcode readability.</summary>
+    public static readonly Font ScanInput      = new("Consolas", 15F, FontStyle.Bold);
 
-    // ─── Popup headers ───────────────────────────────────────────────────────
+    /// <summary>Keypad numeric display (PIN / GiftCard / quantity entry) — 28px bold.</summary>
+    public static readonly Font KeypadDisplay  = new("Consolas", 28F, FontStyle.Bold);
 
-    /// <summary>Popup / dialog title — same weight as AppHeader but for modal context.</summary>
-    public static readonly Font PopupTitle     = new("Montserrat", 16F, FontStyle.Bold);
-
-    /// <summary>Small dropdown / flyout chevron glyph.</summary>
-    public static readonly Font ChevronIcon    = new("Segoe UI", 10F, FontStyle.Regular);
+    /// <summary>Clock / time display on customer screen — 26px bold.</summary>
+    public static readonly Font Clock          = new("Consolas", 26F, FontStyle.Bold);
 }
