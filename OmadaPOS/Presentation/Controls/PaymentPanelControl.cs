@@ -179,7 +179,7 @@ public sealed class PaymentPanelControl : UserControl
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
-        _lblTenderAmt = AmountLabel("0.00", AppColors.NavyDark);
+        _lblTenderAmt = AmountLabel("0.00", AppColors.TextPrimary);
         _lblChangeAmt = AmountLabel("0.00", AppColors.AccentGreen);
 
         grid.Controls.Add(SummaryLabel("Tender"), 0, 0);

@@ -184,7 +184,7 @@ namespace OmadaPOS.Views
         }
 
         // ── Columna central — setup único + re-theming ───────────────────
-        private static readonly Color _productsBg = Color.FromArgb(248, 249, 252);
+        private static readonly Color _productsBg = AppColors.BackgroundSecondary;
 
         private void ConfigureProductColumn()
         {
@@ -230,7 +230,7 @@ namespace OmadaPOS.Views
             var  page       = tab.TabPages[e.Index];
 
             // ── Fondo — tab activo navy, inactivo gris suave coincide con el área de productos
-            Color back = isSelected ? AppColors.NavyBase : Color.FromArgb(225, 228, 235);
+            Color back = isSelected ? AppColors.NavyLight : AppColors.SurfaceMuted;
             using (var bgBrush = new SolidBrush(back))
                 g.FillRectangle(bgBrush, bounds);
 
@@ -242,7 +242,7 @@ namespace OmadaPOS.Views
             }
             else
             {
-                using var sep = new Pen(Color.FromArgb(200, 210, 220), 1);
+                using var sep = new Pen(AppBorders.SeparatorOnDark, 1);
                 g.DrawLine(sep, bounds.Right - 1, bounds.Y + 6, bounds.Right - 1, bounds.Bottom - 6);
             }
 

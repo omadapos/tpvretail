@@ -42,52 +42,107 @@ public class CartListViewControl : UserControl
 
     public void Configure()
     {
-        _listView.View = View.Details;
-        _listView.FullRowSelect = true;
-        _listView.GridLines = true;
-        _listView.MultiSelect = false;
+        _listView.View          = View.Details;
+        _listView.FullRowSelect  = true;
+        _listView.GridLines      = false;   // removed — alternating rows provide visual separation
+        _listView.MultiSelect    = false;
+        _listView.HideSelection  = false;
 
         if (_listView.Columns.Count == 0)
         {
-            _listView.Columns.Add("#", 80);
+            _listView.Columns.Add("#",       80);
             _listView.Columns.Add("Product", 200);
-            _listView.Columns.Add("Quantity", 80);
-            _listView.Columns.Add("Price", 100);
-            _listView.Columns.Add("Subtotal", 100);
+            _listView.Columns.Add("Qty",     70);
+            _listView.Columns.Add("Price",   90);
+            _listView.Columns.Add("Total",   90);
         }
 
         _listView.BackColor = AppColors.BackgroundSecondary;
         _listView.ForeColor = AppColors.TextPrimary;
         _listView.Font      = AppTypography.ListItem;
 
-        foreach (ColumnHeader column in _listView.Columns)
-            column.TextAlign = HorizontalAlignment.Center;
+        foreach (ColumnHeader col in _listView.Columns)
+            col.TextAlign = HorizontalAlignment.Center;
 
         _listView.OwnerDraw = true;
-        _listView.DrawColumnHeader += (s, e) =>
+
+        // ── Column headers ────────────────────────────────────────────────────
+        _listView.DrawColumnHeader += (_, e) =>
         {
             var g = e.Graphics;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            using var bgBrush = new SolidBrush(AppColors.NavyBase);
+            // Rich header — slightly elevated from panel background
+            using var bgBrush = new SolidBrush(AppColors.NavyLight);
             g.FillRectangle(bgBrush, e.Bounds);
 
+            // Emerald accent line at bottom of header
+            using var accentPen = new Pen(AppColors.AccentGreen, 2f);
+            g.DrawLine(accentPen, e.Bounds.Left, e.Bounds.Bottom - 2, e.Bounds.Right, e.Bounds.Bottom - 2);
+
+            // Thin separator between columns
             using var sep = new Pen(AppBorders.SeparatorOnDark, AppBorders.Thin);
             g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4, e.Bounds.Right - 1, e.Bounds.Bottom - 4);
 
-            var       headerFont = AppTypography.ColumnHeader;   // static shared — do NOT dispose
             using var textBrush = new SolidBrush(AppColors.TextWhite);
             using var sf = new StringFormat
             {
-                Alignment = StringAlignment.Center,
+                Alignment     = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center,
-                Trimming = StringTrimming.EllipsisCharacter
+                Trimming      = StringTrimming.EllipsisCharacter,
             };
             var textRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height);
-            g.DrawString(e.Header?.Text ?? string.Empty, headerFont, textBrush, textRect, sf);
+            g.DrawString(e.Header?.Text ?? string.Empty, AppTypography.ColumnHeader, textBrush, textRect, sf);
         };
-        _listView.DrawItem += (s, e) => e.DrawDefault = true;
-        _listView.DrawSubItem += (s, e) => e.DrawDefault = true;
+
+        // ── Row backgrounds (alternating stripe) ─────────────────────────────
+        _listView.DrawItem += (_, e) =>
+        {
+            bool selected = e.State.HasFlag(ListViewItemStates.Selected);
+            Color bg = selected
+                ? AppColors.Info                                          // blue selection
+                : (e.ItemIndex % 2 == 0
+                    ? AppColors.BackgroundSecondary                       // dark stripe A
+                    : AppColors.SurfaceMuted);                            // dark stripe B
+
+            using var brush = new SolidBrush(bg);
+            e.Graphics.FillRectangle(brush, e.Bounds);
+        };
+
+        // ── Cell text ─────────────────────────────────────────────────────────
+        _listView.DrawSubItem += (_, e) =>
+        {
+            var g = e.Graphics;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            bool selected = e.Item!.Selected;
+            Color fg = selected ? AppColors.TextWhite : AppColors.TextPrimary;
+
+            // Price and Total columns right-aligned for better scanability
+            StringAlignment align = e.ColumnIndex >= 3
+                ? StringAlignment.Far
+                : StringAlignment.Center;
+
+            using var sf = new StringFormat
+            {
+                Alignment     = align,
+                LineAlignment = StringAlignment.Center,
+                Trimming      = StringTrimming.EllipsisCharacter,
+            };
+
+            var textRect = new Rectangle(
+                e.Bounds.X + 6,
+                e.Bounds.Y,
+                e.Bounds.Width - 10,
+                e.Bounds.Height);
+
+            // Product name (col 1) left-aligned for readability
+            if (e.ColumnIndex == 1)
+                sf.Alignment = StringAlignment.Near;
+
+            using var brush = new SolidBrush(fg);
+            g.DrawString(e.SubItem!.Text, AppTypography.ListItem, brush, textRect, sf);
+        };
 
         AdjustColumns();
         _listView.Resize += (_, _) => AdjustColumns();

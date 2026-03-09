@@ -3,28 +3,28 @@ using System.Drawing;
 namespace OmadaPOS.Presentation.Styling;
 
 /// <summary>
-/// Border color tokens for the POS Design System.
-/// Covers both light-surface and dark-surface contexts.
+/// Border color tokens for the POS Design System — dark enterprise theme.
+/// All borders are calibrated for contrast on dark (#0F172A / #1E293B) surfaces.
 /// </summary>
 public static class AppBorders
 {
-    // ─── On light backgrounds ────────────────────────────────────────────────
+    // ─── On dark panel surfaces ──────────────────────────────────────────────
 
-    /// <summary>Default panel border on white/light surfaces.</summary>
-    public static readonly Color PanelLight  = Color.FromArgb(200, 210, 225);
+    /// <summary>Standard panel border — #475569 slate-600 — visible on dark cards.</summary>
+    public static readonly Color PanelLight  = Color.FromArgb(71, 85, 105);
 
-    /// <summary>Subtle input border on light surfaces.</summary>
-    public static readonly Color InputLight  = Color.FromArgb(210, 218, 230);
+    /// <summary>Input/TextBox border — slightly lighter than panel for focus contrast.</summary>
+    public static readonly Color InputLight  = Color.FromArgb(71, 85, 105);
 
-    /// <summary>Hover/focus border on light surfaces.</summary>
+    /// <summary>Focus/active border — emerald accent for focused inputs.</summary>
     public static readonly Color Focus       = AppColors.AccentGreen;
 
-    // ─── On dark backgrounds (navy panels) ──────────────────────────────────
+    // ─── On all dark backgrounds ─────────────────────────────────────────────
 
-    /// <summary>Semi-transparent separator on dark panels (60% alpha white).</summary>
-    public static readonly Color SeparatorOnDark = Color.FromArgb(60, 255, 255, 255);
+    /// <summary>Semi-transparent white hairline — 90 alpha — separator on dark panels.</summary>
+    public static readonly Color SeparatorOnDark = Color.FromArgb(90, 255, 255, 255);
 
-    /// <summary>Accent line at bottom of dark headers.</summary>
+    /// <summary>Emerald bottom accent line — used in headers and cards.</summary>
     public static readonly Color AccentLine      = AppColors.AccentGreen;
 
     // ─── Widths ───────────────────────────────────────────────────────────────
