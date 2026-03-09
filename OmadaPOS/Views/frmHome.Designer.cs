@@ -148,7 +148,7 @@ namespace OmadaPOS.Views
             buttonDeleteItem.Margin  = new Padding(3, 0, 3, 0);
             buttonDeleteItem.Name    = "buttonDeleteItem";
             buttonDeleteItem.TabIndex = 2;
-            buttonDeleteItem.Text    = "🗑  DELETE";
+            buttonDeleteItem.Text    = "DELETE";
             buttonDeleteItem.Click  += buttonDeleteItem_Click;
             //
             // buttonHold
@@ -157,7 +157,7 @@ namespace OmadaPOS.Views
             buttonHold.Margin  = new Padding(3, 0, 3, 0);
             buttonHold.Name    = "buttonHold";
             buttonHold.TabIndex = 3;
-            buttonHold.Text    = "⏸  HOLD";
+            buttonHold.Text    = "HOLD";
             buttonHold.Click  += buttonHold_Click;
             // 
             // tableLayoutPanelCategoria
