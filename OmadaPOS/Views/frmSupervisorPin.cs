@@ -116,7 +116,7 @@ public sealed class frmSupervisorPin : Form
         };
         btnCancel.FlatAppearance.BorderColor    = AppColors.TextMuted;
         btnCancel.FlatAppearance.BorderSize     = 1;
-        btnCancel.FlatAppearance.MouseOverBackColor = Color.FromArgb(30, 255, 255, 255);
+        btnCancel.FlatAppearance.MouseOverBackColor = Color.Transparent;
         btnCancel.Click += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
 
         // ── Compose — bottom-first for DockStyle.Top stacking ─────────────────

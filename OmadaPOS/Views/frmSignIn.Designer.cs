@@ -192,7 +192,7 @@ namespace OmadaPOS.Views
             buttonClear.BackColor = Color.FromArgb(180, 83, 9);
             buttonClear.FlatStyle = FlatStyle.Flat;
             buttonClear.FlatAppearance.BorderSize         = 0;
-            buttonClear.FlatAppearance.MouseOverBackColor = Color.FromArgb(217, 119, 6);
+            buttonClear.FlatAppearance.MouseOverBackColor = Color.Transparent;
             buttonClear.FlatAppearance.MouseDownBackColor = Color.FromArgb(146, 64, 14);
             buttonClear.Cursor    = Cursors.Hand;
             buttonClear.TabIndex  = 10;
@@ -208,7 +208,7 @@ namespace OmadaPOS.Views
             buttonLogin.BackColor = Color.FromArgb(5, 150, 105);
             buttonLogin.FlatStyle = FlatStyle.Flat;
             buttonLogin.FlatAppearance.BorderSize         = 0;
-            buttonLogin.FlatAppearance.MouseOverBackColor = Color.FromArgb(16, 185, 129);
+            buttonLogin.FlatAppearance.MouseOverBackColor = Color.Transparent;
             buttonLogin.FlatAppearance.MouseDownBackColor = Color.FromArgb(4, 120, 87);
             buttonLogin.Cursor    = Cursors.Hand;
             buttonLogin.TabIndex  = 11;
@@ -252,7 +252,7 @@ namespace OmadaPOS.Views
             b.BackColor = Color.FromArgb(15, 23, 42);
             b.FlatStyle = FlatStyle.Flat;
             b.FlatAppearance.BorderSize         = 0;
-            b.FlatAppearance.MouseOverBackColor = Color.FromArgb(30, 58, 95);
+            b.FlatAppearance.MouseOverBackColor = Color.Transparent;
             b.FlatAppearance.MouseDownBackColor = Color.FromArgb(51, 88, 140);
             b.Cursor    = Cursors.Hand;
             b.TabIndex  = tabIndex;

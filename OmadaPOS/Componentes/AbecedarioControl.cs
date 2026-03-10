@@ -67,7 +67,7 @@ namespace OmadaPOS.Componentes
                 UseVisualStyleBackColor = false,
             };
             buttonAll.FlatAppearance.BorderSize         = 0;
-            buttonAll.FlatAppearance.MouseOverBackColor = Color.FromArgb(170, 40, 40);
+            buttonAll.FlatAppearance.MouseOverBackColor = Color.Transparent;
             buttonAll.FlatAppearance.MouseDownBackColor = Color.FromArgb(140, 30, 30);
 
             // Ocupa las 2 filas del TableLayoutPanel

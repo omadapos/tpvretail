@@ -184,7 +184,7 @@ namespace OmadaPOS.Views
         }
 
         // ── Columna central — fondo claro neutro para el área de productos
-        private static readonly Color _productsBg = Color.FromArgb(241, 245, 249);
+        private static readonly Color _productsBg = AppColors.BackgroundSecondary;
 
         private void ConfigureProductColumn()
         {
@@ -294,7 +294,7 @@ namespace OmadaPOS.Views
         // ═══════════════════════════════════════════════════════════════
         private void AplicarEstiloVisual()
         {
-            MaintableLayout.BackColor = Color.FromArgb(241, 245, 249);
+            MaintableLayout.BackColor = AppColors.BackgroundPrimary;
             MaintableLayout.Padding = new Padding(0);
             MaintableLayout.Margin = new Padding(0);
 
@@ -329,7 +329,7 @@ namespace OmadaPOS.Views
         private void EstilizarSeparadoresColumnas()
         {
             // Separador sutil entre columnas — gris claro neutro
-            tableLayoutPanelMain.BackColor = Color.FromArgb(210, 218, 228);
+            tableLayoutPanelMain.BackColor = AppColors.SurfaceMuted;
             tableLayoutPanelMain.Padding   = new Padding(0);
             tableLayoutPanelMain.Margin    = new Padding(0);
 
@@ -436,7 +436,7 @@ namespace OmadaPOS.Views
         {
             tabControlMenuCategories.TabPages.Clear();
 
-            var productsBg = Color.FromArgb(241, 245, 249);
+            var productsBg = AppColors.BackgroundSecondary;
 
             foreach (var menuCategory in MenuCategories)
             {
@@ -844,13 +844,20 @@ namespace OmadaPOS.Views
 
         private async void PaymentOrder(PaymentType paymentType)
         {
+            // Show full-screen overlay while the PAX terminal processes the transaction.
+            // The try/finally guarantees the overlay always closes — even on exception.
+            var waiting = new frmPaymentWaiting(totalGlobal, paymentType);
+            waiting.Show(this);   // non-blocking; owner = this (covers frmHome)
+
             try
             {
                 var result = await _paymentCoordinatorService.ProcessTerminalPaymentAsync(paymentType, totalGlobal, false);
 
+                // Close overlay before showing result popups so they render on top cleanly.
+                waiting.Dispose();
+
                 if (result.PaymentResponse != null && !result.PaymentResponse.Success)
                 {
-                    // Only show status popup on failure — success is shown via the payment popup
                     _windowService.OpenPaymentStatus(result.PaymentResponse.MsgInfo ?? "Payment declined", this);
                 }
 
@@ -864,6 +871,7 @@ namespace OmadaPOS.Views
             }
             catch (Exception ex)
             {
+                waiting.Dispose();
                 MessageBox.Show($"Payment error: {ex.Message}", "Payment Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }

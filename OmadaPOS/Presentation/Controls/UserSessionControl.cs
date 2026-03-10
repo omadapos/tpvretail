@@ -176,7 +176,7 @@ public class UserSessionControl : UserControl
             TabStop   = false,
         };
         btn.FlatAppearance.BorderSize = 0;
-        btn.FlatAppearance.MouseOverBackColor = AppColors.NavyLight;
+        btn.FlatAppearance.MouseOverBackColor = Color.Transparent;
         return btn;
     }
 

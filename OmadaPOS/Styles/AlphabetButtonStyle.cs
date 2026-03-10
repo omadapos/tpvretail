@@ -24,7 +24,7 @@ public static class ModernAlphabetButtonStyle
         button.UseVisualStyleBackColor = false;
 
         button.FlatAppearance.BorderSize            = 0;
-        button.FlatAppearance.MouseOverBackColor    = AppColors.AccentGreen;
+        button.FlatAppearance.MouseOverBackColor    = Color.Transparent;
         button.FlatAppearance.MouseDownBackColor    = AppColors.AccentGreenDark;
     }
 }

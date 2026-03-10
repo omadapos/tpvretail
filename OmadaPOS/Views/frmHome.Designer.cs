@@ -59,7 +59,7 @@ namespace OmadaPOS.Views
             // 
             // tableLayoutPanelMain
             // 
-            tableLayoutPanelMain.BackColor = Color.FromArgb(241, 245, 249);
+            tableLayoutPanelMain.BackColor = AppColors.SurfaceMuted;
             tableLayoutPanelMain.ColumnCount = 3;
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
             tableLayoutPanelMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
@@ -78,7 +78,7 @@ namespace OmadaPOS.Views
             // 
             // tableLayoutPanelCart
             // 
-            tableLayoutPanelCart.BackColor = Color.FromArgb(241, 245, 249);
+            tableLayoutPanelCart.BackColor = AppColors.BackgroundSecondary;
             tableLayoutPanelCart.ColumnCount = 1;
             tableLayoutPanelCart.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             tableLayoutPanelCart.Controls.Add(listViewCart, 0, 0);
@@ -96,7 +96,7 @@ namespace OmadaPOS.Views
             // 
             // listViewCart
             // 
-            listViewCart.BackColor = Color.FromArgb(241, 245, 249);
+            listViewCart.BackColor = AppColors.SurfaceCard;
             listViewCart.Dock = DockStyle.Fill;
             listViewCart.Location = new Point(3, 3);
             listViewCart.Name = "listViewCart";
@@ -106,7 +106,7 @@ namespace OmadaPOS.Views
             // 
             // tableLayoutPanelButtonCart
             //
-            tableLayoutPanelButtonCart.BackColor = Color.FromArgb(241, 245, 249);
+            tableLayoutPanelButtonCart.BackColor = AppColors.BackgroundSecondary;
             tableLayoutPanelButtonCart.ColumnCount = 4;
             tableLayoutPanelButtonCart.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             tableLayoutPanelButtonCart.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
@@ -198,7 +198,7 @@ namespace OmadaPOS.Views
             // 
             // textBoxUPC
             // 
-            textBoxUPC.BackColor = Color.FromArgb(241, 245, 249);
+            textBoxUPC.BackColor = AppColors.SurfaceCard;
             textBoxUPC.BorderStyle = BorderStyle.None;
             textBoxUPC.Dock = DockStyle.Fill;
             textBoxUPC.Font = new Font("Microsoft Sans Serif", 20.25F, FontStyle.Bold, GraphicsUnit.Point, 0);
@@ -319,7 +319,7 @@ namespace OmadaPOS.Views
             // 
             // MaintableLayout
             // 
-            MaintableLayout.BackColor = Color.FromArgb(241, 245, 249);
+            MaintableLayout.BackColor = AppColors.BackgroundPrimary;
             MaintableLayout.ColumnCount = 1;
             MaintableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             MaintableLayout.Controls.Add(tableLayoutPanel1, 0, 0);
@@ -339,7 +339,7 @@ namespace OmadaPOS.Views
             AutoScaleDimensions = new SizeF(144F, 144F);
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoScroll = true;
-            BackColor = Color.FromArgb(241, 245, 249);
+            BackColor = AppColors.BackgroundPrimary;
             ClientSize = new Size(2076, 876);
             Controls.Add(MaintableLayout);
             FormBorderStyle = FormBorderStyle.None;

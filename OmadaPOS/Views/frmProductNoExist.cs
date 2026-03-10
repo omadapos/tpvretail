@@ -102,7 +102,7 @@ public sealed class frmProductNoExist : POSDialog
         };
         panel.Paint += (_, e) =>
         {
-            using var pen = new Pen(AppColors.SeparatorOnDark, 1);
+            using var pen = new Pen(AppColors.SeparatorOnLight, 1);
             e.Graphics.DrawRectangle(pen, 0, 0, panel.Width - 1, panel.Height - 1);
         };
 
@@ -278,7 +278,7 @@ public sealed class frmProductNoExist : POSDialog
         };
         panel.Paint += (_, e) =>
         {
-            using var pen = new Pen(AppColors.SeparatorOnDark, 1);
+            using var pen = new Pen(AppColors.SeparatorOnLight, 1);
             e.Graphics.DrawRectangle(pen, 0, 0, panel.Width - 1, panel.Height - 1);
         };
 

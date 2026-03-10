@@ -40,7 +40,6 @@ namespace OmadaPOS.Componentes
         private static readonly SolidBrush ShadowBrush2 = new(Color.FromArgb(10, 0, 0, 0));
         private static readonly SolidBrush ShadowBrush3 = new(Color.FromArgb(14, 0, 0, 0));
         private static readonly Pen        PenNormal    = new(AppColors.SurfaceMuted, 1f);
-        private static readonly Pen        PenHover     = new(AppColors.NavyBase, 2f);
 
         // ── Paths GDI pre-computados — tamaño fijo por las constantes ────
         // El static constructor los crea UNA vez para toda la vida de la app.
@@ -66,7 +65,6 @@ namespace OmadaPOS.Componentes
         private static readonly Dictionary<string, Image> _imageCache   = [];
         private static readonly Queue<string>             _cacheKeyQueue = new();
 
-        private bool    _isHovered;
         private Region? _cardRegion;
 
         // ── Controles internos ────────────────────────────────────────────
@@ -104,10 +102,8 @@ namespace OmadaPOS.Componentes
                 Size      = new Size(CardW, CardH),
                 Cursor    = Cursors.Hand,
             };
-            panelCard.Paint      += PanelCard_Paint;
-            panelCard.MouseEnter += OnMouseEnterCard;
-            panelCard.MouseLeave += OnMouseLeaveCard;
-            panelCard.Click      += OnCardClick;
+            panelCard.Paint  += PanelCard_Paint;
+            panelCard.Click  += OnCardClick;
 
             panelImageArea = new Panel
             {
@@ -116,9 +112,7 @@ namespace OmadaPOS.Componentes
                 Size      = new Size(CardW, ImageAreaH),
                 Cursor    = Cursors.Hand,
             };
-            panelImageArea.MouseEnter += OnMouseEnterCard;
-            panelImageArea.MouseLeave += OnMouseLeaveCard;
-            panelImageArea.Click      += OnCardClick;
+            panelImageArea.Click += OnCardClick;
 
             pictureBoxImage = new PictureBox
             {
@@ -128,9 +122,7 @@ namespace OmadaPOS.Componentes
                 Cursor    = Cursors.Hand,
                 Padding   = new Padding(8),
             };
-            pictureBoxImage.MouseEnter += OnMouseEnterCard;
-            pictureBoxImage.MouseLeave += OnMouseLeaveCard;
-            pictureBoxImage.Click      += OnCardClick;
+            pictureBoxImage.Click += OnCardClick;
             panelImageArea.Controls.Add(pictureBoxImage);
 
             panelAccent = new Panel
@@ -153,9 +145,7 @@ namespace OmadaPOS.Componentes
                 Cursor    = Cursors.Hand,
                 Padding   = new Padding(10, 6, 10, 6),
             };
-            panelInfo.MouseEnter += OnMouseEnterCard;
-            panelInfo.MouseLeave += OnMouseLeaveCard;
-            panelInfo.Click      += OnCardClick;
+            panelInfo.Click += OnCardClick;
 
             labelTitle = new Label
             {
@@ -168,9 +158,7 @@ namespace OmadaPOS.Componentes
                 TextAlign = ContentAlignment.MiddleCenter,
                 Cursor    = Cursors.Hand,
             };
-            labelTitle.MouseEnter += OnMouseEnterCard;
-            labelTitle.MouseLeave += OnMouseLeaveCard;
-            labelTitle.Click      += OnCardClick;
+            labelTitle.Click += OnCardClick;
 
             labelPrice = new Label
             {
@@ -183,9 +171,7 @@ namespace OmadaPOS.Componentes
                 TextAlign = ContentAlignment.MiddleCenter,
                 Cursor    = Cursors.Hand,
             };
-            labelPrice.MouseEnter += OnMouseEnterCard;
-            labelPrice.MouseLeave += OnMouseLeaveCard;
-            labelPrice.Click      += OnCardClick;
+            labelPrice.Click += OnCardClick;
 
             panelInfo.Controls.Add(labelTitle);
             panelInfo.Controls.Add(labelPrice);
@@ -224,26 +210,7 @@ namespace OmadaPOS.Componentes
             g.FillPath(ShadowBrush3, ShadowPath3);
 
             g.FillPath(CardBrush, CardPath);
-            g.DrawPath(_isHovered ? PenHover : PenNormal, CardPath);
-        }
-
-        // ── Hover ────────────────────────────────────────────────────────
-        private void OnMouseEnterCard(object? sender, EventArgs e)
-        {
-            _isHovered = true;
-            panelCard!.Invalidate();
-            panelImageArea!.BackColor = AppColors.SurfaceMuted;
-        }
-
-        private void OnMouseLeaveCard(object? sender, EventArgs e)
-        {
-            var pos = panelCard!.PointToClient(Cursor.Position);
-            if (!panelCard.ClientRectangle.Contains(pos))
-            {
-                _isHovered = false;
-                panelCard.Invalidate();
-                panelImageArea!.BackColor = ImageBackground;
-            }
+            g.DrawPath(PenNormal, CardPath);
         }
 
         // ── Clic unificado ────────────────────────────────────────────────
