@@ -52,7 +52,7 @@ public static class PopupHeaderHelper
         {
             Text      = title,
             Font      = AppTypography.PopupTitle,
-            ForeColor = Color.White,
+            ForeColor = AppColors.TextWhite,
             AutoSize  = true,
             Location  = new Point(TextX, TitleY),
             BackColor = Color.Transparent

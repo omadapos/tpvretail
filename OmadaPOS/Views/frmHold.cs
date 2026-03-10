@@ -21,20 +21,25 @@ public sealed class frmHold : POSDialog
     private static readonly string[] _colorTags =
         ["Red","Blue","Green","Yellow","Orange","Purple","Pink","Brown","Gray","Black"];
 
-    // Mapping from tag name → display color (matches Bootstrap palette for familiarity)
+    // Mapping from tag name → display color
     private static readonly Dictionary<string, Color> _tagColors = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Red"]    = Color.FromArgb(220,  53,  69),
-        ["Blue"]   = Color.FromArgb( 13, 110, 253),
-        ["Green"]  = Color.FromArgb( 25, 135,  84),
-        ["Yellow"] = Color.FromArgb(230, 160,   0),
+        ["Red"]    = AppColors.Danger,
+        ["Blue"]   = AppColors.PaymentCredit,
+        ["Green"]  = AppColors.AccentGreen,
+        ["Yellow"] = AppColors.Warning,
         ["Orange"] = Color.FromArgb(253, 126,  20),
-        ["Purple"] = Color.FromArgb(111,  66, 193),
+        ["Purple"] = AppColors.PaymentGiftCard,
         ["Pink"]   = Color.FromArgb(214,  51, 132),
         ["Brown"]  = Color.FromArgb(139,  69,  19),
-        ["Gray"]   = Color.FromArgb(108, 117, 125),
-        ["Black"]  = Color.FromArgb( 33,  37,  41),
+        ["Gray"]   = AppColors.SurfaceMuted,
+        ["Black"]  = AppColors.BackgroundPrimary,
     };
+
+    // Fonts cached as static fields — never allocate in DrawItem (called per-item per-repaint)
+    private static readonly Font _drawInitFont  = new("Segoe UI", 11f, FontStyle.Bold);
+    private static readonly Font _drawTitleFont = new("Segoe UI", 11f, FontStyle.Bold);
+    private static readonly Font _drawSubFont   = new("Segoe UI",  9f);
 
     public frmHold(
         IHoldService holdService,
@@ -137,7 +142,7 @@ public sealed class frmHold : POSDialog
         g.FillRectangle(bgBrush, e.Bounds);
 
         // Coloured circle on the left
-        var dotColor = _tagColors.TryGetValue(cart.HoldId, out var c) ? c : Color.Gray;
+        var dotColor = _tagColors.TryGetValue(cart.HoldId, out var c) ? c : AppColors.TextMuted;
         int dotSize  = 32;
         int dotX     = e.Bounds.X + 12;
         int dotY     = e.Bounds.Y + (e.Bounds.Height - dotSize) / 2;
@@ -145,32 +150,29 @@ public sealed class frmHold : POSDialog
         using var dotBrush = new SolidBrush(dotColor);
         g.FillEllipse(dotBrush, dotRect);
 
-        // First letter of the tag inside the circle
-        var initial = cart.HoldId.Length > 0 ? cart.HoldId[0].ToString() : "?";
-        using var initFont  = new Font("Segoe UI", 11f, FontStyle.Bold);
-        using var initBrush = new SolidBrush(Color.White);
-        var initSize = g.MeasureString(initial, initFont);
-        g.DrawString(initial, initFont, initBrush,
+        // First letter of the tag inside the circle — reuse cached fonts, no allocation
+        var initial  = cart.HoldId.Length > 0 ? cart.HoldId[0].ToString() : "?";
+        using var initBrush = new SolidBrush(AppColors.TextWhite);
+        var initSize = g.MeasureString(initial, _drawInitFont);
+        g.DrawString(initial, _drawInitFont, initBrush,
             dotX + (dotSize - initSize.Width)  / 2,
             dotY + (dotSize - initSize.Height) / 2);
 
         // Main label: "Cart: Red"
         int textX   = dotX + dotSize + 12;
         int textY   = e.Bounds.Y + 7;
-        using var titleBrush = new SolidBrush(selected ? Color.White : AppColors.TextPrimary);
-        using var titleFont  = new Font("Segoe UI", 11f, FontStyle.Bold);
-        g.DrawString($"Cart: {cart.HoldId}", titleFont, titleBrush, textX, textY);
+        using var titleBrush = new SolidBrush(selected ? AppColors.TextWhite : AppColors.TextPrimary);
+        g.DrawString($"Cart: {cart.HoldId}", _drawTitleFont, titleBrush, textX, textY);
 
         // Subtitle: "3 items · 02:45 PM"
         string sub = $"{cart.ItemCount} item{(cart.ItemCount != 1 ? "s" : "")}  ·  {cart.LastModified:hh:mm tt}";
-        using var subBrush = new SolidBrush(selected ? Color.FromArgb(200, 255, 255, 255) : AppColors.TextSecondary);
-        using var subFont  = new Font("Segoe UI", 9f);
-        g.DrawString(sub, subFont, subBrush, textX, textY + 22);
+        using var subBrush = new SolidBrush(selected ? AppColors.OverlayLight : AppColors.TextSecondary);
+        g.DrawString(sub, _drawSubFont, subBrush, textX, textY + 22);
 
         // Thin bottom separator
         if (!selected)
         {
-            using var sepPen = new Pen(Color.FromArgb(20, 0, 0, 0));
+            using var sepPen = new Pen(AppColors.ShadowSubtle);
             g.DrawLine(sepPen, e.Bounds.Left + 8, e.Bounds.Bottom - 1, e.Bounds.Right - 8, e.Bounds.Bottom - 1);
         }
     }

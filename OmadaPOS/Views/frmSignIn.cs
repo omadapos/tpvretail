@@ -27,6 +27,10 @@ public partial class frmSignIn
     private static readonly char[] SpinnerFrames =
         ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'];
 
+    // Static brushes for PIN dots — reused on every keypress repaint (avoids 12 allocs per call)
+    private static readonly SolidBrush _dotFilledBrush = new(AppColors.NavyDark);
+    private static readonly SolidBrush _dotEmptyBrush  = new(AppColors.TextOnDarkSecondary);
+
     // ─────────────────────────────────────────────────────────────────
     //  Constructor
     // ─────────────────────────────────────────────────────────────────
@@ -86,7 +90,7 @@ public partial class frmSignIn
         {
             Text      = "● OMADA POS",
             Font      = new Font("Segoe UI", 18F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(248, 250, 252),
+            ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
             AutoSize  = false,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -97,7 +101,7 @@ public partial class frmSignIn
         {
             Text      = SpinnerFrames[0].ToString(),
             Font      = new Font("Consolas", 32F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(52, 211, 153),
+            ForeColor = AppColors.AccentGreenLight,
             BackColor = Color.Transparent,
             AutoSize  = false,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -108,7 +112,7 @@ public partial class frmSignIn
         {
             Text      = string.Empty,
             Font      = new Font("Segoe UI", 11F, FontStyle.Regular),
-            ForeColor = Color.FromArgb(148, 163, 184),
+            ForeColor = AppColors.TextSecondary,
             BackColor = Color.Transparent,
             AutoSize  = false,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -124,7 +128,7 @@ public partial class frmSignIn
 
         _pnlOverlay = new Panel
         {
-            BackColor = Color.FromArgb(15, 23, 42),
+            BackColor = AppColors.BackgroundPrimary,
             Visible   = false,
         };
         _pnlOverlay.Controls.Add(pnlCenter);
@@ -311,9 +315,8 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     private void PnlHeader_Paint(object? sender, PaintEventArgs e)
     {
-        var g = e.Graphics;
-        using var pen = new Pen(Color.FromArgb(5, 150, 105), 2f);
-        g.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
+        using var pen = new Pen(AppColors.AccentGreenDark, 2f);
+        e.Graphics.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -321,12 +324,13 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     private void PnlCard_Paint(object? sender, PaintEventArgs e)
     {
-        using var pen = new Pen(Color.FromArgb(5, 150, 105), 3f);
+        using var pen = new Pen(AppColors.AccentGreenDark, 3f);
         e.Graphics.DrawLine(pen, 0, 0, pnlCard.Width, 0);
     }
 
     // ─────────────────────────────────────────────────────────────────
     //  Custom Paint — PIN dots
+    //  Uses static brushes — zero allocation per keypress repaint
     // ─────────────────────────────────────────────────────────────────
     private void PnlPinDots_Paint(object? sender, PaintEventArgs e)
     {
@@ -334,30 +338,24 @@ public partial class frmSignIn
         g.SmoothingMode     = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-        const int MaxDots   = 12;
+        const int   MaxDots = 12;
         const float DotSize = 13f;
         const float Gap     = 14f;
 
         float totalW = MaxDots * DotSize + (MaxDots - 1) * Gap;
-        float startX = (pnlPinDots.Width - totalW) / 2f;
+        float startX = (pnlPinDots.Width  - totalW) / 2f;
         float y      = (pnlPinDots.Height - DotSize) / 2f - 4f;
 
         for (int i = 0; i < MaxDots; i++)
         {
-            float x = startX + i * (DotSize + Gap);
-            bool  filled = i < _pin.Length;
-
-            Color dotColor = filled
-                ? Color.FromArgb(15, 23, 42)
-                : Color.FromArgb(203, 213, 225);
-
-            using var brush = new SolidBrush(dotColor);
+            float x      = startX + i * (DotSize + Gap);
+            var   brush  = i < _pin.Length ? _dotFilledBrush : _dotEmptyBrush;
             g.FillEllipse(brush, x, y, DotSize, DotSize);
         }
 
         // Underline accent
         float lineY = y + DotSize + 10f;
-        using var linePen = new Pen(Color.FromArgb(5, 150, 105), 2f);
+        using var linePen = new Pen(AppColors.AccentGreenDark, 2f);
         g.DrawLine(linePen, startX - 4, lineY, startX + totalW + 4, lineY);
     }
 }

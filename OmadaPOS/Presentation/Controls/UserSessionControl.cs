@@ -5,6 +5,9 @@ namespace OmadaPOS.Presentation.Controls;
 
 public class UserSessionControl : UserControl
 {
+    // Cached static font — avoids allocation inside UserButton_Paint on every repaint
+    private static readonly Font _chevronFont = new("Segoe UI", 10F);
+
     private readonly Form _ownerForm;
     private readonly Control _dismissSurface;
     private readonly Button _userButton;
@@ -139,7 +142,7 @@ public class UserSessionControl : UserControl
             DailyCloseRequested?.Invoke(this, EventArgs.Empty);
         };
 
-        var btnLogout = CreateFlyoutButton("⏻  Logout", Color.FromArgb(180, 30, 30));
+        var btnLogout = CreateFlyoutButton("⏻  Logout", AppColors.Danger);
         btnLogout.Click += (s, e) =>
         {
             HideMenu();
@@ -232,7 +235,6 @@ public class UserSessionControl : UserControl
 
         var chevronRect = new Rectangle(bounds.Right - 20, bounds.Y, 18, bounds.Height);
         using var chevronBrush = new SolidBrush(AppColors.TextMuted);
-        using var chevronFont  = new Font("Segoe UI", 10F);
-        g.DrawString("▾", chevronFont, chevronBrush, chevronRect, sfCenter);
+        g.DrawString("▾", _chevronFont, chevronBrush, chevronRect, sfCenter);
     }
 }

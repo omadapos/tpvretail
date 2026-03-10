@@ -183,8 +183,8 @@ namespace OmadaPOS.Views
             // Hold is always available — can hold even an empty cart to resume later
         }
 
-        // ── Columna central — setup único + re-theming ───────────────────
-        private static readonly Color _productsBg = AppColors.BackgroundSecondary;
+        // ── Columna central — fondo claro neutro para el área de productos
+        private static readonly Color _productsBg = Color.FromArgb(241, 245, 249);
 
         private void ConfigureProductColumn()
         {
@@ -214,9 +214,10 @@ namespace OmadaPOS.Views
             }
         }
 
-        // Fonts cacheados para el TabControl — se crean una sola vez
+        // Fonts cacheados para el TabControl y FlowLayoutPanels — se crean una sola vez
         private static readonly Font _tabFontSelected = new Font("Segoe UI", 12F, FontStyle.Bold);
         private static readonly Font _tabFontNormal   = new Font("Segoe UI", 12F, FontStyle.Regular);
+        private static readonly Font _tabFlowFont     = new Font("Segoe UI", 11F, FontStyle.Regular);
 
         private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
         {
@@ -247,7 +248,7 @@ namespace OmadaPOS.Views
             }
 
             // ── Texto — reutiliza fonts cacheados ─────────────────────────
-            Color fore     = isSelected ? Color.White : AppColors.SlateBlue;
+            Color fore     = isSelected ? AppColors.TextWhite : AppColors.SlateBlue;
             var   textFont = isSelected ? _tabFontSelected : _tabFontNormal;
             var   textRect = new Rectangle(bounds.X, bounds.Y + 4, bounds.Width, bounds.Height - 4);
 
@@ -293,7 +294,7 @@ namespace OmadaPOS.Views
         // ═══════════════════════════════════════════════════════════════
         private void AplicarEstiloVisual()
         {
-            MaintableLayout.BackColor = AppColors.NavyDark;
+            MaintableLayout.BackColor = Color.FromArgb(241, 245, 249);
             MaintableLayout.Padding = new Padding(0);
             MaintableLayout.Margin = new Padding(0);
 
@@ -327,8 +328,8 @@ namespace OmadaPOS.Views
         // ── Separadores entre columnas via fondo del contenedor padre ────
         private void EstilizarSeparadoresColumnas()
         {
-            // Borde sutil entre columnas — gris claro en lugar de navy oscuro
-            tableLayoutPanelMain.BackColor = Color.FromArgb(210, 215, 225);
+            // Separador sutil entre columnas — gris claro neutro
+            tableLayoutPanelMain.BackColor = Color.FromArgb(210, 218, 228);
             tableLayoutPanelMain.Padding   = new Padding(0);
             tableLayoutPanelMain.Margin    = new Padding(0);
 
@@ -435,7 +436,7 @@ namespace OmadaPOS.Views
         {
             tabControlMenuCategories.TabPages.Clear();
 
-            var productsBg = Color.FromArgb(248, 249, 252);
+            var productsBg = Color.FromArgb(241, 245, 249);
 
             foreach (var menuCategory in MenuCategories)
             {
@@ -461,7 +462,7 @@ namespace OmadaPOS.Views
                     WrapContents = true,
                     AutoScroll   = true,
                     Padding      = new Padding(4),
-                    Font         = new Font("Segoe UI", 11F, FontStyle.Regular),
+                    Font         = _tabFlowFont,
                 };
 
                 // CRÍTICO: NO agregar al Form (this.Controls) — solo al TabPage

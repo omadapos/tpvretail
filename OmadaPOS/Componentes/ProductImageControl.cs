@@ -22,25 +22,24 @@ namespace OmadaPOS.Componentes
         private const int ImageAreaH   = 120;
         private const int AccentH      = 4;
 
-        // ── Colores ───────────────────────────────────────────────────────
-        private static readonly Color CardBackground  = Color.White;
-        private static readonly Color ImageBackground = Color.White;
-        private static readonly Color BorderNormal    = Color.FromArgb(220, 224, 230);
+        // ── Colores — todos desde AppColors ──────────────────────────────
+        private static readonly Color CardBackground  = AppColors.SurfaceCard;
+        private static readonly Color ImageBackground = AppColors.BackgroundSecondary;
+        private static readonly Color BorderNormal    = AppColors.SurfaceMuted;
         private static readonly Color NameForeground  = AppColors.TextPrimary;
         private static readonly Color PriceForeground = AppColors.AccentGreen;
         private static readonly Color AccentBar       = AppColors.AccentGreen;
 
         // ── Recursos GDI compartidos — una sola instancia para TODOS los controles ──
-        // Fuentes: 2 objetos para N tarjetas en lugar de 2×N
-        private static readonly Font       FontTitle    = new("Segoe UI",   10F, FontStyle.Bold);
+        private static readonly Font       FontTitle    = new("Segoe UI", 10F, FontStyle.Bold);
         private static readonly Font       FontPrice    = new("Consolas", 13F, FontStyle.Bold);
 
         // Brushes/Pens: reutilizados en cada Paint, sin allocations
-        private static readonly SolidBrush CardBrush    = new(Color.White);
-        private static readonly SolidBrush ShadowBrush1 = new(Color.FromArgb(6,  0, 0, 0)); // i=3
-        private static readonly SolidBrush ShadowBrush2 = new(Color.FromArgb(10, 0, 0, 0)); // i=2
-        private static readonly SolidBrush ShadowBrush3 = new(Color.FromArgb(14, 0, 0, 0)); // i=1
-        private static readonly Pen        PenNormal    = new(Color.FromArgb(220, 224, 230), 1f);
+        private static readonly SolidBrush CardBrush    = new(AppColors.SurfaceCard);
+        private static readonly SolidBrush ShadowBrush1 = new(Color.FromArgb(6,  0, 0, 0));
+        private static readonly SolidBrush ShadowBrush2 = new(Color.FromArgb(10, 0, 0, 0));
+        private static readonly SolidBrush ShadowBrush3 = new(Color.FromArgb(14, 0, 0, 0));
+        private static readonly Pen        PenNormal    = new(AppColors.SurfaceMuted, 1f);
         private static readonly Pen        PenHover     = new(AppColors.NavyBase, 2f);
 
         // ── Paths GDI pre-computados — tamaño fijo por las constantes ────
@@ -233,7 +232,7 @@ namespace OmadaPOS.Componentes
         {
             _isHovered = true;
             panelCard!.Invalidate();
-            panelImageArea!.BackColor = Color.FromArgb(240, 242, 245);
+            panelImageArea!.BackColor = AppColors.SurfaceMuted;
         }
 
         private void OnMouseLeaveCard(object? sender, EventArgs e)

@@ -223,7 +223,7 @@ public sealed class POSHeaderControl : UserControl
             Dock      = DockStyle.Fill,
             Margin    = new Padding(2, 10, 2, 10),
             Font      = new Font("Segoe UI", 17F),
-            ForeColor = Color.White,
+            ForeColor = AppColors.TextWhite,
             BackColor = backColor,
             FlatStyle = FlatStyle.Flat,
             Cursor    = Cursors.Hand,

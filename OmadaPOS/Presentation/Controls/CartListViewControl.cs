@@ -40,11 +40,19 @@ public class CartListViewControl : UserControl
         return control;
     }
 
+    // ── Static cached colors & fonts ─────────────────────────────────────────
+    private static readonly Color _rowEven     = Color.FromArgb(255, 255, 255);      // white
+    private static readonly Color _rowOdd      = Color.FromArgb(248, 250, 252);      // barely-off-white
+    private static readonly Color _rowSelected = Color.FromArgb(16, 185, 129);       // emerald accent
+    private static readonly Color _headerBg    = Color.FromArgb(30, 41, 59);         // deep navy
+    private static readonly Color _rowBorder   = Color.FromArgb(20, 0, 0, 0);        // 8% black separator
+    private static readonly Color _numFg       = Color.FromArgb(15, 23, 42);         // dark for numbers
+
     public void Configure()
     {
         _listView.View          = View.Details;
         _listView.FullRowSelect  = true;
-        _listView.GridLines      = false;   // removed — alternating rows provide visual separation
+        _listView.GridLines      = false;
         _listView.MultiSelect    = false;
         _listView.HideSelection  = false;
 
@@ -57,7 +65,7 @@ public class CartListViewControl : UserControl
             _listView.Columns.Add("Total",   90);
         }
 
-        _listView.BackColor = AppColors.BackgroundSecondary;
+        _listView.BackColor = _rowEven;
         _listView.ForeColor = AppColors.TextPrimary;
         _listView.Font      = AppTypography.ListItem;
 
@@ -72,17 +80,17 @@ public class CartListViewControl : UserControl
             var g = e.Graphics;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // Rich header — slightly elevated from panel background
-            using var bgBrush = new SolidBrush(AppColors.NavyLight);
+            using var bgBrush = new SolidBrush(_headerBg);
             g.FillRectangle(bgBrush, e.Bounds);
 
-            // Emerald accent line at bottom of header
-            using var accentPen = new Pen(AppColors.AccentGreen, 2f);
-            g.DrawLine(accentPen, e.Bounds.Left, e.Bounds.Bottom - 2, e.Bounds.Right, e.Bounds.Bottom - 2);
+            // Emerald accent line at bottom
+            using var accent = new Pen(AppColors.AccentGreen, 3f);
+            g.DrawLine(accent, e.Bounds.Left, e.Bounds.Bottom - 3, e.Bounds.Right, e.Bounds.Bottom - 3);
 
-            // Thin separator between columns
-            using var sep = new Pen(AppBorders.SeparatorOnDark, AppBorders.Thin);
-            g.DrawLine(sep, e.Bounds.Right - 1, e.Bounds.Top + 4, e.Bounds.Right - 1, e.Bounds.Bottom - 4);
+            // Thin vertical column separator
+            using var sep = new Pen(Color.FromArgb(40, 255, 255, 255), 1f);
+            if (e.ColumnIndex > 0)
+                g.DrawLine(sep, e.Bounds.Left, e.Bounds.Top + 6, e.Bounds.Left, e.Bounds.Bottom - 6);
 
             using var textBrush = new SolidBrush(AppColors.TextWhite);
             using var sf = new StringFormat
@@ -95,30 +103,45 @@ public class CartListViewControl : UserControl
             g.DrawString(e.Header?.Text ?? string.Empty, AppTypography.ColumnHeader, textBrush, textRect, sf);
         };
 
-        // ── Row backgrounds (alternating stripe) ─────────────────────────────
+        // ── Row fill — MUST fill here so sub-items inherit correct bg ─────────
         _listView.DrawItem += (_, e) =>
         {
-            bool selected = e.State.HasFlag(ListViewItemStates.Selected);
-            Color bg = selected
-                ? AppColors.Info                                          // blue selection
-                : (e.ItemIndex % 2 == 0
-                    ? AppColors.BackgroundSecondary                       // dark stripe A
-                    : AppColors.SurfaceMuted);                            // dark stripe B
+            bool  selected = e.State.HasFlag(ListViewItemStates.Selected);
+            Color bg       = selected ? _rowSelected
+                           : (e.ItemIndex % 2 == 0 ? _rowEven : _rowOdd);
 
             using var brush = new SolidBrush(bg);
             e.Graphics.FillRectangle(brush, e.Bounds);
         };
 
-        // ── Cell text ─────────────────────────────────────────────────────────
+        // ── Cell — fill background FIRST then draw text ───────────────────────
+        // Without filling here Windows overpaints each cell with its default blue.
         _listView.DrawSubItem += (_, e) =>
         {
             var g = e.Graphics;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
             bool  selected = e.Item!.Selected;
-            Color fg       = selected ? AppColors.TextWhite : AppColors.TextPrimary;
+            Color bg       = selected ? _rowSelected
+                           : (e.Item.Index % 2 == 0 ? _rowEven : _rowOdd);
 
-            // Price (col 3) and Total (col 4) → right-aligned; Product (col 1) → left
+            // 1. Fill the cell background (prevents system blue from showing)
+            using var bgBrush = new SolidBrush(bg);
+            g.FillRectangle(bgBrush, e.Bounds);
+
+            // 2. Bottom divider — subtle hairline
+            using var divPen = new Pen(_rowBorder, 1f);
+            g.DrawLine(divPen, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+
+            // 3. Text color — white on selection, dark on normal rows
+            Color fg = selected ? Color.White : _numFg;
+
+            // Col 1 → Product name (Segoe UI, left-aligned)
+            // Col 3,4 → Price/Total (Consolas, right-aligned, slightly larger)
+            // Others → centered
+            Font            font  = (e.ColumnIndex == 3 || e.ColumnIndex == 4)
+                                        ? AppTypography.ListItemNumber
+                                        : AppTypography.ListItem;
             StringAlignment align = e.ColumnIndex == 1 ? StringAlignment.Near
                                   : e.ColumnIndex >= 3 ? StringAlignment.Far
                                   :                      StringAlignment.Center;
@@ -129,16 +152,14 @@ public class CartListViewControl : UserControl
                 LineAlignment = StringAlignment.Center,
                 Trimming      = StringTrimming.EllipsisCharacter,
             };
-
-            // Minimal horizontal padding so prices have full column width
             var textRect = new Rectangle(
-                e.Bounds.X + 2,
+                e.Bounds.X + 4,
                 e.Bounds.Y,
-                e.Bounds.Width - 4,
+                e.Bounds.Width - 8,
                 e.Bounds.Height);
 
-            using var brush = new SolidBrush(fg);
-            g.DrawString(e.SubItem!.Text, AppTypography.ListItem, brush, textRect, sf);
+            using var fgBrush = new SolidBrush(fg);
+            g.DrawString(e.SubItem!.Text, font, fgBrush, textRect, sf);
         };
 
         AdjustColumns();

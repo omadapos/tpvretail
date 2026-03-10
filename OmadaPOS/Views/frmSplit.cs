@@ -78,10 +78,13 @@ public sealed class frmSplit : Form
     // ── Layout construction ───────────────────────────────────────────────────
     private void InitForm()
     {
+        DoubleBuffered  = true;
         WindowState     = FormWindowState.Maximized;
         FormBorderStyle = FormBorderStyle.None;
         BackColor       = AppColors.BackgroundSecondary;
         Text            = "Split Payment";
+
+        SuspendLayout();
 
         var root = new TableLayoutPanel
         {
@@ -93,15 +96,18 @@ public sealed class frmSplit : Form
             Margin      = new Padding(0),
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));  // header
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // body
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));  // footer
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
 
+        root.SuspendLayout();
         root.Controls.Add(BuildHeader(), 0, 0);
         root.Controls.Add(BuildBody(),   0, 1);
         root.Controls.Add(BuildFooter(), 0, 2);
+        root.ResumeLayout(false);
 
         Controls.Add(root);
+        ResumeLayout(false);
     }
 
     // ── Header ────────────────────────────────────────────────────────────────
@@ -656,7 +662,7 @@ public sealed class frmSplit : Form
         FullRowSelect     = true,
         GridLines         = false,
         MultiSelect       = false,
-        BackColor         = Color.White,
+        BackColor         = AppColors.SurfaceCard,
         ForeColor         = AppColors.TextPrimary,
         Font              = AppTypography.Body,
         BorderStyle       = BorderStyle.FixedSingle,
@@ -686,8 +692,8 @@ public sealed class frmSplit : Form
             bool isAlt = e.ItemIndex % 2 == 1;
             bool isSel = (e.State & ListViewItemStates.Selected) == ListViewItemStates.Selected;
             var  bg    = isSel ? AppColors.NavyBase
-                       : isAlt ? Color.FromArgb(247, 249, 252)
-                       : Color.White;
+                       : isAlt ? AppColors.SurfaceMuted
+                       : AppColors.SurfaceCard;
             using var br = new SolidBrush(bg);
             e.Graphics.FillRectangle(br, e.Bounds);
         };

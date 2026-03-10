@@ -1,8 +1,9 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Windows.Forms;
 using System.ComponentModel;
+using OmadaPOS.Presentation.Styling;
 
 namespace OmadaPOS.Componentes
 {
@@ -10,70 +11,69 @@ namespace OmadaPOS.Componentes
     {
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int CornerRadius { get; set; } = 16;
+
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BorderColor { get; set; } = Color.FromArgb(220, 224, 228);
+        public Color BorderColor { get; set; } = AppColors.SurfaceMuted;
+
+        /// <summary>Fill color for the panel background (flat — no gradient).</summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BackgroundStart { get; set; } = Color.FromArgb(248, 249, 250);
+        public Color BackgroundStart { get; set; } = AppColors.SurfaceCard;
+
+        /// <summary>Kept for API compatibility — not used for rendering (gradient removed for perf).</summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BackgroundEnd { get; set; } = Color.FromArgb(240, 242, 245);
+        public Color BackgroundEnd { get; set; } = AppColors.SurfaceCard;
+
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color ShadowColor { get; set; } = Color.FromArgb(15, 0, 0, 0);
+        public Color ShadowColor { get; set; } = AppColors.ShadowSubtle;
 
         public RoundedPanel()
         {
-            this.DoubleBuffered = true;
-            this.Padding = new Padding(20);
-            this.BackColor = Color.Transparent;
+            DoubleBuffered = true;
+            Padding        = new Padding(20);
+            BackColor      = Color.Transparent;
 
-            this.SetStyle(ControlStyles.AllPaintingInWmPaint |
-                          ControlStyles.UserPaint |
-                          ControlStyles.ResizeRedraw |
-                          ControlStyles.OptimizedDoubleBuffer |
-                          ControlStyles.SupportsTransparentBackColor, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint  |
+                     ControlStyles.UserPaint             |
+                     ControlStyles.ResizeRedraw           |
+                     ControlStyles.OptimizedDoubleBuffer  |
+                     ControlStyles.SupportsTransparentBackColor, true);
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
 
-            Graphics g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+            var g = e.Graphics;
+            g.SmoothingMode      = SmoothingMode.AntiAlias;
+            g.TextRenderingHint  = TextRenderingHint.ClearTypeGridFit;
             g.CompositingQuality = CompositingQuality.HighQuality;
 
-            Rectangle rect = this.ClientRectangle;
+            var rect   = ClientRectangle;
             int radius = CornerRadius;
 
-            // Sombra
-            Rectangle shadowRect = new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6);
-            using (GraphicsPath shadowPath = CreateRoundedPath(shadowRect, radius))
-            using (SolidBrush shadowBrush = new SolidBrush(ShadowColor))
-            {
+            // Shadow (offset rect)
+            var shadowRect = new Rectangle(rect.X + 3, rect.Y + 3, rect.Width - 6, rect.Height - 6);
+            using (var shadowPath  = CreateRoundedPath(shadowRect, radius))
+            using (var shadowBrush = new SolidBrush(ShadowColor))
                 g.FillPath(shadowBrush, shadowPath);
-            }
 
-            // Fondo principal con gradiente
-            Rectangle mainRect = new Rectangle(rect.X, rect.Y, rect.Width - 3, rect.Height - 3);
-            using (GraphicsPath path = CreateRoundedPath(mainRect, radius))
+            // Background — flat SolidBrush (was LinearGradientBrush: same visual, far cheaper)
+            var mainRect = new Rectangle(rect.X, rect.Y, rect.Width - 3, rect.Height - 3);
+            using (var path = CreateRoundedPath(mainRect, radius))
             {
-                using (LinearGradientBrush brush = new LinearGradientBrush(
-                    mainRect, BackgroundStart, BackgroundEnd, LinearGradientMode.Vertical))
-                {
-                    g.FillPath(brush, path);
-                }
+                using (var fillBrush = new SolidBrush(BackgroundStart))
+                    g.FillPath(fillBrush, path);
 
-                using (Pen borderPen = new Pen(BorderColor, 1.5f))
-                {
+                using (var borderPen = new Pen(BorderColor, 1f))
                     g.DrawPath(borderPen, path);
-                }
             }
         }
 
-        private GraphicsPath CreateRoundedPath(Rectangle rect, int radius)
+        private static GraphicsPath CreateRoundedPath(Rectangle rect, int radius)
         {
-            GraphicsPath path = new GraphicsPath();
+            var path     = new GraphicsPath();
             int diameter = radius * 2;
-            Rectangle arc = new Rectangle(rect.X, rect.Y, diameter, diameter);
+            var arc      = new Rectangle(rect.X, rect.Y, diameter, diameter);
 
             path.AddArc(arc, 180, 90);
             arc.X = rect.Right - diameter;

@@ -43,6 +43,9 @@ public static class AppTypography
     /// <summary>Cart list view rows, product lists — 13px regular.</summary>
     public static readonly Font ListItem       = new("Segoe UI", 13F, FontStyle.Regular);
 
+    /// <summary>Cart price/total cells — Consolas monospace for aligned numbers.</summary>
+    public static readonly Font ListItemNumber = new("Consolas", 12F, FontStyle.Regular);
+
     /// <summary>Subtotal / tax row labels — 14px regular.</summary>
     public static readonly Font RowLabel       = new("Segoe UI", 14F, FontStyle.Regular);
 

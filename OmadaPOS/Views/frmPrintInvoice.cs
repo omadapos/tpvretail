@@ -91,7 +91,7 @@ public sealed class frmPrintInvoice : POSDialog
         };
         bar.Paint += (_, e) =>
         {
-            using var bottom = new Pen(Color.FromArgb(20, 0, 0, 0), 1f);
+            using var bottom = new Pen(AppColors.ShadowSubtle, 1f);
             e.Graphics.DrawLine(bottom, 0, bar.Height - 1, bar.Width, bar.Height - 1);
         };
 
@@ -234,7 +234,7 @@ public sealed class frmPrintInvoice : POSDialog
         {
             panel.Paint += (_, e) =>
             {
-                using var sep = new Pen(Color.FromArgb(50, 255, 255, 255), 1f);
+                using var sep = new Pen(AppColors.SeparatorOnDark, 1f);
                 e.Graphics.DrawLine(sep, 0, 4, 0, panel.Height - 4);
             };
         }
@@ -314,7 +314,7 @@ public sealed class frmPrintInvoice : POSDialog
         FullRowSelect     = true,
         GridLines         = false,
         MultiSelect       = false,
-        BackColor         = Color.White,
+        BackColor         = AppColors.SurfaceCard,
         ForeColor         = AppColors.TextPrimary,
         Font              = AppTypography.Body,
         BorderStyle       = BorderStyle.None,
@@ -341,8 +341,8 @@ public sealed class frmPrintInvoice : POSDialog
             bool isAlt = e.ItemIndex % 2 == 1;
             bool isSel = (e.State & ListViewItemStates.Selected) == ListViewItemStates.Selected;
             var  bg    = isSel ? AppColors.NavyBase
-                       : isAlt ? Color.FromArgb(247, 249, 252)
-                       : Color.White;
+                       : isAlt ? AppColors.SurfaceMuted
+                       : AppColors.SurfaceCard;
             using var br = new SolidBrush(bg);
             e.Graphics.FillRectangle(br, e.Bounds);
         };
@@ -360,7 +360,7 @@ public sealed class frmPrintInvoice : POSDialog
                 using var path = ElegantButtonStyles.RoundedPath(btnRect, 5);
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 e.Graphics.FillPath(btnBrush, path);
-                using var tw = new SolidBrush(Color.White);
+                using var tw = new SolidBrush(AppColors.TextWhite);
                 using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                 e.Graphics.DrawString("🖨", AppTypography.Caption, tw, btnRect, sf);
                 return;

@@ -89,8 +89,11 @@ public static class ElegantButtonStyles
         _buttonStates.Add(button, new ButtonState(bg, fg, radius));
 
         button.ForeColor = fg;
-        button.Font      = new Font("Segoe UI", fontSize, FontStyle.Bold);
-        button.Height    = Math.Max(44, (int)(fontSize * 1.8f));
+        // Dispose old font before assigning new one to prevent GDI font handle leak
+        var oldFont = button.Font;
+        button.Font = new Font("Segoe UI", fontSize, FontStyle.Bold);
+        oldFont?.Dispose();
+        button.Height = Math.Max(44, (int)(fontSize * 1.8f));
         button.Invalidate();
     }
 
@@ -120,8 +123,9 @@ public static class ElegantButtonStyles
 
         // ── Borde — AntiAlias solo aquí para curvas suaves ───────────────────
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        using var border = new Pen(Color.FromArgb(70, 255, 255, 255), 1);
+        using var border = new Pen(AppColors.SeparatorOnDark, 1);
         g.DrawPath(border, path);
+        g.SmoothingMode = SmoothingMode.None;
 
         // ── Texto — ClearType, un solo draw, sin sombra ──────────────────────
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
