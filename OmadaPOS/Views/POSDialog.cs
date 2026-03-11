@@ -69,6 +69,8 @@ public abstract class POSDialog : Form
     // ── Constructor ───────────────────────────────────────────────────────────
     protected POSDialog()
     {
+        DoubleBuffered  = true;
+
         var sz = _sizes[Size];
         FormBorderStyle = FormBorderStyle.None;
         StartPosition   = FormStartPosition.CenterScreen;

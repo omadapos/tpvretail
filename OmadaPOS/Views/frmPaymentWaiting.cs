@@ -25,17 +25,22 @@ public sealed class frmPaymentWaiting : Form
     private static readonly Font _fontTimer   = new("Consolas",  11F, FontStyle.Regular);
     private static readonly Font _fontHint    = new("Segoe UI",   9F, FontStyle.Italic);
 
+    // ── Shared GDI resources (allocated once) ────────────────────────────────
+    private static readonly SolidBrush  _overlayBrush = new(_overlay);
+    private static readonly StringFormat _sfCenter    = new() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+
     // ── State ─────────────────────────────────────────────────────────────────
     private readonly decimal     _amount;
     private readonly PaymentType _paymentType;
     private readonly DateTime    _startTime = DateTime.Now;
     private readonly System.Windows.Forms.Timer _timer;
 
-    private float   _spinAngle = 0f;        // rotates the arc
-    private Bitmap? _backdrop;              // darkened screenshot
+    private float   _spinAngle = 0f;
+    private Bitmap? _backdrop;
 
-    // Card geometry (computed in OnLoad)
+    // Card geometry + pre-baked shadow paths (set in OnLoad, fixed thereafter)
     private Rectangle _card;
+    private (System.Drawing.Drawing2D.GraphicsPath path, SolidBrush brush)[]? _shadowLayers;
 
     public frmPaymentWaiting(decimal amount, PaymentType paymentType)
     {
@@ -49,11 +54,11 @@ public sealed class frmPaymentWaiting : Form
         BackColor        = Color.FromArgb(10, 16, 30);   // fallback if screenshot fails
         Cursor           = Cursors.WaitCursor;
 
-        // Spinner + counter — ticks every 40 ms = ~25 fps
-        _timer = new System.Windows.Forms.Timer { Interval = 40 };
+        // Spinner + counter — 60 ms ≈ 16 fps, imperceptible on a payment terminal
+        _timer = new System.Windows.Forms.Timer { Interval = 60 };
         _timer.Tick += (_, _) =>
         {
-            _spinAngle = (_spinAngle + 6f) % 360f;   // 6° per tick
+            _spinAngle = (_spinAngle + 9f) % 360f;   // 9° per tick keeps same visual speed at 16fps
             Invalidate();
         };
     }
@@ -79,6 +84,15 @@ public sealed class frmPaymentWaiting : Form
             (Height - 280) / 2,
             480, 280);
 
+        // Pre-bake shadow paths — card geometry is fixed, so we compute once
+        _shadowLayers = new (System.Drawing.Drawing2D.GraphicsPath, SolidBrush)[3];
+        for (int i = 3; i >= 1; i--)
+        {
+            var shadow = Rectangle.Inflate(_card, i * 3, i * 3);
+            shadow.Offset(0, i * 2);
+            _shadowLayers[i - 1] = (RoundedRect(shadow, 18), new SolidBrush(Color.FromArgb(i * 12, 0, 0, 0)));
+        }
+
         // Capture + darken the owner's current state
         _backdrop = CaptureAndDarken();
 
@@ -90,6 +104,8 @@ public sealed class frmPaymentWaiting : Form
         _timer.Stop();
         _timer.Dispose();
         _backdrop?.Dispose();
+        if (_shadowLayers != null)
+            foreach (var (path, brush) in _shadowLayers) { path.Dispose(); brush.Dispose(); }
         base.OnFormClosed(e);
     }
 
@@ -115,8 +131,7 @@ public sealed class frmPaymentWaiting : Form
             g.DrawImage(_backdrop, Point.Empty);
 
         // 2. Full-screen dark overlay on top of screenshot
-        using var overlayBrush = new SolidBrush(_overlay);
-        g.FillRectangle(overlayBrush, ClientRectangle);
+        g.FillRectangle(_overlayBrush, ClientRectangle);
 
         // 3. Card shadow
         DrawCardShadow(g);
@@ -134,14 +149,9 @@ public sealed class frmPaymentWaiting : Form
 
     private void DrawCardShadow(Graphics g)
     {
-        for (int i = 3; i >= 1; i--)
-        {
-            var shadow = Rectangle.Inflate(_card, i * 3, i * 3);
-            shadow.Offset(0, i * 2);
-            using var sp = RoundedRect(shadow, 18);
-            using var sb = new SolidBrush(Color.FromArgb(i * 12, 0, 0, 0));
-            g.FillPath(sb, sp);
-        }
+        if (_shadowLayers == null) return;
+        foreach (var (path, brush) in _shadowLayers)
+            g.FillPath(brush, path);
     }
 
     private void DrawCardContent(Graphics g)
@@ -171,8 +181,7 @@ public sealed class frmPaymentWaiting : Form
         g.FillPath(badgeBrush, badgePath);
 
         using var badgeTextBrush = new SolidBrush(badgeColor);
-        using var sfCenter = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        g.DrawString(badge, _fontType, badgeTextBrush, badgeRect, sfCenter);
+        g.DrawString(badge, _fontType, badgeTextBrush, badgeRect, _sfCenter);
 
         // ── Spinner ──────────────────────────────────────────────────────────
         int spinD  = 72;
@@ -188,26 +197,26 @@ public sealed class frmPaymentWaiting : Form
         int amountY = _card.Top + 148;
         using var amtBrush = new SolidBrush(AppColors.TextWhite);
         g.DrawString(_amount.ToString("C"), _fontAmount, amtBrush,
-            new RectangleF(_card.Left, amountY, _card.Width, 40), sfCenter);
+            new RectangleF(_card.Left, amountY, _card.Width, 40), _sfCenter);
 
         // ── "Processing…" message ────────────────────────────────────────────
         using var msgBrush = new SolidBrush(AppColors.TextOnDarkSecondary);
         g.DrawString("Procesando pago…  Siga las instrucciones en el terminal.",
             _fontMessage, msgBrush,
-            new RectangleF(_card.Left + 16, amountY + 44, _card.Width - 32, 32), sfCenter);
+            new RectangleF(_card.Left + 16, amountY + 44, _card.Width - 32, 32), _sfCenter);
 
         // ── Elapsed timer ────────────────────────────────────────────────────
         int elapsed = (int)(DateTime.Now - _startTime).TotalSeconds;
         using var timerBrush = new SolidBrush(AppColors.TextMuted);
         g.DrawString($"{elapsed}s",
             _fontTimer, timerBrush,
-            new RectangleF(_card.Left, amountY + 80, _card.Width, 20), sfCenter);
+            new RectangleF(_card.Left, amountY + 80, _card.Width, 20), _sfCenter);
 
         // ── Hint ─────────────────────────────────────────────────────────────
         using var hintBrush = new SolidBrush(Color.FromArgb(120, 148, 163, 184));
         g.DrawString("No presione ningún botón. La transacción está en progreso.",
             _fontHint, hintBrush,
-            new RectangleF(_card.Left, _card.Bottom - 28, _card.Width, 24), sfCenter);
+            new RectangleF(_card.Left, _card.Bottom - 28, _card.Width, 24), _sfCenter);
     }
 
     // ── Screenshot + darken ───────────────────────────────────────────────────

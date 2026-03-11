@@ -34,7 +34,6 @@ public sealed class CartTotalsControl : UserControl
         {
             Dock            = DockStyle.Fill,
             BackgroundStart = AppColors.NavyDark,
-            BackgroundEnd   = AppColors.NavyBase,
             BorderColor     = AppBorders.AccentLine,
             CornerRadius    = AppRadii.Panel,
             Padding         = new Padding(0),
@@ -170,6 +169,4 @@ public sealed class CartTotalsControl : UserControl
             _lblTotalValue.Text = "$0.00";
     }
 
-    /// <summary>No-op kept for call-site compatibility; theme is baked in.</summary>
-    public void ApplyTheme() { }
 }

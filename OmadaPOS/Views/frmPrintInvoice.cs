@@ -620,7 +620,7 @@ public sealed class frmPrintInvoice : POSDialog
                     order,
                     details,
                     cashier:      SessionManager.Name ?? "",
-                    storeName:    branch.Name    ?? "OMADA POS",
+                    storeName:    branch.Name    ?? AppConstants.AppName,
                     storeAddress: branch.Address ?? "",
                     storePhone:   branch.Contact,
                     footerMsg:    branch.FooterMsg);

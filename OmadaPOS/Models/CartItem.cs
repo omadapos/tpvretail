@@ -38,6 +38,12 @@ public class CartItem
     public string? Image  { get; set; }
     /// <summary>Weight in kg for scale-sold items. When set and > 0, overrides Quantity in price calculations.</summary>
     public double? Peso   { get; set; }
+    /// <summary>
+    /// True when the product requires age verification (≥21) before payment.
+    /// Set from <see cref="ProductModel.RequiresAgeVerification"/> OR the local
+    /// <see cref="IAgeRestrictionConfigService"/> whitelist, whichever is true.
+    /// </summary>
+    public bool RequiresAgeVerification { get; set; }
 
     // ─── Computed pricing — set by PricingEngine, never inline ───────────────
 
@@ -69,8 +75,9 @@ public class CartItem
         UPC            = UPC,
         Image          = Image,
         Peso           = Peso,
-        Subtotal       = Subtotal,
-        TaxAmount      = TaxAmount,
-        Total          = Total
+        Subtotal                = Subtotal,
+        TaxAmount               = TaxAmount,
+        Total                   = Total,
+        RequiresAgeVerification = RequiresAgeVerification,
     };
 }

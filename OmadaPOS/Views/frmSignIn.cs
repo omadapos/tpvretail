@@ -32,6 +32,7 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     public frmSignIn(IUserService userService, IWindowService windowService)
     {
+        DoubleBuffered = true;
         InitializeComponent();
         _userService   = userService;
         _windowService = windowService;
@@ -88,7 +89,7 @@ public partial class frmSignIn
         // ── Brand ────────────────────────────────────────────────────────
         var lblBrand = new Label
         {
-            Text      = "OMADA  POS",
+            Text      = AppConstants.AppName,
             Font      = new Font("Segoe UI", 24F, FontStyle.Bold),
             ForeColor = Color.White,
             BackColor = Color.Transparent,
@@ -100,7 +101,7 @@ public partial class frmSignIn
         // Emerald "Point of Sale" subtitle
         var lblSub = new Label
         {
-            Text      = "Point of Sale",
+            Text      = AppConstants.AppTagline,
             Font      = new Font("Segoe UI", 10F, FontStyle.Regular),
             ForeColor = AppColors.AccentGreen,
             BackColor = Color.Transparent,

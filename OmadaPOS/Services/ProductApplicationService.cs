@@ -45,11 +45,15 @@ public interface IProductApplicationService
 /// </summary>
 public class ProductApplicationService : IProductApplicationService
 {
-    private readonly ICategoryService _categoryService;
+    private readonly ICategoryService              _categoryService;
+    private readonly IAgeRestrictionConfigService  _ageConfig;
 
-    public ProductApplicationService(ICategoryService categoryService)
+    public ProductApplicationService(
+        ICategoryService             categoryService,
+        IAgeRestrictionConfigService ageConfig)
     {
         _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
+        _ageConfig       = ageConfig       ?? throw new ArgumentNullException(nameof(ageConfig));
     }
 
     public async Task<BarcodeSearchResult> SearchByBarcodeAsync(string upc)
@@ -58,9 +62,9 @@ public class ProductApplicationService : IProductApplicationService
             return new BarcodeSearchResult { IsFound = false };
 
         if (WeightBarcodeParser.IsWeightBarcode(upc))
-            return await HandleWeightBarcodeAsync(upc);
+            return await HandleWeightBarcodeAsync(upc).ConfigureAwait(false);
 
-        return await HandleStandardBarcodeAsync(upc);
+        return await HandleStandardBarcodeAsync(upc).ConfigureAwait(false);
     }
 
     private async Task<BarcodeSearchResult> HandleWeightBarcodeAsync(string upc)
@@ -68,7 +72,7 @@ public class ProductApplicationService : IProductApplicationService
         if (!WeightBarcodeParser.TryParse(upc, out string code, out decimal price))
             return new BarcodeSearchResult { IsFound = false };
 
-        var plu = await _categoryService.LoadProductByUPC_Promotion(code);
+        var plu = await _categoryService.LoadProductByUPC_Promotion(code).ConfigureAwait(false);
         if (plu == null)
             return new BarcodeSearchResult { IsFound = false };
 
@@ -92,7 +96,7 @@ public class ProductApplicationService : IProductApplicationService
             Cost = 0
         };
 
-        var pResult = await _categoryService.SaveProduct(prod);
+        var pResult = await _categoryService.SaveProduct(prod).ConfigureAwait(false);
         if (pResult == null)
             return new BarcodeSearchResult { IsFound = false };
 
@@ -102,24 +106,26 @@ public class ProductApplicationService : IProductApplicationService
             ProductName = plu.Name,
             CartItem = new CartItem
             {
-                ProductId = pResult.Id ?? 0,
-                ProductName = pResult.Name,
-                UnitPrice = pResult.Price ?? 0,
-                Quantity = 1,
-                UPC = upc,
-                Image = "product-default.jpg",
-                Tax = pResult.Tax ?? 0,
-                PromotionName = "",
-                PromotionValue = 0.0,
-                PromotionLimit = 0m,
-                IsEBT = plu.Ebt
+                ProductId               = pResult.Id ?? 0,
+                ProductName             = pResult.Name,
+                UnitPrice               = pResult.Price ?? 0,
+                Quantity                = 1,
+                UPC                     = upc,
+                Image                   = "product-default.jpg",
+                Tax                     = pResult.Tax ?? 0,
+                PromotionName           = "",
+                PromotionValue          = 0.0,
+                PromotionLimit          = 0m,
+                IsEBT                   = plu.Ebt,
+                RequiresAgeVerification = plu.RequiresAgeVerification
+                                          || _ageConfig.IsRestricted(plu.UPC, plu.CategoryId),
             }
         };
     }
 
     private async Task<BarcodeSearchResult> HandleStandardBarcodeAsync(string upc)
     {
-        var product = await _categoryService.LoadProductByUPC_Promotion(upc);
+        var product = await _categoryService.LoadProductByUPC_Promotion(upc).ConfigureAwait(false);
         if (product == null)
             return new BarcodeSearchResult { IsFound = false, ProductNotFoundOnServer = true };
 
@@ -129,17 +135,19 @@ public class ProductApplicationService : IProductApplicationService
             ProductName = product.Name,
             CartItem = new CartItem
             {
-                ProductId = product.Id ?? 0,
-                ProductName = product.Name,
-                UnitPrice = product.Price ?? 0.0m,
-                Quantity = 1,
-                UPC = product.UPC,
-                Image = product.Image,
-                Tax = product.Tax ?? 0,
-                PromotionName = product.PromotionName,
-                PromotionValue = product.PromotionValue,
-                PromotionLimit = product.PromotionLimit,
-                IsEBT = product.Ebt
+                ProductId               = product.Id ?? 0,
+                ProductName             = product.Name,
+                UnitPrice               = product.Price ?? 0.0m,
+                Quantity                = 1,
+                UPC                     = product.UPC,
+                Image                   = product.Image,
+                Tax                     = product.Tax ?? 0,
+                PromotionName           = product.PromotionName,
+                PromotionValue          = product.PromotionValue,
+                PromotionLimit          = product.PromotionLimit,
+                IsEBT                   = product.Ebt,
+                RequiresAgeVerification = product.RequiresAgeVerification
+                                          || _ageConfig.IsRestricted(product.UPC, product.CategoryId),
             }
         };
     }
@@ -166,7 +174,7 @@ public class ProductApplicationService : IProductApplicationService
             Cost = 0
         };
 
-        var pResult = await _categoryService.SaveProduct(prod);
+        var pResult = await _categoryService.SaveProduct(prod).ConfigureAwait(false);
         if (pResult == null)
             return null;
 

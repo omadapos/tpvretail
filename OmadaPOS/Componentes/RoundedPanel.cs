@@ -19,10 +19,6 @@ namespace OmadaPOS.Componentes
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Color BackgroundStart { get; set; } = AppColors.SurfaceCard;
 
-        /// <summary>Kept for API compatibility — not used for rendering (gradient removed for perf).</summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BackgroundEnd { get; set; } = AppColors.SurfaceCard;
-
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Color ShadowColor { get; set; } = AppColors.ShadowSubtle;
 

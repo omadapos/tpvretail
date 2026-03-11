@@ -29,6 +29,16 @@ public interface ISqliteManager : IDisposable
     Task SavePaymentAsync(string sessionId, decimal total, string paymentType);
     Task<List<PaymentModel>> GetPaymentsAsync(string sessionId);
     Task ClearPaymentAsync(string sessionId);
+
+    // Age restriction config methods
+    Task AddAgeRestrictedUpcAsync(string upc, string? note);
+    Task AddAgeRestrictedCategoryAsync(int categoryId, string? note);
+    Task RemoveAgeRestrictedUpcAsync(string upc);
+    Task RemoveAgeRestrictedCategoryAsync(int categoryId);
+    Task<List<string>> GetAgeRestrictedUpcsAsync();
+    Task<List<int>> GetAgeRestrictedCategoryIdsAsync();
+    Task<List<AgeRestrictedEntry>> GetAllAgeRestrictedEntriesAsync();
+    Task SaveAgeVerificationAuditAsync(AgeVerificationAuditRecord record);
 }
 
 public sealed class SqliteManager : ISqliteManager, IDisposable
@@ -101,14 +111,17 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
     private const string INSERT_CART_ITEM_SQL = @"
         INSERT OR REPLACE INTO CartItems 
         (SessionId, Number, ProductId, ProductName, UPC, Image, UnitPrice, Quantity, 
-         Weight, Tax, Date, PromotionName, PromotionValue, PromotionLimit, IsEBT, LastModified)
+         Weight, Tax, Date, PromotionName, PromotionValue, PromotionLimit, IsEBT,
+         RequiresAgeVerification, LastModified)
         VALUES 
         (@SessionId, @Number, @ProductId, @ProductName, @UPC, @Image, @UnitPrice, @Quantity,
-         @Weight, @Tax, @Date, @PromotionName, @PromotionValue, @PromotionLimit, @IsEBT, CURRENT_TIMESTAMP)";
+         @Weight, @Tax, @Date, @PromotionName, @PromotionValue, @PromotionLimit, @IsEBT,
+         @RequiresAgeVerification, CURRENT_TIMESTAMP)";
 
     private const string SELECT_CART_ITEMS_SQL = @"
         SELECT Number, ProductId, ProductName, UPC, Image, UnitPrice, Quantity, 
-               Weight, Tax, Date, PromotionName, PromotionValue, PromotionLimit, IsEBT
+               Weight, Tax, Date, PromotionName, PromotionValue, PromotionLimit, IsEBT,
+               RequiresAgeVerification
         FROM CartItems
         WHERE SessionId = @SessionId
         ORDER BY Number";
@@ -148,16 +161,16 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
     private const string INSERT_HOLD_ITEM_SQL = @"
         INSERT INTO HoldCartItems 
         (HoldId, Number, ProductId, ProductName, UPC, Image, UnitPrice, Quantity, 
-         Weight, Tax, PromotionName, PromotionValue, PromotionLimit, IsEBT)
+         Weight, Tax, PromotionName, PromotionValue, PromotionLimit, IsEBT, RequiresAgeVerification)
         SELECT 
             @HoldId, Number, ProductId, ProductName, UPC, Image, UnitPrice, Quantity,
-            Weight, Tax, PromotionName, PromotionValue, PromotionLimit, IsEBT
+            Weight, Tax, PromotionName, PromotionValue, PromotionLimit, IsEBT, RequiresAgeVerification
         FROM CartItems
         WHERE SessionId = @SessionId";
 
     private const string SELECT_HELD_ITEMS_SQL = @"
         SELECT Number, ProductId, ProductName, UPC, Image, UnitPrice, Quantity, 
-               Weight, Tax, PromotionName, PromotionValue, PromotionLimit, IsEBT
+               Weight, Tax, PromotionName, PromotionValue, PromotionLimit, IsEBT, RequiresAgeVerification
         FROM HoldCartItems
         WHERE HoldId = @HoldId
         ORDER BY Number";
@@ -183,6 +196,67 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         WHERE h.HoldId = @HoldId
         GROUP BY h.HoldId, h.LastModified";
 
+    // ── Age restriction tables ─────────────────────────────────────────────────
+    private const string CREATE_AGE_RESTRICTED_TABLE_SQL = @"
+        CREATE TABLE IF NOT EXISTS AgeRestrictedProducts (
+            Id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            UPC        TEXT,
+            CategoryId INTEGER,
+            Note       TEXT,
+            CreatedAt  DATETIME DEFAULT CURRENT_TIMESTAMP
+        )";
+
+    private const string CREATE_AGE_AUDIT_TABLE_SQL = @"
+        CREATE TABLE IF NOT EXISTS AgeVerificationAudit (
+            Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            SessionId           TEXT,
+            CashierName         TEXT,
+            VerifiedAt          DATETIME,
+            VerificationMethod  TEXT,
+            VerificationResult  TEXT,
+            CustomerIs21OrOver  BOOLEAN,
+            IdType              TEXT,
+            IdLast4OrToken      TEXT,
+            DenialReason        TEXT
+        )";
+
+    // Migrations — run every startup; duplicate-column errors are swallowed silently
+    private const string MIGRATE_CART_AGE_SQL =
+        "ALTER TABLE CartItems ADD COLUMN RequiresAgeVerification BOOLEAN NOT NULL DEFAULT 0";
+
+    private const string MIGRATE_HOLD_AGE_SQL =
+        "ALTER TABLE HoldCartItems ADD COLUMN RequiresAgeVerification BOOLEAN NOT NULL DEFAULT 0";
+
+    // Age restriction CRUD
+    private const string INSERT_AGE_RESTRICTED_UPC_SQL = @"
+        INSERT INTO AgeRestrictedProducts (UPC, Note) VALUES (@UPC, @Note)";
+
+    private const string INSERT_AGE_RESTRICTED_CAT_SQL = @"
+        INSERT INTO AgeRestrictedProducts (CategoryId, Note) VALUES (@CategoryId, @Note)";
+
+    private const string DELETE_AGE_RESTRICTED_UPC_SQL = @"
+        DELETE FROM AgeRestrictedProducts WHERE UPC = @UPC";
+
+    private const string DELETE_AGE_RESTRICTED_CAT_SQL = @"
+        DELETE FROM AgeRestrictedProducts WHERE CategoryId = @CategoryId";
+
+    private const string SELECT_AGE_RESTRICTED_UPCS_SQL = @"
+        SELECT UPC FROM AgeRestrictedProducts WHERE UPC IS NOT NULL";
+
+    private const string SELECT_AGE_RESTRICTED_CATS_SQL = @"
+        SELECT CategoryId FROM AgeRestrictedProducts WHERE CategoryId IS NOT NULL";
+
+    private const string SELECT_ALL_AGE_RESTRICTED_SQL = @"
+        SELECT Id, UPC, CategoryId, Note, CreatedAt FROM AgeRestrictedProducts ORDER BY CreatedAt DESC";
+
+    private const string INSERT_AGE_AUDIT_SQL = @"
+        INSERT INTO AgeVerificationAudit
+        (SessionId, CashierName, VerifiedAt, VerificationMethod, VerificationResult,
+         CustomerIs21OrOver, IdType, IdLast4OrToken, DenialReason)
+        VALUES
+        (@SessionId, @CashierName, @VerifiedAt, @VerificationMethod, @VerificationResult,
+         @CustomerIs21OrOver, @IdType, @IdLast4OrToken, @DenialReason)";
+
     public SqliteManager(string dbFileName = "sqliteomada.db", ILogger<SqliteManager>? logger = null)
     {
         if (string.IsNullOrWhiteSpace(dbFileName))
@@ -199,7 +273,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
     {
         try
         {
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync().ConfigureAwait(false);
             try
             {
                 var directory = Path.GetDirectoryName(_dbPath);
@@ -207,22 +281,34 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
                     Directory.CreateDirectory(directory);
 
                 if (!File.Exists(_dbPath))
-                    await File.Create(_dbPath).DisposeAsync();
+                    await File.Create(_dbPath).DisposeAsync().ConfigureAwait(false);
 
                 await using var db = new SqliteConnection(ConnectionString);
-                await db.OpenAsync();
+                await db.OpenAsync().ConfigureAwait(false);
 
                 await using var createCartTable = new SqliteCommand(CREATE_CART_TABLE_SQL, db);
-                await createCartTable.ExecuteNonQueryAsync();
+                await createCartTable.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 await using var createPaymentsTable = new SqliteCommand(CREATE_PAYMENTS_TABLE_SQL, db);
-                await createPaymentsTable.ExecuteNonQueryAsync();
+                await createPaymentsTable.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 await using var createHoldTable = new SqliteCommand(CREATE_HOLD_TABLE_SQL, db);
-                await createHoldTable.ExecuteNonQueryAsync();
+                await createHoldTable.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 await using var createHoldItemsTable = new SqliteCommand(CREATE_HOLD_ITEMS_TABLE_SQL, db);
-                await createHoldItemsTable.ExecuteNonQueryAsync();
+                await createHoldItemsTable.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+                // Age restriction tables (idempotent)
+                await using var createAgeRestrictedTable = new SqliteCommand(CREATE_AGE_RESTRICTED_TABLE_SQL, db);
+                await createAgeRestrictedTable.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+                await using var createAgeAuditTable = new SqliteCommand(CREATE_AGE_AUDIT_TABLE_SQL, db);
+                await createAgeAuditTable.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+                // Migrations: add RequiresAgeVerification to existing tables.
+                // SQLite raises "duplicate column name" if already added — swallow it silently.
+                await RunMigrationAsync(db, MIGRATE_CART_AGE_SQL).ConfigureAwait(false);
+                await RunMigrationAsync(db, MIGRATE_HOLD_AGE_SQL).ConfigureAwait(false);
 
                 _logger?.LogInformation("Database initialized successfully at {DbPath}", _dbPath);
             }
@@ -247,9 +333,9 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
-            item.Number = await GetNextCartNumberAsync(sessionId);
+            item.Number = await GetNextCartNumberAsync(sessionId).ConfigureAwait(false);
             
             await using var command = new SqliteCommand(INSERT_CART_ITEM_SQL, db);
             command.Parameters.AddWithValue("@SessionId", sessionId);
@@ -267,8 +353,9 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
             command.Parameters.AddWithValue("@PromotionValue", item.PromotionValue);
             command.Parameters.AddWithValue("@PromotionLimit", item.PromotionLimit);
             command.Parameters.AddWithValue("@IsEBT", item.IsEBT);
+            command.Parameters.AddWithValue("@RequiresAgeVerification", item.RequiresAgeVerification);
 
-            await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 
             _logger?.LogDebug("Cart item saved: Number={Number}, ProductId={ProductId}, SessionId={SessionId}", 
                 item.Number, item.ProductId, sessionId);
@@ -289,7 +376,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(SELECT_CART_ITEMS_SQL, db);
             command.Parameters.AddWithValue("@SessionId", sessionId);
@@ -297,39 +384,41 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
             await using var reader = await command.ExecuteReaderAsync();
             
             // Cache column ordinals
-            var numberOrdinal = reader.GetOrdinal("Number");
-            var productIdOrdinal = reader.GetOrdinal("ProductId");
-            var productNameOrdinal = reader.GetOrdinal("ProductName");
-            var upcOrdinal = reader.GetOrdinal("UPC");
-            var imageOrdinal = reader.GetOrdinal("Image");
-            var unitPriceOrdinal = reader.GetOrdinal("UnitPrice");
-            var quantityOrdinal = reader.GetOrdinal("Quantity");
-            var weightOrdinal = reader.GetOrdinal("Weight");
-            var taxOrdinal = reader.GetOrdinal("Tax");
-            var dateOrdinal = reader.GetOrdinal("Date");
-            var promotionNameOrdinal = reader.GetOrdinal("PromotionName");
+            var numberOrdinal       = reader.GetOrdinal("Number");
+            var productIdOrdinal    = reader.GetOrdinal("ProductId");
+            var productNameOrdinal  = reader.GetOrdinal("ProductName");
+            var upcOrdinal          = reader.GetOrdinal("UPC");
+            var imageOrdinal        = reader.GetOrdinal("Image");
+            var unitPriceOrdinal    = reader.GetOrdinal("UnitPrice");
+            var quantityOrdinal     = reader.GetOrdinal("Quantity");
+            var weightOrdinal       = reader.GetOrdinal("Weight");
+            var taxOrdinal          = reader.GetOrdinal("Tax");
+            var dateOrdinal         = reader.GetOrdinal("Date");
+            var promotionNameOrdinal  = reader.GetOrdinal("PromotionName");
             var promotionValueOrdinal = reader.GetOrdinal("PromotionValue");
             var promotionLimitOrdinal = reader.GetOrdinal("PromotionLimit");
-            var isEBTOrdinal = reader.GetOrdinal("IsEBT");
+            var isEBTOrdinal          = reader.GetOrdinal("IsEBT");
+            var ageVerifOrdinal       = reader.GetOrdinal("RequiresAgeVerification");
 
             while (await reader.ReadAsync())
             {
                 var item = new CartItem
                 {
-                    Number = reader.GetInt32(numberOrdinal),
-                    ProductId = reader.GetInt32(productIdOrdinal),
-                    ProductName = reader.GetString(productNameOrdinal),
-                    UPC = reader.IsDBNull(upcOrdinal) ? null : reader.GetString(upcOrdinal),
-                    Image = reader.IsDBNull(imageOrdinal) ? null : reader.GetString(imageOrdinal),
-                    UnitPrice = reader.GetDecimal(unitPriceOrdinal),
-                    Quantity = reader.GetDouble(quantityOrdinal),
-                    Weight = reader.GetDouble(weightOrdinal),
-                    Tax = reader.GetDouble(taxOrdinal),
-                    Date = reader.GetDateTime(dateOrdinal),
-                    PromotionName = reader.IsDBNull(promotionNameOrdinal) ? null : reader.GetString(promotionNameOrdinal),
-                    PromotionValue = reader.GetDouble(promotionValueOrdinal),
-                    PromotionLimit = reader.GetDecimal(promotionLimitOrdinal),
-                    IsEBT = reader.GetBoolean(isEBTOrdinal)
+                    Number                  = reader.GetInt32(numberOrdinal),
+                    ProductId               = reader.GetInt32(productIdOrdinal),
+                    ProductName             = reader.GetString(productNameOrdinal),
+                    UPC                     = reader.IsDBNull(upcOrdinal)   ? null : reader.GetString(upcOrdinal),
+                    Image                   = reader.IsDBNull(imageOrdinal) ? null : reader.GetString(imageOrdinal),
+                    UnitPrice               = reader.GetDecimal(unitPriceOrdinal),
+                    Quantity                = reader.GetDouble(quantityOrdinal),
+                    Weight                  = reader.GetDouble(weightOrdinal),
+                    Tax                     = reader.GetDouble(taxOrdinal),
+                    Date                    = reader.GetDateTime(dateOrdinal),
+                    PromotionName           = reader.IsDBNull(promotionNameOrdinal)  ? null : reader.GetString(promotionNameOrdinal),
+                    PromotionValue          = reader.GetDouble(promotionValueOrdinal),
+                    PromotionLimit          = reader.GetDecimal(promotionLimitOrdinal),
+                    IsEBT                   = reader.GetBoolean(isEBTOrdinal),
+                    RequiresAgeVerification = reader.GetBoolean(ageVerifOrdinal),
                 };
                 items.Add(item);
             }
@@ -352,12 +441,12 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var deleteCmd = new SqliteCommand(DELETE_CART_ITEM_SQL, db);
             deleteCmd.Parameters.AddWithValue("@SessionId", sessionId);
             deleteCmd.Parameters.AddWithValue("@ProductId", productId);
-            await deleteCmd.ExecuteNonQueryAsync();
+            await deleteCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
             _logger?.LogDebug("Cart item removed and reordered: ProductId={productId}, SessionId={sessionId}",
                 productId, sessionId);
@@ -381,11 +470,11 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             if (quantity == 0)
             {
-                await RemoveCartItemAsync(productId, sessionId);
+                await RemoveCartItemAsync(productId, sessionId).ConfigureAwait(false);
             }
             else
             {
@@ -396,7 +485,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
                 command.Parameters.AddWithValue("@ProductId", productId);
                 command.Parameters.AddWithValue("@Quantity", quantity);
 
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
                 _logger?.LogDebug("Cart item quantity updated: ProductId={productId}, Quantity={quantity}, SessionId={sessionId}", 
                     productId, quantity, sessionId);
             }
@@ -416,12 +505,12 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(DELETE_CART_SESSION_SQL, db);
             command.Parameters.AddWithValue("@SessionId", sessionId);
 
-            await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             _logger?.LogDebug("Cart cleared for session {sessionId}", sessionId);
         }
         catch (Exception ex)
@@ -439,12 +528,12 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(GET_NEXT_NUMBER_SQL, db);
             command.Parameters.AddWithValue("@SessionId", sessionId);
 
-            var result = await command.ExecuteScalarAsync();
+            var result = await command.ExecuteScalarAsync().ConfigureAwait(false);
             return Convert.ToInt32(result);
         }
         catch (Exception ex)
@@ -463,7 +552,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             var paymentId = Guid.NewGuid().ToString();
             
@@ -473,7 +562,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
             command.Parameters.AddWithValue("@Total", total);
             command.Parameters.AddWithValue("@PaymentType", paymentType);
 
-            await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 
             _logger?.LogDebug("Payment saved: PaymentId={PaymentId}, SessionId={SessionId}, Total={Total}", 
                 paymentId, sessionId, total);
@@ -494,7 +583,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(SELECT_PAYMENTS_SQL, db);
             command.Parameters.AddWithValue("@SessionId", sessionId);
@@ -534,12 +623,12 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(DELETE_PAYMENT_SESSION_SQL, db);
             command.Parameters.AddWithValue("@SessionId", sessionId);
 
-            await command.ExecuteNonQueryAsync();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             _logger?.LogDebug("Payment cleared for session {sessionId}", sessionId);
         }
         catch (Exception ex)
@@ -561,7 +650,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         {
             await using var db = new SqliteConnection(ConnectionString);
 
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             try
             {
@@ -569,18 +658,18 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
                 await using var holdCmd = new SqliteCommand(INSERT_HOLD_CART_SQL, db);
                 holdCmd.Parameters.AddWithValue("@HoldId", userId);
                 holdCmd.Parameters.AddWithValue("@SessionId", sessionId);
-                await holdCmd.ExecuteNonQueryAsync();
+                await holdCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 // Copy cart items to HoldCartItems
                 await using var itemsCmd = new SqliteCommand(INSERT_HOLD_ITEM_SQL, db);
                 itemsCmd.Parameters.AddWithValue("@HoldId", userId);
                 itemsCmd.Parameters.AddWithValue("@SessionId", sessionId);
-                await itemsCmd.ExecuteNonQueryAsync();
+                await itemsCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 // Borrar el carrito de compras
                 await using var command = new SqliteCommand(DELETE_CART_SESSION_SQL, db);
                 command.Parameters.AddWithValue("@SessionId", sessionId);
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 _logger?.LogDebug("Cart held successfully: HoldId={HoldId}", userId);
             }
@@ -605,7 +694,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
 
             var heldCarts = new List<HoldCartModel>();
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(SELECT_HELD_CARTS_BY_SESSION_SQL, db);
             command.Parameters.AddWithValue("@SessionId", sessionId);
@@ -650,7 +739,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
 
             HoldCartModel? heldCart = null;
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(SELECT_HELD_CARTS_BY_ID_SQL, db);
             command.Parameters.AddWithValue("@HoldId", holdId);
@@ -695,45 +784,46 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             await using var command = new SqliteCommand(SELECT_HELD_ITEMS_SQL, db);
             command.Parameters.AddWithValue("@HoldId", holdId);
 
             await using var reader = await command.ExecuteReaderAsync();
             
-            // Cache column ordinals
-            var numberOrdinal = reader.GetOrdinal("Number");
-            var productIdOrdinal = reader.GetOrdinal("ProductId");
-            var productNameOrdinal = reader.GetOrdinal("ProductName");
-            var upcOrdinal = reader.GetOrdinal("UPC");
-            var imageOrdinal = reader.GetOrdinal("Image");
-            var unitPriceOrdinal = reader.GetOrdinal("UnitPrice");
-            var quantityOrdinal = reader.GetOrdinal("Quantity");
-            var weightOrdinal = reader.GetOrdinal("Weight");
-            var taxOrdinal = reader.GetOrdinal("Tax");
-            var promotionNameOrdinal = reader.GetOrdinal("PromotionName");
+            var numberOrdinal         = reader.GetOrdinal("Number");
+            var productIdOrdinal      = reader.GetOrdinal("ProductId");
+            var productNameOrdinal    = reader.GetOrdinal("ProductName");
+            var upcOrdinal            = reader.GetOrdinal("UPC");
+            var imageOrdinal          = reader.GetOrdinal("Image");
+            var unitPriceOrdinal      = reader.GetOrdinal("UnitPrice");
+            var quantityOrdinal       = reader.GetOrdinal("Quantity");
+            var weightOrdinal         = reader.GetOrdinal("Weight");
+            var taxOrdinal            = reader.GetOrdinal("Tax");
+            var promotionNameOrdinal  = reader.GetOrdinal("PromotionName");
             var promotionValueOrdinal = reader.GetOrdinal("PromotionValue");
             var promotionLimitOrdinal = reader.GetOrdinal("PromotionLimit");
-            var isEBTOrdinal = reader.GetOrdinal("IsEBT");
+            var isEBTOrdinal          = reader.GetOrdinal("IsEBT");
+            var ageVerifOrdinal       = reader.GetOrdinal("RequiresAgeVerification");
 
             while (await reader.ReadAsync())
             {
                 var item = new CartItem
                 {
-                    Number = reader.GetInt32(numberOrdinal),
-                    ProductId = reader.GetInt32(productIdOrdinal),
-                    ProductName = reader.GetString(productNameOrdinal),
-                    UPC = reader.IsDBNull(upcOrdinal) ? null : reader.GetString(upcOrdinal),
-                    Image = reader.IsDBNull(imageOrdinal) ? null : reader.GetString(imageOrdinal),
-                    UnitPrice = reader.GetDecimal(unitPriceOrdinal),
-                    Quantity = reader.GetDouble(quantityOrdinal),
-                    Weight = reader.GetDouble(weightOrdinal),
-                    Tax = reader.GetDouble(taxOrdinal),
-                    PromotionName = reader.IsDBNull(promotionNameOrdinal) ? null : reader.GetString(promotionNameOrdinal),
-                    PromotionValue = reader.GetDouble(promotionValueOrdinal),
-                    PromotionLimit = reader.GetDecimal(promotionLimitOrdinal),
-                    IsEBT = reader.GetBoolean(isEBTOrdinal)
+                    Number                  = reader.GetInt32(numberOrdinal),
+                    ProductId               = reader.GetInt32(productIdOrdinal),
+                    ProductName             = reader.GetString(productNameOrdinal),
+                    UPC                     = reader.IsDBNull(upcOrdinal)   ? null : reader.GetString(upcOrdinal),
+                    Image                   = reader.IsDBNull(imageOrdinal) ? null : reader.GetString(imageOrdinal),
+                    UnitPrice               = reader.GetDecimal(unitPriceOrdinal),
+                    Quantity                = reader.GetDouble(quantityOrdinal),
+                    Weight                  = reader.GetDouble(weightOrdinal),
+                    Tax                     = reader.GetDouble(taxOrdinal),
+                    PromotionName           = reader.IsDBNull(promotionNameOrdinal)  ? null : reader.GetString(promotionNameOrdinal),
+                    PromotionValue          = reader.GetDouble(promotionValueOrdinal),
+                    PromotionLimit          = reader.GetDecimal(promotionLimitOrdinal),
+                    IsEBT                   = reader.GetBoolean(isEBTOrdinal),
+                    RequiresAgeVerification = reader.GetBoolean(ageVerifOrdinal),
                 };
                 items.Add(item);
             }
@@ -757,19 +847,19 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         {
             await using var db = new SqliteConnection(ConnectionString);
 
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             try
             {
                 // Delete hold items first due to foreign key constraint
                 await using var deleteItemsCmd = new SqliteCommand(DELETE_HOLD_ITEMS_SQL, db);
                 deleteItemsCmd.Parameters.AddWithValue("@HoldId", holdId);
-                await deleteItemsCmd.ExecuteNonQueryAsync();
+                await deleteItemsCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 // Delete hold cart
                 await using var deleteHoldCmd = new SqliteCommand(DELETE_HOLD_CART_SQL, db);
                 deleteHoldCmd.Parameters.AddWithValue("@HoldId", holdId);
-                await deleteHoldCmd.ExecuteNonQueryAsync();
+                await deleteHoldCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 _logger?.LogDebug("Held cart deleted successfully: HoldId={HoldId}", holdId);
             }
@@ -785,12 +875,133 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         }
     }
 
+    // ── Migration helper ──────────────────────────────────────────────────────
+    private static async Task RunMigrationAsync(SqliteConnection db, string sql)
+    {
+        try
+        {
+            await using var cmd = new SqliteCommand(sql, db);
+            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
+        catch (SqliteException ex) when (ex.Message.Contains("duplicate column", StringComparison.OrdinalIgnoreCase))
+        {
+            // Column already added by a previous startup — silently ignore
+        }
+    }
+
+    // ── Age restriction config CRUD ──────────────────────────────────────────
+    public async Task AddAgeRestrictedUpcAsync(string upc, string? note)
+    {
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(INSERT_AGE_RESTRICTED_UPC_SQL, db);
+        cmd.Parameters.AddWithValue("@UPC", upc);
+        cmd.Parameters.AddWithValue("@Note", (object?)note ?? DBNull.Value);
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    public async Task AddAgeRestrictedCategoryAsync(int categoryId, string? note)
+    {
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(INSERT_AGE_RESTRICTED_CAT_SQL, db);
+        cmd.Parameters.AddWithValue("@CategoryId", categoryId);
+        cmd.Parameters.AddWithValue("@Note", (object?)note ?? DBNull.Value);
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    public async Task RemoveAgeRestrictedUpcAsync(string upc)
+    {
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(DELETE_AGE_RESTRICTED_UPC_SQL, db);
+        cmd.Parameters.AddWithValue("@UPC", upc);
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    public async Task RemoveAgeRestrictedCategoryAsync(int categoryId)
+    {
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(DELETE_AGE_RESTRICTED_CAT_SQL, db);
+        cmd.Parameters.AddWithValue("@CategoryId", categoryId);
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    public async Task<List<string>> GetAgeRestrictedUpcsAsync()
+    {
+        var list = new List<string>();
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(SELECT_AGE_RESTRICTED_UPCS_SQL, db);
+        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        while (await reader.ReadAsync().ConfigureAwait(false))
+            list.Add(reader.GetString(0));
+        return list;
+    }
+
+    public async Task<List<int>> GetAgeRestrictedCategoryIdsAsync()
+    {
+        var list = new List<int>();
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(SELECT_AGE_RESTRICTED_CATS_SQL, db);
+        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        while (await reader.ReadAsync().ConfigureAwait(false))
+            list.Add(reader.GetInt32(0));
+        return list;
+    }
+
+    public async Task<List<AgeRestrictedEntry>> GetAllAgeRestrictedEntriesAsync()
+    {
+        var list = new List<AgeRestrictedEntry>();
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(SELECT_ALL_AGE_RESTRICTED_SQL, db);
+        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+
+        var idOrd   = reader.GetOrdinal("Id");
+        var upcOrd  = reader.GetOrdinal("UPC");
+        var catOrd  = reader.GetOrdinal("CategoryId");
+        var noteOrd = reader.GetOrdinal("Note");
+        var dtOrd   = reader.GetOrdinal("CreatedAt");
+
+        while (await reader.ReadAsync().ConfigureAwait(false))
+        {
+            list.Add(new AgeRestrictedEntry(
+                reader.GetInt32(idOrd),
+                reader.IsDBNull(upcOrd)  ? null : reader.GetString(upcOrd),
+                reader.IsDBNull(catOrd)  ? null : reader.GetInt32(catOrd),
+                reader.IsDBNull(noteOrd) ? null : reader.GetString(noteOrd),
+                reader.IsDBNull(dtOrd)   ? DateTime.MinValue : reader.GetDateTime(dtOrd)
+            ));
+        }
+        return list;
+    }
+
+    public async Task SaveAgeVerificationAuditAsync(AgeVerificationAuditRecord record)
+    {
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(INSERT_AGE_AUDIT_SQL, db);
+        cmd.Parameters.AddWithValue("@SessionId",           record.SessionId);
+        cmd.Parameters.AddWithValue("@CashierName",         record.CashierName);
+        cmd.Parameters.AddWithValue("@VerifiedAt",          record.VerifiedAt);
+        cmd.Parameters.AddWithValue("@VerificationMethod",  record.VerificationMethod);
+        cmd.Parameters.AddWithValue("@VerificationResult",  record.VerificationResult);
+        cmd.Parameters.AddWithValue("@CustomerIs21OrOver",  record.CustomerIs21OrOver);
+        cmd.Parameters.AddWithValue("@IdType",              (object?)record.IdType         ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@IdLast4OrToken",      (object?)record.IdLast4OrToken ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@DenialReason",        (object?)record.DenialReason   ?? DBNull.Value);
+        await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
     public async Task DropTablesAsync()
     {
         try
         {
             await using var db = new SqliteConnection(ConnectionString);
-            await db.OpenAsync();
+            await db.OpenAsync().ConfigureAwait(false);
 
             var dropCartItems = "DROP TABLE IF EXISTS CartItems;";
             var dropPayments = "DROP TABLE IF EXISTS Payments;";
@@ -799,19 +1010,19 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
 
             await using (var cmd = new SqliteCommand(dropCartItems, db))
             {
-                await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
             await using (var cmd = new SqliteCommand(dropPayments, db))
             {
-                await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
             await using (var cmd = new SqliteCommand(dropHoldItems, db))
             {
-                await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
             await using (var cmd = new SqliteCommand(dropHoldCarts, db))
             {
-                await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
 
             _logger?.LogInformation("Tables CartItems, Payments, HoldCartItems, and HoldCarts deleted successfully.");

@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Libreria.Models;
+namespace OmadaPOS.Libreria.Models;
 
 public class ProductModel
 {
@@ -20,4 +20,10 @@ public class ProductModel
     public double PromotionValue { get; set; } = 0.0;
     public decimal PromotionLimit { get; set; } = 0m;
     public bool Ebt { get; set; } = false;
+    /// <summary>
+    /// True when the product requires age verification (≥21) at point of sale.
+    /// Defaults to false until the backend natively returns this flag;
+    /// the local <see cref="IAgeRestrictionConfigService"/> whitelist is used in the interim.
+    /// </summary>
+    public bool RequiresAgeVerification { get; set; } = false;
 }

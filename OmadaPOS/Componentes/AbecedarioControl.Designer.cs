@@ -1,14 +1,14 @@
-ï»¿namespace OmadaPOS.Componentes;
+namespace OmadaPOS.Componentes;
 
 partial class AbecedarioControl
 {
     /// <summary> 
-    /// Variable del diseÃ±ador necesaria.
+    /// Variable del diseñador necesaria.
     /// </summary>
     private System.ComponentModel.IContainer components = null;
 
     /// <summary> 
-    /// Limpiar los recursos que se estÃ©n usando.
+    /// Limpiar los recursos que se estén usando.
     /// </summary>
     /// <param name="disposing">true si los recursos administrados se deben desechar; false en caso contrario.</param>
     protected override void Dispose(bool disposing)
@@ -20,11 +20,11 @@ partial class AbecedarioControl
         base.Dispose(disposing);
     }
 
-    #region CÃ³digo generado por el DiseÃ±ador de componentes
+    #region Código generado por el Diseñador de componentes
 
     /// <summary> 
-    /// MÃ©todo necesario para admitir el DiseÃ±ador. No se puede modificar
-    /// el contenido de este mÃ©todo con el editor de cÃ³digo.
+    /// Método necesario para admitir el Diseñador. No se puede modificar
+    /// el contenido de este método con el editor de código.
     /// </summary>
     private void InitializeComponent()
     {
@@ -114,7 +114,7 @@ partial class AbecedarioControl
         // buttonZ
         // 
         buttonZ.Dock = DockStyle.Fill;
-        buttonZ.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonZ.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonZ.Location = new Point(506, 36);
         buttonZ.Margin = new Padding(2, 1, 2, 1);
         buttonZ.Name = "buttonZ";
@@ -128,7 +128,7 @@ partial class AbecedarioControl
         // buttonY
         // 
         buttonY.Dock = DockStyle.Fill;
-        buttonY.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonY.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonY.Location = new Point(464, 36);
         buttonY.Margin = new Padding(2, 1, 2, 1);
         buttonY.Name = "buttonY";
@@ -142,7 +142,7 @@ partial class AbecedarioControl
         // buttonX
         // 
         buttonX.Dock = DockStyle.Fill;
-        buttonX.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonX.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonX.Location = new Point(422, 36);
         buttonX.Margin = new Padding(2, 1, 2, 1);
         buttonX.Name = "buttonX";
@@ -156,7 +156,7 @@ partial class AbecedarioControl
         // buttonW
         // 
         buttonW.Dock = DockStyle.Fill;
-        buttonW.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonW.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonW.Location = new Point(380, 36);
         buttonW.Margin = new Padding(2, 1, 2, 1);
         buttonW.Name = "buttonW";
@@ -170,7 +170,7 @@ partial class AbecedarioControl
         // buttonV
         // 
         buttonV.Dock = DockStyle.Fill;
-        buttonV.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonV.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonV.Location = new Point(338, 36);
         buttonV.Margin = new Padding(2, 1, 2, 1);
         buttonV.Name = "buttonV";
@@ -184,7 +184,7 @@ partial class AbecedarioControl
         // buttonU
         // 
         buttonU.Dock = DockStyle.Fill;
-        buttonU.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonU.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonU.Location = new Point(296, 36);
         buttonU.Margin = new Padding(2, 1, 2, 1);
         buttonU.Name = "buttonU";
@@ -198,7 +198,7 @@ partial class AbecedarioControl
         // buttonT
         // 
         buttonT.Dock = DockStyle.Fill;
-        buttonT.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonT.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonT.Location = new Point(254, 36);
         buttonT.Margin = new Padding(2, 1, 2, 1);
         buttonT.Name = "buttonT";
@@ -212,7 +212,7 @@ partial class AbecedarioControl
         // buttonS
         // 
         buttonS.Dock = DockStyle.Fill;
-        buttonS.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonS.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonS.Location = new Point(212, 36);
         buttonS.Margin = new Padding(2, 1, 2, 1);
         buttonS.Name = "buttonS";
@@ -226,7 +226,7 @@ partial class AbecedarioControl
         // buttonR
         // 
         buttonR.Dock = DockStyle.Fill;
-        buttonR.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonR.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonR.Location = new Point(170, 36);
         buttonR.Margin = new Padding(2, 1, 2, 1);
         buttonR.Name = "buttonR";
@@ -240,7 +240,7 @@ partial class AbecedarioControl
         // buttonQ
         // 
         buttonQ.Dock = DockStyle.Fill;
-        buttonQ.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonQ.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonQ.Location = new Point(128, 36);
         buttonQ.Margin = new Padding(2, 1, 2, 1);
         buttonQ.Name = "buttonQ";
@@ -254,7 +254,7 @@ partial class AbecedarioControl
         // buttonP
         // 
         buttonP.Dock = DockStyle.Fill;
-        buttonP.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonP.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonP.Location = new Point(86, 36);
         buttonP.Margin = new Padding(2, 1, 2, 1);
         buttonP.Name = "buttonP";
@@ -268,7 +268,7 @@ partial class AbecedarioControl
         // buttonO
         // 
         buttonO.Dock = DockStyle.Fill;
-        buttonO.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonO.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonO.Location = new Point(44, 36);
         buttonO.Margin = new Padding(2, 1, 2, 1);
         buttonO.Name = "buttonO";
@@ -282,7 +282,7 @@ partial class AbecedarioControl
         // buttonN
         // 
         buttonN.Dock = DockStyle.Fill;
-        buttonN.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonN.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonN.Location = new Point(2, 36);
         buttonN.Margin = new Padding(2, 1, 2, 1);
         buttonN.Name = "buttonN";
@@ -296,7 +296,7 @@ partial class AbecedarioControl
         // buttonM
         // 
         buttonM.Dock = DockStyle.Fill;
-        buttonM.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonM.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonM.Location = new Point(506, 1);
         buttonM.Margin = new Padding(2, 1, 2, 1);
         buttonM.Name = "buttonM";
@@ -310,7 +310,7 @@ partial class AbecedarioControl
         // buttonL
         // 
         buttonL.Dock = DockStyle.Fill;
-        buttonL.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonL.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonL.Location = new Point(464, 1);
         buttonL.Margin = new Padding(2, 1, 2, 1);
         buttonL.Name = "buttonL";
@@ -324,7 +324,7 @@ partial class AbecedarioControl
         // buttonK
         // 
         buttonK.Dock = DockStyle.Fill;
-        buttonK.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonK.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonK.Location = new Point(422, 1);
         buttonK.Margin = new Padding(2, 1, 2, 1);
         buttonK.Name = "buttonK";
@@ -338,7 +338,7 @@ partial class AbecedarioControl
         // buttonJ
         // 
         buttonJ.Dock = DockStyle.Fill;
-        buttonJ.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonJ.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonJ.Location = new Point(380, 1);
         buttonJ.Margin = new Padding(2, 1, 2, 1);
         buttonJ.Name = "buttonJ";
@@ -352,7 +352,7 @@ partial class AbecedarioControl
         // buttonI
         // 
         buttonI.Dock = DockStyle.Fill;
-        buttonI.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonI.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonI.Location = new Point(338, 1);
         buttonI.Margin = new Padding(2, 1, 2, 1);
         buttonI.Name = "buttonI";
@@ -366,7 +366,7 @@ partial class AbecedarioControl
         // buttonH
         // 
         buttonH.Dock = DockStyle.Fill;
-        buttonH.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonH.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonH.Location = new Point(296, 1);
         buttonH.Margin = new Padding(2, 1, 2, 1);
         buttonH.Name = "buttonH";
@@ -380,7 +380,7 @@ partial class AbecedarioControl
         // buttonG
         // 
         buttonG.Dock = DockStyle.Fill;
-        buttonG.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonG.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonG.Location = new Point(254, 1);
         buttonG.Margin = new Padding(2, 1, 2, 1);
         buttonG.Name = "buttonG";
@@ -394,7 +394,7 @@ partial class AbecedarioControl
         // buttonF
         // 
         buttonF.Dock = DockStyle.Fill;
-        buttonF.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonF.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonF.Location = new Point(212, 1);
         buttonF.Margin = new Padding(2, 1, 2, 1);
         buttonF.Name = "buttonF";
@@ -408,7 +408,7 @@ partial class AbecedarioControl
         // buttonE
         // 
         buttonE.Dock = DockStyle.Fill;
-        buttonE.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonE.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonE.Location = new Point(170, 1);
         buttonE.Margin = new Padding(2, 1, 2, 1);
         buttonE.Name = "buttonE";
@@ -422,7 +422,7 @@ partial class AbecedarioControl
         // buttonD
         // 
         buttonD.Dock = DockStyle.Fill;
-        buttonD.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonD.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonD.Location = new Point(128, 1);
         buttonD.Margin = new Padding(2, 1, 2, 1);
         buttonD.Name = "buttonD";
@@ -436,7 +436,7 @@ partial class AbecedarioControl
         // buttonC
         // 
         buttonC.Dock = DockStyle.Fill;
-        buttonC.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonC.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonC.Location = new Point(86, 1);
         buttonC.Margin = new Padding(2, 1, 2, 1);
         buttonC.Name = "buttonC";
@@ -450,7 +450,7 @@ partial class AbecedarioControl
         // buttonB
         // 
         buttonB.Dock = DockStyle.Fill;
-        buttonB.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonB.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonB.Location = new Point(44, 1);
         buttonB.Margin = new Padding(2, 1, 2, 1);
         buttonB.Name = "buttonB";
@@ -464,7 +464,7 @@ partial class AbecedarioControl
         // buttonA
         // 
         buttonA.Dock = DockStyle.Fill;
-        buttonA.Font = new Font("Roboto Mono Medium", 14.25F, FontStyle.Bold);
+        buttonA.Font = new Font("Consolas", 14F, FontStyle.Bold);
         buttonA.Location = new Point(2, 1);
         buttonA.Margin = new Padding(2, 1, 2, 1);
         buttonA.Name = "buttonA";

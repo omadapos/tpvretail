@@ -349,7 +349,7 @@ public sealed class frmPopupCashPayment : POSDialog
                     order,
                     orderDetails,
                     cashier:         SessionManager.Name ?? "",
-                    storeName:       branch.Name    ?? "OMADA POS",
+                    storeName:       branch.Name    ?? AppConstants.AppName,
                     storeAddress:    branch.Address ?? "",
                     storePhone:      branch.Contact,
                     footerMsg:       branch.FooterMsg,

@@ -59,12 +59,12 @@ public sealed class frmCustomerScreen : Form
     private static readonly Font _fontHeader     = new("Segoe UI",  15F, FontStyle.Bold);  // store name
     private static readonly Font _fontClock      = new("Consolas",  13F);                  // clock
     private static readonly Font _fontList       = new("Segoe UI",  15F);                  // list rows — readable at distance
-    private static readonly Font _fontListNum    = new("Consolas",  14F);                  // price/total cols — monospaced
     private static readonly Font _fontListHdr    = new("Segoe UI",  12F, FontStyle.Bold);  // column headers
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public frmCustomerScreen(IBannerService bannerService, IShoppingCart shoppingCart)
     {
+        DoubleBuffered = true;
         _bannerService = bannerService;
         _shoppingCart  = shoppingCart;
 
@@ -461,98 +461,9 @@ public sealed class frmCustomerScreen : Form
         return panel;
     }
 
-    // ── ListView owner-draw ───────────────────────────────────────────────────
-    private static readonly Color _csRowEven   = Color.FromArgb(255, 255, 255);   // white
-    private static readonly Color _csRowOdd    = Color.FromArgb(246, 248, 252);   // very pale blue-gray
-    private static readonly Color _csHeaderBg  = Color.FromArgb(30,  41,  59);    // deep navy
-    private static readonly Color _csRowBorder = Color.FromArgb(15,   0,   0, 0); // 6% black hairline
-
-    private void AttachListViewDraw(ListView lv)
-    {
-        // ── Column header — dark navy + emerald accent + white text ──────────
-        lv.DrawColumnHeader += (_, e) =>
-        {
-            var g = e.Graphics;
-            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-
-            using var bg = new SolidBrush(_csHeaderBg);
-            g.FillRectangle(bg, e.Bounds);
-
-            // Emerald accent line at the bottom of each header cell
-            using var accent = new Pen(AppColors.AccentGreen, 3f);
-            g.DrawLine(accent, e.Bounds.Left, e.Bounds.Bottom - 3,
-                                e.Bounds.Right, e.Bounds.Bottom - 3);
-
-            // Column separator
-            if (e.ColumnIndex > 0)
-            {
-                using var sep = new Pen(Color.FromArgb(35, 255, 255, 255), 1f);
-                g.DrawLine(sep, e.Bounds.Left, e.Bounds.Top + 8,
-                                e.Bounds.Left, e.Bounds.Bottom - 8);
-            }
-
-            using var tb = new SolidBrush(AppColors.TextWhite);
-            using var sf = new StringFormat
-            {
-                Alignment     = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center,
-                Trimming      = StringTrimming.EllipsisCharacter,
-            };
-            g.DrawString(e.Header.Text, _fontListHdr, tb, e.Bounds, sf);
-        };
-
-        // ── Row background ────────────────────────────────────────────────────
-        lv.DrawItem += (_, e) =>
-        {
-            Color bg = e.ItemIndex % 2 == 0 ? _csRowEven : _csRowOdd;
-            using var br = new SolidBrush(bg);
-            e.Graphics.FillRectangle(br, e.Bounds);
-        };
-
-        // ── Cell — fill bg FIRST, then text (prevents Windows default blue) ──
-        lv.DrawSubItem += (_, e) =>
-        {
-            var g = e.Graphics;
-            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-
-            // 1. Fill cell background
-            Color bg = e.Item.Index % 2 == 0 ? _csRowEven : _csRowOdd;
-            using var bgBr = new SolidBrush(bg);
-            g.FillRectangle(bgBr, e.Bounds);
-
-            // 2. Hairline row divider
-            using var div = new Pen(_csRowBorder, 1f);
-            g.DrawLine(div, e.Bounds.Left, e.Bounds.Bottom - 1,
-                            e.Bounds.Right, e.Bounds.Bottom - 1);
-
-            // 3. Text — col 1 = product name (bold), col 3/4 = price/total (Consolas green)
-            var colAlign = e.ColumnIndex < lv.Columns.Count
-                           ? lv.Columns[e.ColumnIndex].TextAlign
-                           : HorizontalAlignment.Left;
-            var strAlign = colAlign == HorizontalAlignment.Right  ? StringAlignment.Far
-                         : colAlign == HorizontalAlignment.Center ? StringAlignment.Center
-                         : StringAlignment.Near;
-
-            Color fg = e.ColumnIndex >= 3 ? AppColors.AccentGreenDark   // prices in emerald
-                     : e.ColumnIndex == 1 ? AppColors.TextPrimary         // product name
-                     : AppColors.TextSecondary;                           // # and qty
-
-            Font font = e.ColumnIndex >= 3 ? _fontListNum   // Consolas for amounts
-                      : e.ColumnIndex == 1 ? _fontList       // Segoe UI bold-ish
-                      : _fontList;
-
-            using var tb = new SolidBrush(fg);
-            using var sf = new StringFormat
-            {
-                Alignment     = strAlign,
-                LineAlignment = StringAlignment.Center,
-                Trimming      = StringTrimming.EllipsisCharacter,
-            };
-            var rect = new Rectangle(e.Bounds.X + 5, e.Bounds.Y,
-                                     e.Bounds.Width - 8, e.Bounds.Height);
-            g.DrawString(e.SubItem.Text, font, tb, rect, sf);
-        };
-    }
+    // ── ListView owner-draw — delegated to shared ListViewTheme ──────────────
+    private static void AttachListViewDraw(ListView lv)
+        => ListViewTheme.Apply(lv);
 
     private static void FillProductColumn(ListView lv, int fillIdx)
     {

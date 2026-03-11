@@ -58,7 +58,7 @@ public class HoldService : IHoldService
                 throw new ArgumentException("User ID cannot be empty", nameof(userId));
 
             // Verify that the cart has items before holding
-            var cartItems = await _sqliteManager.GetCartItemsAsync(sessionId);
+            var cartItems = await _sqliteManager.GetCartItemsAsync(sessionId).ConfigureAwait(false);
             if (!cartItems.Any())
             {
                 _logger?.LogWarning("Attempted to hold an empty cart: SessionId={SessionId}, UserId={UserId}", 
@@ -66,7 +66,7 @@ public class HoldService : IHoldService
                 return false;
             }
 
-            await _sqliteManager.HoldCartAsync(sessionId, userId);
+            await _sqliteManager.HoldCartAsync(sessionId, userId).ConfigureAwait(false);
             _logger?.LogInformation("Cart held successfully: SessionId={SessionId}, UserId={UserId}", 
                 sessionId, userId);
             return true;
@@ -86,7 +86,7 @@ public class HoldService : IHoldService
             if (string.IsNullOrWhiteSpace(sessionId))
                 throw new ArgumentException("Session ID cannot be empty", nameof(sessionId));
 
-            var heldCarts = await _sqliteManager.GetHeldCartsBySessionAsync(sessionId);
+            var heldCarts = await _sqliteManager.GetHeldCartsBySessionAsync(sessionId).ConfigureAwait(false);
             _logger?.LogDebug("Retrieved {Count} held carts for session {SessionId}", heldCarts.Count, sessionId);
             return heldCarts;
         }
@@ -104,7 +104,7 @@ public class HoldService : IHoldService
             if (string.IsNullOrWhiteSpace(holdId))
                 throw new ArgumentException("Session ID cannot be empty", nameof(holdId));
 
-            var heldCarts = await _sqliteManager.GetHeldCartsByIdAsync(holdId);
+            var heldCarts = await _sqliteManager.GetHeldCartsByIdAsync(holdId).ConfigureAwait(false);
             _logger?.LogDebug("Retrieved {HoldId}", holdId);
             return heldCarts;
         }
@@ -122,7 +122,7 @@ public class HoldService : IHoldService
             if (string.IsNullOrWhiteSpace(holdId))
                 throw new ArgumentException("Hold ID cannot be empty", nameof(holdId));
 
-            var cartItems = await _sqliteManager.RetrieveHeldCartAsync(holdId);
+            var cartItems = await _sqliteManager.RetrieveHeldCartAsync(holdId).ConfigureAwait(false);
             _logger?.LogDebug("Retrieved {Count} items from held cart {HoldId}", cartItems.Count, holdId);
             return cartItems;
         }
@@ -140,7 +140,7 @@ public class HoldService : IHoldService
             if (string.IsNullOrWhiteSpace(holdId))
                 throw new ArgumentException("Hold ID cannot be empty", nameof(holdId));
 
-            await _sqliteManager.DeleteHeldCartAsync(holdId);
+            await _sqliteManager.DeleteHeldCartAsync(holdId).ConfigureAwait(false);
             _logger?.LogInformation("Held cart deleted successfully: HoldId={HoldId}", holdId);
             return true;
         }

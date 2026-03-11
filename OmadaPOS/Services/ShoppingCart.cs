@@ -58,7 +58,7 @@ public class ShoppingCart : IShoppingCart
 
     public async Task LoadCartAsync()
     {
-        var items = await _sqliteManager.GetCartItemsAsync(_machineGuid);
+        var items = await _sqliteManager.GetCartItemsAsync(_machineGuid).ConfigureAwait(false);
         lock (_lock)
         {
             _items.Clear();
@@ -103,9 +103,9 @@ public class ShoppingCart : IShoppingCart
             Task.Run(async () =>
             {
                 if (toUpdate != null)
-                    await _sqliteManager.UpdateCartItemQuantityAsync(toUpdate.ProductId, toUpdate.Quantity, _machineGuid);
+                    await _sqliteManager.UpdateCartItemQuantityAsync(toUpdate.ProductId, toUpdate.Quantity, _machineGuid).ConfigureAwait(false);
                 else if (toAdd != null)
-                    await _sqliteManager.SaveCartItemAsync(toAdd, _machineGuid);
+                    await _sqliteManager.SaveCartItemAsync(toAdd, _machineGuid).ConfigureAwait(false);
             }).ContinueWith(
                 t => _logger.LogError(t.Exception?.GetBaseException(), "Cart DB sync failed — AddItem ProductId={Id}", item.ProductId),
                 TaskContinuationOptions.OnlyOnFaulted);
@@ -152,9 +152,9 @@ public class ShoppingCart : IShoppingCart
             Task.Run(async () =>
             {
                 if (removed != null)
-                    await _sqliteManager.RemoveCartItemAsync(removed.ProductId, _machineGuid);
+                    await _sqliteManager.RemoveCartItemAsync(removed.ProductId, _machineGuid).ConfigureAwait(false);
                 else if (updated != null)
-                    await _sqliteManager.UpdateCartItemQuantityAsync(updated.ProductId, updated.Quantity, _machineGuid);
+                    await _sqliteManager.UpdateCartItemQuantityAsync(updated.ProductId, updated.Quantity, _machineGuid).ConfigureAwait(false);
             }).ContinueWith(
                 t => _logger.LogError(t.Exception?.GetBaseException(), "Cart DB sync failed — UpdateQuantity ProductId={Id}", productId),
                 TaskContinuationOptions.OnlyOnFaulted);
@@ -189,7 +189,7 @@ public class ShoppingCart : IShoppingCart
             Task.Run(async () =>
             {
                 if (removed != null)
-                    await _sqliteManager.RemoveCartItemAsync(removed.ProductId, _machineGuid);
+                    await _sqliteManager.RemoveCartItemAsync(removed.ProductId, _machineGuid).ConfigureAwait(false);
             }).ContinueWith(
                 t => _logger.LogError(t.Exception?.GetBaseException(), "Cart DB sync failed — RemoveItem ProductId={Id}", productId),
                 TaskContinuationOptions.OnlyOnFaulted);

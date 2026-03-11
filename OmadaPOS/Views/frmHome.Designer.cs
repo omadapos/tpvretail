@@ -194,7 +194,7 @@ namespace OmadaPOS.Views
             textBoxUPC.BackColor = AppColors.SurfaceCard;
             textBoxUPC.BorderStyle = BorderStyle.None;
             textBoxUPC.Dock = DockStyle.Fill;
-            textBoxUPC.Font = new Font("Microsoft Sans Serif", 20.25F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            textBoxUPC.Font = AppTypography.ScanInput;
             textBoxUPC.ForeColor = Color.DarkOliveGreen;
             textBoxUPC.Location = new Point(447, 3);
             textBoxUPC.MaxLength = 32000;
@@ -244,7 +244,7 @@ namespace OmadaPOS.Views
             Name = "frmHome";
             ShowIcon = false;
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "OmadaPOS";
+            Text = AppConstants.AppName;
             WindowState = FormWindowState.Maximized;
             FormClosing += frmHome_FormClosing;
             Load += frmHome_Load;

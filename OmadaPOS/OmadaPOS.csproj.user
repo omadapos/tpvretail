@@ -26,11 +26,8 @@
     <Compile Update="Presentation\Controls\POSHeaderControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Update="Presentation\Controls\ScanInputControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Update="Presentation\Controls\UserSessionControl.cs">
-      <SubType>UserControl</SubType>
+    <Compile Update="Views\frmAgeVerification.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\frmCheckPrice.cs">
       <SubType>Form</SubType>

@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 using POSLinkAdmin.Const;
@@ -38,7 +38,7 @@ public class PaymentService : IPaymentService
         {
             ValidatePaymentRequest(request);
 
-            var terminal = await _terminalService.GetTerminalAsync(request.Ip, request.Port);
+            var terminal = await _terminalService.GetTerminalAsync(request.Ip, request.Port).ConfigureAwait(false);
             var response = paymentType switch
             {
                 PaymentType.Credit => await ProcessCreditPaymentAsync(terminal, request),
@@ -63,8 +63,8 @@ public class PaymentService : IPaymentService
         {
             ValidatePaymentRequest(request, validateAmount: false);
 
-            var terminal = await _terminalService.GetTerminalAsync(request.Ip, request.Port);
-            var response = await ProcessEBTBalanceAsync(terminal, request);
+            var terminal = await _terminalService.GetTerminalAsync(request.Ip, request.Port).ConfigureAwait(false);
+            var response = await ProcessEBTBalanceAsync(terminal, request).ConfigureAwait(false);
 
             LogPaymentResponse(response, PaymentType.EBTBalance);
             return response;
@@ -90,7 +90,7 @@ public class PaymentService : IPaymentService
             TransactionType = TransactionType.Sale
         };
 
-        return await _terminalService.ProcessCreditPaymentAsync(terminal, paymentRequest);
+        return await _terminalService.ProcessCreditPaymentAsync(terminal, paymentRequest).ConfigureAwait(false);
     }
 
     private async Task<PaymentResponseModel> ProcessDebitPaymentAsync(Terminal terminal, PaymentRequest request)
@@ -102,7 +102,7 @@ public class PaymentService : IPaymentService
             TransactionType = TransactionType.Sale
         };
 
-        return await _terminalService.ProcessDebitPaymentAsync(terminal, paymentRequest);
+        return await _terminalService.ProcessDebitPaymentAsync(terminal, paymentRequest).ConfigureAwait(false);
     }
 
     private async Task<PaymentResponseModel> ProcessEBTPaymentAsync(Terminal terminal, PaymentRequest request)
@@ -114,7 +114,7 @@ public class PaymentService : IPaymentService
             TransactionType = TransactionType.Sale
         };
 
-        return await _terminalService.ProcessEBTPaymentAsync(terminal, paymentRequest);
+        return await _terminalService.ProcessEBTPaymentAsync(terminal, paymentRequest).ConfigureAwait(false);
     }
 
     private async Task<PaymentResponseModel> ProcessEBTBalanceAsync(Terminal terminal, PaymentRequest request)
@@ -126,7 +126,7 @@ public class PaymentService : IPaymentService
             TransactionType = TransactionType.Inquiry
         };
 
-        return await _terminalService.ProcessEBTBalanceAsync(terminal, balanceRequest);
+        return await _terminalService.ProcessEBTBalanceAsync(terminal, balanceRequest).ConfigureAwait(false);
     }
 
     private void ValidatePaymentRequest(PaymentRequest request, bool validateAmount = true)

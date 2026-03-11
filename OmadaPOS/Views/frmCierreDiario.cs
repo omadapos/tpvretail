@@ -67,7 +67,7 @@ public sealed class frmCierreDiario : POSDialog
         {
             try
             {
-                new TicketCierre(cierre, branch.Name ?? "OMADA POS", branch.Address).Print();
+                new TicketCierre(cierre, branch.Name ?? AppConstants.AppName, branch.Address).Print();
             }
             catch (Exception printEx)
             {

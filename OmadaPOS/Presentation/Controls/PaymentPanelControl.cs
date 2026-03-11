@@ -157,7 +157,6 @@ public sealed class PaymentPanelControl : UserControl
         {
             Dock            = DockStyle.Fill,
             BackgroundStart = AppColors.BackgroundSecondary,
-            BackgroundEnd   = AppColors.SurfaceMuted,
             BorderColor     = AppBorders.PanelLight,
             ShadowColor     = AppShadows.Subtle,
             CornerRadius    = AppRadii.Panel,

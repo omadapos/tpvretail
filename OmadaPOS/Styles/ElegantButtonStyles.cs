@@ -9,6 +9,15 @@ namespace OmadaPOS.Presentation.Styling;
 
 public static class ElegantButtonStyles
 {
+    // ── Cached StringFormat — avoids one heap allocation per button repaint ──
+    private static readonly StringFormat _sfButton = new()
+    {
+        Alignment     = StringAlignment.Center,
+        LineAlignment = StringAlignment.Center,
+        FormatFlags   = StringFormatFlags.NoWrap,
+        Trimming      = StringTrimming.EllipsisCharacter,
+    };
+
     // ─────────────────────────────────────────────
     // PALETA — alineada con AppColors
     // ─────────────────────────────────────────────
@@ -129,15 +138,8 @@ public static class ElegantButtonStyles
 
         // ── Texto — ClearType, un solo draw, sin sombra ──────────────────────
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-        using var sf = new StringFormat
-        {
-            Alignment     = StringAlignment.Center,
-            LineAlignment = StringAlignment.Center,
-            FormatFlags   = StringFormatFlags.NoWrap,
-            Trimming      = StringTrimming.EllipsisCharacter,
-        };
         using var textBrush = new SolidBrush(state.ForeColor);
-        g.DrawString(button.Text, button.Font, textBrush, (RectangleF)rect, sf);
+        g.DrawString(button.Text, button.Font, textBrush, (RectangleF)rect, _sfButton);
     }
 
     // ─────────────────────────────────────────────

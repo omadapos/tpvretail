@@ -123,7 +123,9 @@ namespace OmadaPOS.Componentes
                 Padding   = new Padding(8),
             };
             pictureBoxImage.Click += OnCardClick;
+            panelImageArea.SuspendLayout();
             panelImageArea.Controls.Add(pictureBoxImage);
+            panelImageArea.ResumeLayout(false);
 
             panelAccent = new Panel
             {
@@ -152,7 +154,7 @@ namespace OmadaPOS.Componentes
                 AutoSize  = false,
                 Location  = new Point(8, 5),
                 Size      = new Size(CardW - 16, nameH - 5),
-                Font      = FontTitle,          // ← static compartido
+                Font      = FontTitle,
                 ForeColor = NameForeground,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -165,7 +167,7 @@ namespace OmadaPOS.Componentes
                 AutoSize  = false,
                 Location  = new Point(8, nameH),
                 Size      = new Size(CardW - 16, priceH - 4),
-                Font      = FontPrice,          // ← static compartido
+                Font      = FontPrice,
                 ForeColor = PriceForeground,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
@@ -173,14 +175,20 @@ namespace OmadaPOS.Componentes
             };
             labelPrice.Click += OnCardClick;
 
+            panelInfo.SuspendLayout();
             panelInfo.Controls.Add(labelTitle);
             panelInfo.Controls.Add(labelPrice);
+            panelInfo.ResumeLayout(false);
 
+            panelCard.SuspendLayout();
             panelCard.Controls.Add(panelImageArea);
             panelCard.Controls.Add(panelAccent);
             panelCard.Controls.Add(panelInfo);
+            panelCard.ResumeLayout(false);
 
+            this.SuspendLayout();
             this.Controls.Add(panelCard);
+            this.ResumeLayout(false);
             this.Load += ProductImageControl_Load;
         }
 

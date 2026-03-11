@@ -24,7 +24,7 @@ public class HoldCartService : IHomeHoldCartService
     public async Task<HoldCartState> GetCurrentSessionStateAsync()
     {
         var sessionId = WindowsIdProvider.GetMachineGuid();
-        var heldCarts = await _holdService.GetHeldCartsBySessionAsync(sessionId);
+        var heldCarts = await _holdService.GetHeldCartsBySessionAsync(sessionId).ConfigureAwait(false);
 
         return new HoldCartState
         {

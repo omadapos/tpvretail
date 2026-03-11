@@ -28,7 +28,7 @@ public class HomeInitializationService : IHomeInitializationService
     {
         ArgumentNullException.ThrowIfNull(categories);
 
-        var loadedCategories = await _categoryService.LoadCategories();
+        var loadedCategories = await _categoryService.LoadCategories().ConfigureAwait(false);
         categories.Clear();
 
         foreach (var category in loadedCategories)
@@ -39,7 +39,7 @@ public class HomeInitializationService : IHomeInitializationService
     {
         ArgumentNullException.ThrowIfNull(menuCategories);
 
-        var loadedMenuCategories = await _categoryService.LoadMenuCategories();
+        var loadedMenuCategories = await _categoryService.LoadMenuCategories().ConfigureAwait(false);
         menuCategories.Clear();
 
         foreach (var menuCategory in loadedMenuCategories)
@@ -53,7 +53,7 @@ public class HomeInitializationService : IHomeInitializationService
 
         var loadedProducts = string.IsNullOrEmpty(searchLetter)
             ? await _categoryService.LoadProductIdCategories(new IdCategoryDTO { Ids = categoryIds })
-            : await _categoryService.LoadProductsByCategoryLetra(new IdCategoryDTO { Ids = categoryIds }, searchLetter);
+            : await _categoryService.LoadProductsByCategoryLetra(new IdCategoryDTO { Ids = categoryIds }, searchLetter).ConfigureAwait(false);
 
         products.Clear();
 

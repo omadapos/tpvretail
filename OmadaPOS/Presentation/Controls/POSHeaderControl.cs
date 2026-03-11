@@ -24,7 +24,6 @@ public sealed class POSHeaderControl : UserControl
     private static readonly Color _headerBg    = Color.FromArgb(20, 30, 48);    // deep navy
     private static readonly Color _headerBg2   = Color.FromArgb(26, 38, 57);    // slightly lighter band
     private static readonly Color _btnMenuBg   = Color.FromArgb(40, 52, 72);    // slate — menu button bg
-    private static readonly Color _btnMenuHov  = Color.Transparent;             // no hover (touch)
     private static readonly Color _btnExitBg   = Color.FromArgb(185, 28, 28);   // red — exit button bg
     private static readonly Color _accentLine  = AppColors.AccentGreen;
     private static readonly Color _iconColor   = Color.FromArgb(220, 230, 245); // near-white icon
@@ -53,6 +52,11 @@ public sealed class POSHeaderControl : UserControl
     // ── Constructor ────────────────────────────────────────────────────────────
     private POSHeaderControl(TextBox textBoxUPC)
     {
+        SetStyle(ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.AllPaintingInWmPaint  |
+                 ControlStyles.UserPaint, true);
+        UpdateStyles();
+
         Dock      = DockStyle.Fill;
         Margin    = Padding.Empty;
         Padding   = Padding.Empty;
@@ -97,7 +101,7 @@ public sealed class POSHeaderControl : UserControl
 
         var lblBrand = new Label
         {
-            Text      = "OMADA POS",
+            Text      = AppConstants.AppName,
             Font      = new Font("Segoe UI", 11F, FontStyle.Bold),
             ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
@@ -220,8 +224,6 @@ public sealed class POSHeaderControl : UserControl
 
     public void UpdateProductName(string name)
         => _lblProductName.Text = string.IsNullOrWhiteSpace(name) ? "Ready to scan…" : name;
-
-    public void SetInvoiceDisplay(int orderId) { }
 
     // ── Icon panel factory ─────────────────────────────────────────────────────
     // Using Panel instead of Button: fully owner-drawn, no system chrome.

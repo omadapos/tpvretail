@@ -29,7 +29,7 @@ public class CashDrawerService : ICashDrawerService
 
     public async Task<CashDrawerOperationResult> OpenDrawerAsync()
     {
-        var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
+        var config = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid()).ConfigureAwait(false);
 
         if (config == null || string.IsNullOrEmpty(config.PrinterName))
         {

@@ -45,6 +45,10 @@ internal static class Program
         services.AddTransient<IAdminSettingService, AdminSettingService>();
         services.AddTransient<IHoldService, HoldService>();
 
+        // ── Age verification — Singleton config cache + Transient service ─────────
+        services.AddSingleton<IAgeRestrictionConfigService, AgeRestrictionConfigService>();
+        services.AddTransient<IAgeVerificationService, AgeVerificationService>();
+
         // ── Application services — Transient ──────────────────────────────────────
         services.AddTransient<IOrderApplicationService, OrderApplicationService>();
         services.AddTransient<IProductApplicationService, ProductApplicationService>();
@@ -112,6 +116,12 @@ internal static class Program
           //   await sqliteManager.DropTablesAsync();
 
             await sqliteManager.InitializeDatabaseAsync();
+
+            // Load age-restriction whitelist into memory after DB is ready
+            var ageConfig = ServiceProvider.GetRequiredService<IAgeRestrictionConfigService>();
+            await ageConfig.ReloadAsync();
+            // Dev testing only — uncomment to flag a UPC as age-restricted without using the backend:
+            // await ageConfig.AddUpcAsync("YOUR_TEST_UPC", "TEST");
         }
         catch (Exception ex)
         {

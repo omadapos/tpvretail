@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 using POSLinkAdmin;
@@ -39,7 +39,7 @@ public class PaymentTerminalService : IPaymentTerminalService
                 Timeout = Constants.TIMEOUT
             };
 
-            return await Task.Run(() => _poslinkSemi.GetTerminal(tcpSetting));
+            return await Task.Run(() => _poslinkSemi.GetTerminal(tcpSetting)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

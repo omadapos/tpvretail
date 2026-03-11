@@ -1,9 +1,11 @@
 using OmadaPOS.Componentes;
+using OmadaPOS.Domain;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Models;
 using OmadaPOS.Presentation.Controls;
+using OmadaPOS.Presentation.Styling;
 using OmadaPOS.Services;
 using OmadaPOS.Services.Navigation;
 using OmadaPOS.Services.POS;
@@ -18,8 +20,6 @@ namespace OmadaPOS.Views
         private CartListViewControl? _cartListViewControl;
         private CartTotalsControl?   _cartTotalsControl;
         private PaymentPanelControl? _paymentPanelControl;
-
-        int orderId = 0;
 
         decimal totalGlobal = 0;
         decimal changeValue = 0;
@@ -41,6 +41,11 @@ namespace OmadaPOS.Views
         private readonly IWindowService _windowService;
         private readonly IHomeInteractionService _homeInteractionService;
         private readonly frmCustomerScreen _customerScreen;
+
+        // ── Age verification ───────────────────────────────────────────────────
+        private readonly IAgeVerificationService _ageVerificationService;
+        private AgeVerificationResult?           _currentAgeVerification;
+        private Label                            _labelAgeVerificationStatus = null!;
 
         public frmHome(
             ZebraScannerService zebraScannerService,
@@ -83,6 +88,10 @@ namespace OmadaPOS.Views
 
             ConfigureUI();
             ConfigureListView();
+
+            // Age verification — resolved via service locator (matches existing pattern)
+            _ageVerificationService = Program.GetService<IAgeVerificationService>();
+            SetupAgeVerificationBadge();
 
             _zebraScannerService = zebraScannerService;
 
@@ -261,10 +270,11 @@ namespace OmadaPOS.Views
         {
             if (InvokeRequired)
             {
-                Invoke(new Action(() => UpdateCartDisplay()));
+                Invoke(new Action(() => { UpdateCartDisplay(); CheckAgeVerificationValidity(); }));
                 return;
             }
             UpdateCartDisplay();
+            CheckAgeVerificationValidity();
         }
 
         public void UpdateCartDisplay()
@@ -290,12 +300,10 @@ namespace OmadaPOS.Views
             MaintableLayout.Padding = new Padding(0);
             MaintableLayout.Margin = new Padding(0);
 
-            _cartTotalsControl?.ApplyTheme();
             ApplyProductColumnColors();
             _paymentPanelControl?.ApplyTheme();
             EstilizarSeparadoresColumnas();
 
-            this.Invalidate(true);
             this.Refresh();
         }
 
@@ -347,7 +355,7 @@ namespace OmadaPOS.Views
                 await LoadMenuCategoriesAsync();
                 await LoadCategoriesAsync();
 
-                orderId = await LoadLastInvoiceAsync();
+                await LoadLastInvoiceAsync();
 
                 // CRÍTICO: await explícito para evitar race condition con UpdateProductsDisplay
                 await LoadTabInfoAsync();
@@ -588,14 +596,20 @@ namespace OmadaPOS.Views
 
         private void _zebraScannerService_OnWeightUpdated(string weightStatus, double w)
         {
+            // OPOS callbacks arrive on a background thread — marshal all UI work to the UI thread.
+            if (InvokeRequired)
+            {
+                Invoke(() => _zebraScannerService_OnWeightUpdated(weightStatus, w));
+                return;
+            }
             weight                = w;
             SharedData.WeightUnit = weightStatus;
             _paymentPanelControl?.SetScaleWeight(weightStatus);
         }
 
-        private void textBoxUPC_TextChanged(object sender, EventArgs e)
+        private async void textBoxUPC_TextChanged(object sender, EventArgs e)
         {
-            SearchProduct(textBoxUPC.Text);
+            await SearchProduct(textBoxUPC.Text);
             textBoxUPC.Focus();
         }
 
@@ -611,6 +625,9 @@ namespace OmadaPOS.Views
                 MessageBoxDefaultButton.Button2);
 
             if (confirm != DialogResult.Yes) return;
+
+            _currentAgeVerification = null;
+            UpdateAgeVerificationBadge();
 
             _shoppingCart.Clear();
             _paymentSplitService.Clear();
@@ -687,18 +704,6 @@ namespace OmadaPOS.Views
         private void buttonSetting_Click(object sender, EventArgs e)
             => _windowService.OpenSettings(this);
 
-
-        private async void buttonLogout_Click(object sender, EventArgs e)
-        {
-            if (!VerificarPinSupervisor()) return;
-            try { await EjecutarLogout(); }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error during logout: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
         /// <summary>
         /// Shows the supervisor PIN dialog. Returns true when the correct PIN is entered.
         /// </summary>
@@ -733,18 +738,16 @@ namespace OmadaPOS.Views
             }
         }
 
-        private void buttonSplit_Click(object sender, EventArgs e)
+        private async void buttonSplit_Click(object sender, EventArgs e)
         {
             if (_shoppingCart.ItemCount > 0 && totalGlobal > 0)
             {
+                if (!await EnsureAgeVerificationAsync()) return;
                 _windowService.OpenSplitPayment(this);
             }
         }
 
-        private void buttonEBTBalance_Click(object sender, EventArgs e)
-        {
-            PaymentOrder(PaymentType.EBTBalance);
-        }
+        private async void buttonEBTBalance_Click(object sender, EventArgs e) => await PaymentOrder(PaymentType.EBTBalance);
 
         public void ChangeQuantity(int qty, int productId)
         {
@@ -764,6 +767,8 @@ namespace OmadaPOS.Views
 
         private async Task GiftCardPayAsync()
         {
+            if (!await EnsureAgeVerificationAsync()) return;
+
             var orderResponse = await _paymentCoordinatorService.ProcessGiftCardAsync(changeValue, false);
 
             if (orderResponse != null)
@@ -776,6 +781,8 @@ namespace OmadaPOS.Views
         {
             try
             {
+                if (!await EnsureAgeVerificationAsync()) return;
+
                 var result = await _paymentCoordinatorService.ProcessCashSaleAsync(totalGlobal, (int)(_paymentPanelControl?.ValueCents ?? 0L), changeValue, false);
 
                 if (!result.IsValidAmount)
@@ -804,14 +811,16 @@ namespace OmadaPOS.Views
             // Capturar el cambio ANTES de ClearTotales() que lo resetea a 0.
             var devuelta = changeValue > 0 ? changeValue : 0m;
 
+            _currentAgeVerification = null;
+            UpdateAgeVerificationBadge();
+
             _shoppingCart.Clear();
             _paymentSplitService.Clear();
 
             UpdateCartDisplay();
             ClearTotales(true);
 
-            // CRÍTICO: asignar resultado para que el botón muestre el nuevo número de orden
-            orderId = await LoadLastInvoiceAsync();
+            await LoadLastInvoiceAsync();
 
             _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this, paymentResponse, splitPayments);
         }
@@ -819,23 +828,18 @@ namespace OmadaPOS.Views
         private void buttonGiftCard_Click(object sender, EventArgs e)
             => _windowService.OpenGiftCard(totalGlobal, 1, this);
 
-        private void buttonPayCreditCard_Click(object sender, EventArgs e)
-        {
-            PaymentOrder(PaymentType.Credit);
-        }
+        private async void buttonPayCreditCard_Click(object sender, EventArgs e) => await PaymentOrder(PaymentType.Credit);
 
-        private void buttonPayDebitCard_Click(object sender, EventArgs e)
-        {
-            PaymentOrder(PaymentType.Debit);
-        }
+        private async void buttonPayDebitCard_Click(object sender, EventArgs e) => await PaymentOrder(PaymentType.Debit);
 
-        private void buttonEBTFood_Click(object sender, EventArgs e)
-        {
-            PaymentOrder(PaymentType.EBT);
-        }
+        private async void buttonEBTFood_Click(object sender, EventArgs e) => await PaymentOrder(PaymentType.EBT);
 
-        private async void PaymentOrder(PaymentType paymentType)
+        private async Task PaymentOrder(PaymentType paymentType)
         {
+            // EBT Balance is a read-only balance inquiry — no product sale, no age gate
+            if (paymentType != PaymentType.EBTBalance && !await EnsureAgeVerificationAsync())
+                return;
+
             // Show full-screen overlay while the PAX terminal processes the transaction.
             // The try/finally guarantees the overlay always closes — even on exception.
             var waiting = new frmPaymentWaiting(totalGlobal, paymentType);
@@ -869,14 +873,11 @@ namespace OmadaPOS.Views
             }
         }
 
-        private void buttonInvoice_Click(object sender, EventArgs e)
-            => _windowService.OpenPrintInvoice(this);
-
         /// <summary>
         /// Resolves a scanned UPC and adds the product to the cart.
         /// Barcode parsing and API lookup delegated to ProductApplicationService.
         /// </summary>
-        public async void SearchProduct(string upc)
+        public async Task SearchProduct(string upc)
         {
             try { await SearchProductAsync(upc); }
             catch (Exception ex)
@@ -962,6 +963,140 @@ namespace OmadaPOS.Views
             {
                 MessageBox.Show($"Error adding weighted product: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // ── Age verification integration ───────────────────────────────────────
+
+        /// <summary>
+        /// Creates the age-verification status badge and attaches it to the bottom
+        /// of the cart totals control so it appears directly beneath the subtotal/tax/total card.
+        /// </summary>
+        private void SetupAgeVerificationBadge()
+        {
+            _labelAgeVerificationStatus = new Label
+            {
+                Dock      = DockStyle.Bottom,
+                Height    = 36,
+                Font      = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(55, 65, 81),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible   = false,
+                Padding   = new Padding(4, 0, 4, 0),
+            };
+
+            _cartTotalsControl?.Controls.Add(_labelAgeVerificationStatus);
+        }
+
+        /// <summary>
+        /// Updates the badge text and color based on the current verification state.
+        /// Hides the badge when no restricted items are in the cart.
+        /// </summary>
+        private void UpdateAgeVerificationBadge()
+        {
+            if (_currentAgeVerification == null
+                || !_ageVerificationService.RequiresVerification(_shoppingCart.Items))
+            {
+                _labelAgeVerificationStatus.Visible = false;
+                return;
+            }
+
+            _labelAgeVerificationStatus.Visible = true;
+
+            switch (_currentAgeVerification.Status)
+            {
+                case AgeVerificationStatus.Approved:
+                    _labelAgeVerificationStatus.BackColor = Color.FromArgb(16, 120, 70);
+                    _labelAgeVerificationStatus.Text      = "✅  Age Verified";
+                    break;
+                case AgeVerificationStatus.Denied:
+                    _labelAgeVerificationStatus.BackColor = Color.FromArgb(185, 28, 28);
+                    _labelAgeVerificationStatus.Text      = "❌  Sale Denied";
+                    break;
+                default:
+                    _labelAgeVerificationStatus.BackColor = Color.FromArgb(180, 83, 9);
+                    _labelAgeVerificationStatus.Text      = "⚠️  Pending Age Verification";
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Called on every cart change. Clears verification if no restricted items remain.
+        /// </summary>
+        private void CheckAgeVerificationValidity()
+        {
+            if (_currentAgeVerification != null
+                && !_ageVerificationService.RequiresVerification(_shoppingCart.Items))
+            {
+                _currentAgeVerification = null;
+            }
+
+            UpdateAgeVerificationBadge();
+        }
+
+        /// <summary>
+        /// Returns true when the cart may proceed to payment.
+        /// Shows <see cref="frmAgeVerification"/> when verification is needed.
+        /// Temporarily removes the home form's scanner subscription so the ID barcode
+        /// is routed to the verification form rather than to product lookup.
+        /// </summary>
+        private async Task<bool> EnsureAgeVerificationAsync()
+        {
+            if (!_ageVerificationService.RequiresVerification(_shoppingCart.Items))
+                return true;
+
+            if (_currentAgeVerification?.Status == AgeVerificationStatus.Approved)
+                return true;
+
+            // Hand the scanner to frmAgeVerification for the duration of the dialog
+            if (_zebraScannerService != null)
+                _zebraScannerService.OnBarcodeDataReceived -= _zebraScannerService_OnBarcodeDataReceived;
+
+            try
+            {
+                using var dlg = new frmAgeVerification(_ageVerificationService, _zebraScannerService);
+                var dr = dlg.ShowDialog(this);
+
+                if (dr != DialogResult.OK)
+                    return false;
+
+                _currentAgeVerification = dlg.VerificationResult;
+
+                if (_currentAgeVerification?.Status == AgeVerificationStatus.Denied)
+                {
+                    MessageBox.Show(
+                        $"Sale denied. {_currentAgeVerification.DenialReason}",
+                        "Age Verification — Sale Denied",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    UpdateAgeVerificationBadge();
+                    return false;
+                }
+
+                // Persist audit record (fire-and-log, never throws)
+                if (_currentAgeVerification != null)
+                {
+                    await _ageVerificationService.SaveAuditAsync(new AgeVerificationAuditRecord
+                    {
+                        SessionId          = _shoppingCart.MachineGuid,
+                        CashierName        = SessionManager.UserName ?? string.Empty,
+                        VerifiedAt         = DateTime.Now,
+                        VerificationMethod = _currentAgeVerification.Method.ToString(),
+                        VerificationResult = _currentAgeVerification.Status.ToString(),
+                        CustomerIs21OrOver = _currentAgeVerification.Status == AgeVerificationStatus.Approved,
+                        IdType             = _currentAgeVerification.IdType,
+                        IdLast4OrToken     = _currentAgeVerification.IdLast4OrToken,
+                        DenialReason       = _currentAgeVerification.DenialReason,
+                    });
+                }
+
+                UpdateAgeVerificationBadge();
+                return _currentAgeVerification?.Status == AgeVerificationStatus.Approved;
+            }
+            finally
+            {
+                if (_zebraScannerService != null)
+                    _zebraScannerService.OnBarcodeDataReceived += _zebraScannerService_OnBarcodeDataReceived;
             }
         }
 

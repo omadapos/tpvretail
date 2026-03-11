@@ -1,8 +1,8 @@
-﻿namespace OmadaPOS.Libreria.Services;
+namespace OmadaPOS.Libreria.Services;
 
 public static class SharedData
 {
-    private static string? weightUnit;
+    private static volatile string? weightUnit;
     public static event Action<string>? WeightUnitChanged;
 
     public static string? WeightUnit

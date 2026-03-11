@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 
@@ -23,7 +23,7 @@ public class PaymentSplitService(
     {
         try
         {
-            var payments = await sqliteManager.GetPaymentsAsync(_sessionId);
+            var payments = await sqliteManager.GetPaymentsAsync(_sessionId).ConfigureAwait(false);
             logger.LogDebug("Retrieved {Count} payments for session {SessionId}", payments.Count, _sessionId);
             return payments;
         }
@@ -39,7 +39,7 @@ public class PaymentSplitService(
         try
         {
           
-            await sqliteManager.SavePaymentAsync(_sessionId, amount, paymentType);
+            await sqliteManager.SavePaymentAsync(_sessionId, amount, paymentType).ConfigureAwait(false);
 
             logger.LogInformation("Payment created: SessionId={SessionId}, Amount={Amount}, Type={PaymentType}",
                 _sessionId, amount, paymentType);

@@ -70,10 +70,10 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
     {
         if (_cachedConfig != null) return _cachedConfig;
 
-        await _configLock.WaitAsync();
+        await _configLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            _cachedConfig ??= await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
+            _cachedConfig ??= await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid()).ConfigureAwait(false);
             return _cachedConfig;
         }
         finally
@@ -96,7 +96,7 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
             };
         }
 
-        var config = await GetConfigAsync();
+        var config = await GetConfigAsync().ConfigureAwait(false);
         string terminal = config?.Terminal ?? string.Empty;
 
         var placeOrderModel = _orderApplicationService.BuildOrderModel(
@@ -123,7 +123,7 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
         if (_shoppingCart.ItemCount <= 0)
             return null;
 
-        var config = await GetConfigAsync();
+        var config = await GetConfigAsync().ConfigureAwait(false);
         string terminal = config?.Terminal ?? string.Empty;
 
         var placeOrderModel = _orderApplicationService.BuildOrderModel(
@@ -137,18 +137,18 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
 
         return placeOrderModel == null
             ? null
-            : await _orderService.PlaceOrder(placeOrderModel);
+            : await _orderService.PlaceOrder(placeOrderModel).ConfigureAwait(false);
     }
 
     public async Task<PaymentFlowResult> ProcessTerminalPaymentAsync(PaymentType paymentType, decimal totalGlobal, bool applyDiscount)
     {
-        var config = await GetConfigAsync();
+        var config = await GetConfigAsync().ConfigureAwait(false);
 
         string terminal = config?.Terminal ?? string.Empty;
         int port = config?.Port ?? 0;
         string ip = config?.IP ?? string.Empty;
 
-        var consecutivo = await _orderService.LoadLastConsecutivoPayment();
+        var consecutivo = await _orderService.LoadLastConsecutivoPayment().ConfigureAwait(false);
 
         if (paymentType == PaymentType.EBTBalance)
         {
@@ -213,7 +213,7 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
 
     public async Task<PaymentResponseModel> ProcessPaymentAsync(string paymentType, decimal amount)
     {
-        var config = await GetConfigAsync();
+        var config = await GetConfigAsync().ConfigureAwait(false);
         if (config == null)
             throw new InvalidOperationException("Payment terminal configuration not found");
 
@@ -237,11 +237,11 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
 
     public async Task<OrderResponse?> ProcessMultiplePaymentsAsync(decimal changeValue, bool applyDiscount)
     {
-        var config = await GetConfigAsync();
+        var config = await GetConfigAsync().ConfigureAwait(false);
         string terminal = config?.Terminal ?? string.Empty;
 
         List<PlaceOrderPayment> payments = [];
-        var pays = await _paymentSplitService.GetSessionPaymentsAsync();
+        var pays = await _paymentSplitService.GetSessionPaymentsAsync().ConfigureAwait(false);
 
         foreach (var pay in pays)
         {
@@ -266,12 +266,12 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
 
         return placeOrderModel == null
             ? null
-            : await _orderService.PlaceOrderMultiple(placeOrderModel);
+            : await _orderService.PlaceOrderMultiple(placeOrderModel).ConfigureAwait(false);
     }
 
     public async Task<OrderResponse?> PlaceOrderAsync(string paymentMethod, decimal changeAmount, bool applyDiscount)
     {
-        var config = await GetConfigAsync();
+        var config = await GetConfigAsync().ConfigureAwait(false);
         var terminal = config?.Terminal ?? string.Empty;
 
         var orderModel = _orderApplicationService.BuildOrderModel(
@@ -285,6 +285,6 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
         if (orderModel == null)
             throw new InvalidOperationException("Failed to create order model");
 
-        return await _orderService.PlaceOrder(orderModel);
+        return await _orderService.PlaceOrder(orderModel).ConfigureAwait(false);
     }
 }

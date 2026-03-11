@@ -38,18 +38,21 @@ public interface IBarcodeSaleService
 
 public class BarcodeSaleService : IBarcodeSaleService
 {
-    private readonly IProductApplicationService _productApplicationService;
-    private readonly IShoppingCart _shoppingCart;
-    private readonly ICategoryService _categoryService;
+    private readonly IProductApplicationService  _productApplicationService;
+    private readonly IShoppingCart               _shoppingCart;
+    private readonly ICategoryService            _categoryService;
+    private readonly IAgeRestrictionConfigService _ageConfig;
 
     public BarcodeSaleService(
-        IProductApplicationService productApplicationService,
-        IShoppingCart shoppingCart,
-        ICategoryService categoryService)
+        IProductApplicationService   productApplicationService,
+        IShoppingCart                shoppingCart,
+        ICategoryService             categoryService,
+        IAgeRestrictionConfigService ageConfig)
     {
         _productApplicationService = productApplicationService ?? throw new ArgumentNullException(nameof(productApplicationService));
-        _shoppingCart = shoppingCart ?? throw new ArgumentNullException(nameof(shoppingCart));
-        _categoryService = categoryService ?? throw new ArgumentNullException(nameof(categoryService));
+        _shoppingCart              = shoppingCart              ?? throw new ArgumentNullException(nameof(shoppingCart));
+        _categoryService           = categoryService           ?? throw new ArgumentNullException(nameof(categoryService));
+        _ageConfig                 = ageConfig                 ?? throw new ArgumentNullException(nameof(ageConfig));
     }
 
     public async Task<BarcodeSaleProcessResult> ProcessBarcodeAsync(string upc)
@@ -57,7 +60,7 @@ public class BarcodeSaleService : IBarcodeSaleService
         if (string.IsNullOrEmpty(upc))
             return new BarcodeSaleProcessResult();
 
-        var result = await _productApplicationService.SearchByBarcodeAsync(upc);
+        var result = await _productApplicationService.SearchByBarcodeAsync(upc).ConfigureAwait(false);
 
         if (result.IsFound && result.CartItem != null)
         {
@@ -78,7 +81,7 @@ public class BarcodeSaleService : IBarcodeSaleService
 
     public async Task<bool> AddCustomProductAsync(bool bTax, decimal price)
     {
-        var cartItem = await _productApplicationService.CreateCustomProductAsync(bTax, price);
+        var cartItem = await _productApplicationService.CreateCustomProductAsync(bTax, price).ConfigureAwait(false);
         if (cartItem == null)
             return false;
 
@@ -107,17 +110,19 @@ public class BarcodeSaleService : IBarcodeSaleService
 
         _shoppingCart.AddItem(new CartItem
         {
-            ProductId      = product.Id ?? 0,
-            ProductName    = product.Name ?? string.Empty,
-            UnitPrice      = product.Price ?? 0.0m,
-            Quantity       = 1,
-            Tax            = product.Tax ?? 0.0,
-            IsEBT          = product.Ebt,
-            UPC            = product.UPC,
-            Image          = product.Image.ConvertUrlString(),
-            PromotionName  = product.PromotionName,
-            PromotionValue = product.PromotionValue,
-            PromotionLimit = product.PromotionLimit,
+            ProductId               = product.Id ?? 0,
+            ProductName             = product.Name ?? string.Empty,
+            UnitPrice               = product.Price ?? 0.0m,
+            Quantity                = 1,
+            Tax                     = product.Tax ?? 0.0,
+            IsEBT                   = product.Ebt,
+            UPC                     = product.UPC,
+            Image                   = product.Image.ConvertUrlString(),
+            PromotionName           = product.PromotionName,
+            PromotionValue          = product.PromotionValue,
+            PromotionLimit          = product.PromotionLimit,
+            RequiresAgeVerification = product.RequiresAgeVerification
+                                      || _ageConfig.IsRestricted(product.UPC, product.CategoryId),
         });
 
         return new ProductSelectionResult
@@ -129,24 +134,26 @@ public class BarcodeSaleService : IBarcodeSaleService
 
     public async Task<WeightedProductAddResult> AddWeightedProductAsync(int productId, double weight)
     {
-        var product = await _categoryService.LoadProductById(productId);
+        var product = await _categoryService.LoadProductById(productId).ConfigureAwait(false);
         if (product == null)
             return new WeightedProductAddResult();
 
         _shoppingCart.AddItem(new CartItem
         {
-            ProductId      = product.Id ?? 0,
-            ProductName    = product.Name ?? string.Empty,
-            UnitPrice      = product.Price ?? 0.0m,
-            Quantity       = 1,
-            Peso           = weight / 1000,
-            Tax            = product.Tax ?? 0.0,
-            IsEBT          = product.Ebt,
-            UPC            = product.UPC,
-            Image          = product.Image.ConvertUrlString(),
-            PromotionName  = product.PromotionName,
-            PromotionValue = product.PromotionValue,
-            PromotionLimit = product.PromotionLimit,
+            ProductId               = product.Id ?? 0,
+            ProductName             = product.Name ?? string.Empty,
+            UnitPrice               = product.Price ?? 0.0m,
+            Quantity                = 1,
+            Peso                    = weight / 1000,
+            Tax                     = product.Tax ?? 0.0,
+            IsEBT                   = product.Ebt,
+            UPC                     = product.UPC,
+            Image                   = product.Image.ConvertUrlString(),
+            PromotionName           = product.PromotionName,
+            PromotionValue          = product.PromotionValue,
+            PromotionLimit          = product.PromotionLimit,
+            RequiresAgeVerification = product.RequiresAgeVerification
+                                      || _ageConfig.IsRestricted(product.UPC, product.CategoryId),
         });
 
         return new WeightedProductAddResult
