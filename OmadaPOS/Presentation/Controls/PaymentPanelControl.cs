@@ -96,11 +96,11 @@ public sealed class PaymentPanelControl : UserControl
             Margin      = new Padding(0),
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,  46));  // Zone 1: NumPad
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));  // Zone 2: Tools strip
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,  14));  // Zone 3: Tender/Change
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,  16));  // Zone 4: Scale
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,  24));  // Zone 5: Buttons
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  44));  // Zone 1: NumPad
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));  // Zone 2: Quick Sale / Lookup — touch-friendly
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  13));  // Zone 3: Tender/Change
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  15));  // Zone 4: Scale / product
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  28));  // Zone 5: Payment buttons (2 rows)
 
         root.Controls.Add(BuildNumpad(),      0, 0);
         root.Controls.Add(BuildToolsStrip(),  0, 1);
@@ -139,8 +139,8 @@ public sealed class PaymentPanelControl : UserControl
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var btnQsale  = MakeButton("QUICK SALE",  ElegantButtonStyles.CashGreen, 13f, 0, 3);
-        var btnLookup = MakeButton("LOOKUP UPC",  ElegantButtonStyles.Keypad,    13f, 3, 0);
+        var btnQsale  = MakeButton("QUICK SALE",  ElegantButtonStyles.CashGreen, 14f, 0, 3);
+        var btnLookup = MakeButton("LOOKUP UPC",  ElegantButtonStyles.Keypad,    14f, 3, 0);
 
         btnQsale.Click  += (s, e) => QuickSaleClicked?.Invoke(s, e);
         btnLookup.Click += (s, e) => UPCLookupClicked?.Invoke(s, e);
@@ -194,20 +194,21 @@ public sealed class PaymentPanelControl : UserControl
     // ── Zone 4 — Scale display ────────────────────────────────────────────────
     private Control BuildScale()
     {
+        // Light background so product photos (usually on white) integrate naturally
         var outer = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 2,
             RowCount    = 1,
-            BackColor   = AppColors.NavyDark,
-            Padding     = AppSpacing.ScaleSection,
+            BackColor   = AppColors.SurfaceMuted,
+            Padding     = new Padding(8, 4, 4, 4),
             Margin      = new Padding(0, 2, 0, 2),
         };
-        outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65));
-        outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
+        outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62));
+        outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
         outer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        // Left: weight + product + status labels
+        // Left: weight + product + status labels — dark text on light bg
         var left = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
@@ -218,23 +219,23 @@ public sealed class PaymentPanelControl : UserControl
             Margin      = new Padding(0),
         };
         left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        left.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 35));
+        left.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 25));
 
         _lblWeight = new Label
         {
             Dock      = DockStyle.Fill,
             Font      = AppTypography.WeightDisplay,
-            ForeColor = AppColors.Warning,
+            ForeColor = Color.FromArgb(180, 100, 0),    // amber-dark readable on light
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft,
         };
         _lblProduct = new Label
         {
             Dock      = DockStyle.Fill,
-            Font      = AppTypography.Body,
-            ForeColor = AppColors.TextWhite,
+            Font      = AppTypography.BodySmall,
+            ForeColor = AppColors.TextPrimary,           // dark text on light bg
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft,
         };
@@ -242,7 +243,7 @@ public sealed class PaymentPanelControl : UserControl
         {
             Dock      = DockStyle.Fill,
             Font      = AppTypography.Caption,
-            ForeColor = AppColors.TextMuted,
+            ForeColor = AppColors.TextSecondary,         // readable muted on light
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft,
         };
@@ -251,13 +252,13 @@ public sealed class PaymentPanelControl : UserControl
         left.Controls.Add(_lblProduct,     0, 1);
         left.Controls.Add(_lblScaleStatus, 0, 2);
 
-        // Right: product image (tappable to add weighted item)
+        // Right: product image — white bg blends naturally with light panel
         _pbScale = new PictureBox
         {
-            Dock     = DockStyle.Fill,
-            BackColor = AppColors.NavyDark,
-            SizeMode = PictureBoxSizeMode.Zoom,
-            Cursor   = Cursors.Hand,
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.SurfaceCard,           // white — matches product photos
+            SizeMode  = PictureBoxSizeMode.Zoom,
+            Cursor    = Cursors.Hand,
         };
         _pbScale.Click += (s, e) => ScalePictureClicked?.Invoke(s, e);
 
@@ -285,10 +286,10 @@ public sealed class PaymentPanelControl : UserControl
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
         // Row 0 — primary payment methods
-        var btnCredit = PayBtn("CREDIT", AppColors.PaymentCredit,       22f);
-        var btnDebit  = PayBtn("DEBIT",  ElegantButtonStyles.DebitGray, 18f);
-        var btnSplit  = PayBtn("SPLIT",  AppColors.PaymentSplit,        18f);
-        var btnCash   = PayBtn("CASH",   AppColors.AccentGreen,         22f);
+        var btnCredit = PayBtn("CREDIT", AppColors.PaymentCredit,       16f);
+        var btnDebit  = PayBtn("DEBIT",  ElegantButtonStyles.DebitGray, 14f);
+        var btnSplit  = PayBtn("SPLIT",  AppColors.PaymentSplit,        14f);
+        var btnCash   = PayBtn("CASH",   AppColors.AccentGreen,         16f);
 
         btnCredit.Click += (s, e) => CreditPayClicked?.Invoke(s, e);
         btnDebit.Click  += (s, e) => DebitPayClicked?.Invoke(s, e);
@@ -301,10 +302,10 @@ public sealed class PaymentPanelControl : UserControl
         grid.Controls.Add(btnCash,   3, 0);
 
         // Row 1 — secondary methods
-        var btnEBTBal = PayBtn("EBT BAL",  AppColors.Warning,         16f);
-        var btnEBTFd  = PayBtn("EBT FOOD", AppColors.PaymentEBT,      16f);
-        var btnDrawer = PayBtn("DRAWER",   AppColors.NavyLight,       16f);
-        var btnGift   = PayBtn("GIFT",     AppColors.PaymentGiftCard, 16f);
+        var btnEBTBal = PayBtn("EBT BAL",  AppColors.Warning,         13f);
+        var btnEBTFd  = PayBtn("EBT FOOD", AppColors.PaymentEBT,      13f);
+        var btnDrawer = PayBtn("DRAWER",   AppColors.NavyLight,       13f);
+        var btnGift   = PayBtn("GIFT",     AppColors.PaymentGiftCard, 13f);
 
         btnEBTBal.Click += (s, e) => EBTBalanceClicked?.Invoke(s, e);
         btnEBTFd.Click  += (s, e) => EBTFoodClicked?.Invoke(s, e);

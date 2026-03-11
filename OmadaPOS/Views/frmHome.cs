@@ -115,16 +115,8 @@ namespace OmadaPOS.Views
             // ── Cart list ─────────────────────────────────────────────────────
             _cartListViewControl = CartListViewControl.Attach(tableLayoutPanelCart, listViewCart);
 
-            // ── Cart totals card — always created in code; Designer never initializes roundedPanel1 ─
-            roundedPanel1 = new Componentes.RoundedPanel { Dock = DockStyle.Fill };
-            tableLayoutPanelTotal.Dock = DockStyle.Fill;
-            roundedPanel1.Controls.Add(tableLayoutPanelTotal);
-            tableLayoutPanelCart.Controls.Add(roundedPanel1, 0, 1);
-
-            _cartTotalsControl = CartTotalsControl.Attach(
-                tableLayoutPanelCart, roundedPanel1,
-                label1, label2, label3,
-                labelSubTotal, labelTotalTax, labelTotalValue);
+            // ── Cart totals card — fully self-contained; inserts itself at row 1 ──
+            _cartTotalsControl = CartTotalsControl.Attach(tableLayoutPanelCart, column: 0, row: 1);
 
             // ── Payment panel — self-contained code-only replacement ──────────
             // PaymentPanelControl.Attach() finds tableLayoutPanelPayment in

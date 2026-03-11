@@ -180,7 +180,7 @@ public sealed class NumericPadControl : UserControl
     private Button Digit(string text, string tag)
     {
         var btn = new Button { Text = text, Tag = tag, Dock = DockStyle.Fill, Margin = new Padding(3) };
-        ElegantButtonStyles.Style(btn, ElegantButtonStyles.Keypad, fontSize: 30f);
+        ElegantButtonStyles.Style(btn, ElegantButtonStyles.Keypad, fontSize: 22f);
         btn.Click += OnClick;
         return btn;
     }
@@ -188,7 +188,7 @@ public sealed class NumericPadControl : UserControl
     private Button Action(string text, string tag, Color color)
     {
         var btn = new Button { Text = text, Tag = tag, Dock = DockStyle.Fill, Margin = new Padding(3) };
-        ElegantButtonStyles.Style(btn, color, fontSize: 26f);
+        ElegantButtonStyles.Style(btn, color, fontSize: 20f);
         btn.Click += OnClick;
         return btn;
     }

@@ -1,10 +1,11 @@
 using OmadaPOS.Presentation.Styling;
+using System.Drawing.Drawing2D;
 
 namespace OmadaPOS.Presentation.Controls;
 
 /// <summary>
 /// Slim, self-contained header bar.
-/// Zones: [Brand/Cashier | Scan input + Product name | ⚙ Config menu | ✕ Exit]
+/// Zones: [Brand/Cashier | Scan input + Product name | ☰ Menu | ✕ Exit]
 /// </summary>
 public sealed class POSHeaderControl : UserControl
 {
@@ -16,14 +17,19 @@ public sealed class POSHeaderControl : UserControl
     public event EventHandler? ExitRequested;
 
     // ── Internal state ─────────────────────────────────────────────────────────
-    private readonly Label   _lblCashier;
-    private readonly Label   _lblProductName;
+    private readonly Label _lblCashier;
+    private readonly Label _lblProductName;
+
+    // ── Header palette — dark chrome ───────────────────────────────────────────
+    private static readonly Color _headerBg    = Color.FromArgb(20, 30, 48);    // deep navy
+    private static readonly Color _headerBg2   = Color.FromArgb(26, 38, 57);    // slightly lighter band
+    private static readonly Color _btnMenuBg   = Color.FromArgb(40, 52, 72);    // slate — menu button bg
+    private static readonly Color _btnMenuHov  = Color.Transparent;             // no hover (touch)
+    private static readonly Color _btnExitBg   = Color.FromArgb(185, 28, 28);   // red — exit button bg
+    private static readonly Color _accentLine  = AppColors.AccentGreen;
+    private static readonly Color _iconColor   = Color.FromArgb(220, 230, 245); // near-white icon
 
     // ── Factory ────────────────────────────────────────────────────────────────
-    /// <summary>
-    /// Replaces <paramref name="oldHeaderLayout"/> (and the product-strip row below it)
-    /// with this control inside <paramref name="mainLayout"/>.
-    /// </summary>
     public static POSHeaderControl Attach(
         TableLayoutPanel mainLayout,
         TableLayoutPanel oldHeaderLayout,
@@ -34,14 +40,9 @@ public sealed class POSHeaderControl : UserControl
         ArgumentNullException.ThrowIfNull(textBoxUPC);
 
         mainLayout.SuspendLayout();
-
-        // Remove and dispose the placeholder header layout (and its children).
-        // The Designer already places tableLayoutPanelMain at row 1 with the
-        // correct 2-row structure, so no further row surgery is needed.
         mainLayout.Controls.Remove(oldHeaderLayout);
         oldHeaderLayout.Dispose();
 
-        // Insert the new self-contained header at row 0.
         var header = new POSHeaderControl(textBoxUPC);
         mainLayout.Controls.Add(header, 0, 0);
 
@@ -55,13 +56,13 @@ public sealed class POSHeaderControl : UserControl
         Dock      = DockStyle.Fill;
         Margin    = Padding.Empty;
         Padding   = Padding.Empty;
-        BackColor = AppColors.BackgroundSecondary;
+        BackColor = _headerBg;
 
-        // Bottom accent separator
+        // Emerald accent line at the very bottom
         Paint += (_, e) =>
         {
-            using var pen = new Pen(AppColors.SeparatorOnDark, 1f);
-            e.Graphics.DrawLine(pen, 0, Height - 1, Width, Height - 1);
+            using var pen = new Pen(_accentLine, 2f);
+            e.Graphics.DrawLine(pen, 0, Height - 2, Width, Height - 2);
         };
 
         // ── Root layout: 4 columns ─────────────────────────────────────────────
@@ -71,31 +72,37 @@ public sealed class POSHeaderControl : UserControl
             ColumnCount = 4,
             RowCount    = 1,
             Margin      = Padding.Empty,
-            Padding     = new Padding(0, 0, 4, 0),
+            Padding     = Padding.Empty,
             BackColor   = Color.Transparent,
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180F)); // Brand/Cashier
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 190F)); // Brand/Cashier
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,  100F)); // Scan + Product
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));  // ⚙ Config
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54F));  // ✕ Exit
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));  // ☰ Menu
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 56F));  // ✕ Exit
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        // ── Zone 1: Brand + cashier name ──────────────────────────────────────
+        // ── Zone 1: Brand + cashier ────────────────────────────────────────────
         var zone1 = new Panel
         {
             Dock      = DockStyle.Fill,
             BackColor = Color.Transparent,
-            Padding   = new Padding(14, 6, 8, 6),
+            Padding   = new Padding(16, 6, 8, 6),
+        };
+        // Right-side divider line
+        zone1.Paint += (_, e) =>
+        {
+            using var p = new Pen(Color.FromArgb(30, 255, 255, 255), 1f);
+            e.Graphics.DrawLine(p, zone1.Width - 1, 8, zone1.Width - 1, zone1.Height - 8);
         };
 
         var lblBrand = new Label
         {
-            Text      = "● OMADA POS",
-            Font      = new Font("Segoe UI", 12F, FontStyle.Bold),
-            ForeColor = AppColors.TextPrimary,
+            Text      = "OMADA POS",
+            Font      = new Font("Segoe UI", 11F, FontStyle.Bold),
+            ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Top,
-            Height    = 34,
+            Height    = 30,
             TextAlign = ContentAlignment.BottomLeft,
         };
 
@@ -103,53 +110,52 @@ public sealed class POSHeaderControl : UserControl
         {
             Text      = "—",
             Font      = new Font("Segoe UI", 9F),
-            ForeColor = AppColors.TextSecondary,
+            ForeColor = AppColors.TextOnDarkSecondary,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.TopLeft,
         };
 
-        // Dock.Top stacking: add Fill first, then Top so lblBrand renders on top
         zone1.Controls.Add(_lblCashier);
         zone1.Controls.Add(lblBrand);
         layout.Controls.Add(zone1, 0, 0);
 
-        // ── Zone 2: Scan input (top row) + product name (bottom row) ──────────
+        // ── Zone 2: Scan input + product name ─────────────────────────────────
         var zone2 = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             RowCount    = 2,
             ColumnCount = 1,
             Margin      = Padding.Empty,
-            Padding     = new Padding(0, 8, 8, 8),
+            Padding     = new Padding(0, 8, 12, 8),
             BackColor   = Color.Transparent,
         };
-        zone2.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+        zone2.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
         zone2.RowStyles.Add(new RowStyle(SizeType.Percent,  100F));
         zone2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-        // Styled scan input wrapper
+        // Scan input wrapper — slightly lighter navy background
         var scanWrapper = new Panel
         {
             Dock      = DockStyle.Fill,
-            BackColor = AppColors.BackgroundPrimary,
+            BackColor = _headerBg2,
             Margin    = Padding.Empty,
-            Padding   = new Padding(8, 0, 0, 0),
+            Padding   = new Padding(10, 0, 0, 0),
         };
         scanWrapper.Paint += (_, e) =>
         {
             var r = new Rectangle(0, 0, scanWrapper.Width - 1, scanWrapper.Height - 1);
-            using var pen = new Pen(AppColors.SeparatorOnDark, 1f);
+            using var pen = new Pen(Color.FromArgb(50, 255, 255, 255), 1f);
             e.Graphics.DrawRectangle(pen, r);
         };
 
         textBoxUPC.Parent?.Controls.Remove(textBoxUPC);
         textBoxUPC.Dock          = DockStyle.Fill;
-        textBoxUPC.BackColor     = AppColors.BackgroundPrimary; // Transparent not allowed on native TextBox
+        textBoxUPC.BackColor     = _headerBg2;
         textBoxUPC.BorderStyle   = BorderStyle.None;
         textBoxUPC.Font          = new Font("Segoe UI", 12F);
-        textBoxUPC.ForeColor     = AppColors.TextPrimary;
-        textBoxUPC.PlaceholderText = "Scan UPC...";
+        textBoxUPC.ForeColor     = AppColors.TextWhite;
+        textBoxUPC.PlaceholderText = "Scan UPC…";
         textBoxUPC.TextAlign     = HorizontalAlignment.Left;
         scanWrapper.Controls.Add(textBoxUPC);
         zone2.Controls.Add(scanWrapper, 0, 0);
@@ -157,8 +163,8 @@ public sealed class POSHeaderControl : UserControl
         _lblProductName = new Label
         {
             Text      = "Ready to scan…",
-            Font      = new Font("Segoe UI", 10F, FontStyle.Italic),
-            ForeColor = AppColors.TextSecondary,
+            Font      = new Font("Segoe UI", 9F, FontStyle.Italic),
+            ForeColor = AppColors.TextOnDarkMuted,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleLeft,
@@ -167,66 +173,149 @@ public sealed class POSHeaderControl : UserControl
         zone2.Controls.Add(_lblProductName, 0, 1);
         layout.Controls.Add(zone2, 1, 0);
 
-        // ── Zone 3: Config (dropdown menu) ────────────────────────────────────
-        var btnConfig = MakeHeaderButton("⚙", AppColors.SlateBlue);
-        btnConfig.Click += BtnConfig_Click;
-        layout.Controls.Add(btnConfig, 2, 0);
+        // ── Zone 3: Menu button (☰) ────────────────────────────────────────────
+        var btnMenu = MakeIconPanel(_btnMenuBg, DrawHamburger);
+        btnMenu.Click += BtnConfig_Click;
+        new ToolTip().SetToolTip(btnMenu, "Menú");
+        layout.Controls.Add(btnMenu, 2, 0);
 
-        // ── Zone 4: Exit (closes entire application) ───────────────────────────
-        var btnExit = MakeHeaderButton("✕", AppColors.Danger);
+        // ── Zone 4: Exit button (✕) ────────────────────────────────────────────
+        var btnExit = MakeIconPanel(_btnExitBg, DrawClose);
         btnExit.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
+        new ToolTip().SetToolTip(btnExit, "Salir del sistema");
         layout.Controls.Add(btnExit, 3, 0);
 
         Controls.Add(layout);
     }
 
     // ── Config dropdown ────────────────────────────────────────────────────────
-    private void BtnConfig_Click(object sender, EventArgs e)
+    private void BtnConfig_Click(object? sender, EventArgs e)
     {
         var menu = new ContextMenuStrip();
         StyleContextMenu(menu);
-        menu.Items.Add("⚙  Configuración",    null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
-        menu.Items.Add("🖨  Reimprimir factura", null, (_, _) => InvoiceRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Configuración",     null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Reimprimir factura", null, (_, _) => InvoiceRequested?.Invoke(this, EventArgs.Empty));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("📅  Cierre diario",    null, (_, _) => DailyCloseRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Cierre diario",     null, (_, _) => DailyCloseRequested?.Invoke(this, EventArgs.Empty));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("🚪  Cerrar sesión",    null, (_, _) => LogoutRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Cerrar sesión",     null, (_, _) => LogoutRequested?.Invoke(this, EventArgs.Empty));
 
-        var btn = (Control)sender;
-        menu.Show(btn, new Point(0, btn.Height));
+        var ctrl = (Control)(sender ?? this);
+        menu.Show(ctrl, new Point(0, ctrl.Height));
     }
 
     private static void StyleContextMenu(ContextMenuStrip menu)
     {
         menu.Font            = new Font("Segoe UI", 11F);
-        menu.BackColor       = AppColors.BackgroundPrimary;
-        menu.ForeColor       = AppColors.TextPrimary;
+        menu.BackColor       = Color.FromArgb(30, 41, 59);
+        menu.ForeColor       = AppColors.TextWhite;
         menu.ShowImageMargin = false;
         menu.RenderMode      = ToolStripRenderMode.System;
+        menu.Padding         = new Padding(0, 4, 0, 4);
     }
 
     // ── Public API ─────────────────────────────────────────────────────────────
     public void UpdateCashier(string name)
-        => _lblCashier.Text = string.IsNullOrWhiteSpace(name) ? "—" : $"👤 {name}";
+        => _lblCashier.Text = string.IsNullOrWhiteSpace(name) ? "—" : name;
 
     public void UpdateProductName(string name)
         => _lblProductName.Text = string.IsNullOrWhiteSpace(name) ? "Ready to scan…" : name;
 
-    /// <summary>No-op kept for call-site compatibility during migration.</summary>
     public void SetInvoiceDisplay(int orderId) { }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
-    private static Button MakeHeaderButton(string text, Color backColor) =>
-        new()
+    // ── Icon panel factory ─────────────────────────────────────────────────────
+    // Using Panel instead of Button: fully owner-drawn, no system chrome.
+    private static Panel MakeIconPanel(Color bg, Action<Graphics, Rectangle> drawIcon)
+    {
+        var p = new Panel
         {
-            Text      = text,
             Dock      = DockStyle.Fill,
-            Margin    = new Padding(2, 10, 2, 10),
-            Font      = new Font("Segoe UI", 17F),
-            ForeColor = AppColors.TextWhite,
-            BackColor = backColor,
-            FlatStyle = FlatStyle.Flat,
+            BackColor = bg,
+            Margin    = new Padding(1, 10, 4, 10),
             Cursor    = Cursors.Hand,
-            FlatAppearance = { BorderSize = 0 },
         };
+
+        p.Paint += (_, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode     = SmoothingMode.AntiAlias;
+            g.CompositingQuality = CompositingQuality.HighQuality;
+
+            var r = new Rectangle(0, 0, p.Width - 1, p.Height - 1);
+
+            // Rounded background
+            using var path = RoundedRect(r, 8);
+            using var bgBr = new SolidBrush(bg);
+            g.FillPath(bgBr, path);
+
+            // Subtle inner highlight at top edge
+            using var gloss = new Pen(Color.FromArgb(20, 255, 255, 255), 1f);
+            g.DrawLine(gloss, r.Left + 8, r.Top + 1, r.Right - 8, r.Top + 1);
+
+            // Icon
+            drawIcon(g, new Rectangle(0, 0, p.Width, p.Height));
+        };
+
+        // Pressed feedback — momentary darken on MouseDown
+        p.MouseDown += (_, _) =>
+        {
+            p.BackColor = DarkenColor(bg, 0.15f);
+            p.Invalidate();
+        };
+        p.MouseUp += (_, _) =>
+        {
+            p.BackColor = bg;
+            p.Invalidate();
+        };
+
+        return p;
+    }
+
+    // ── Icon painters ──────────────────────────────────────────────────────────
+    private static void DrawHamburger(Graphics g, Rectangle bounds)
+    {
+        int cx = bounds.Width  / 2;
+        int cy = bounds.Height / 2;
+        int w  = 18;     // line width
+        int gap = 5;     // gap between lines
+
+        using var pen = new Pen(_iconColor, 2.2f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+
+        // Three horizontal lines centered
+        g.DrawLine(pen, cx - w / 2, cy - gap,     cx + w / 2, cy - gap);
+        g.DrawLine(pen, cx - w / 2, cy,            cx + w / 2, cy);
+        g.DrawLine(pen, cx - w / 2, cy + gap,     cx + w / 2, cy + gap);
+    }
+
+    private static void DrawClose(Graphics g, Rectangle bounds)
+    {
+        int cx = bounds.Width  / 2;
+        int cy = bounds.Height / 2;
+        int r  = 9;   // half-size of the × arms
+
+        using var pen = new Pen(Color.White, 2.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+
+        // × — two diagonal lines
+        g.DrawLine(pen, cx - r, cy - r, cx + r, cy + r);
+        g.DrawLine(pen, cx + r, cy - r, cx - r, cy + r);
+    }
+
+    // ── GDI+ helpers ──────────────────────────────────────────────────────────
+    private static GraphicsPath RoundedRect(Rectangle r, int radius)
+    {
+        int d    = radius * 2;
+        var path = new GraphicsPath();
+        path.AddArc(r.X,         r.Y,          d, d, 180, 90);
+        path.AddArc(r.Right - d, r.Y,          d, d, 270, 90);
+        path.AddArc(r.Right - d, r.Bottom - d, d, d,   0, 90);
+        path.AddArc(r.X,         r.Bottom - d, d, d,  90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    private static Color DarkenColor(Color c, float factor)
+        => Color.FromArgb(c.A,
+            Math.Max(0, (int)(c.R * (1 - factor))),
+            Math.Max(0, (int)(c.G * (1 - factor))),
+            Math.Max(0, (int)(c.B * (1 - factor))));
 }

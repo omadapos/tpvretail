@@ -578,28 +578,42 @@ public sealed class frmSplit : Form
             _       => PaymentType.Credit,
         };
 
+        // Fast pre-flight calls (config + consecutivo) — no overlay needed yet
         var config      = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
         var consecutivo = await _orderService.LoadLastConsecutivoPayment();
 
-        var response = await _paymentService.ProcessPaymentAsync(pType, new PaymentRequest
+        // Show overlay for the PAX terminal call (can take up to 180 s)
+        var waiting = new frmPaymentWaiting(amount, pType);
+        waiting.Show(this);
+        try
         {
-            Amount       = amount * 100,
-            EcrRefNumber = consecutivo.ToString(),
-            Ip           = config?.IP       ?? string.Empty,
-            Port         = config?.Port     ?? 0,
-            Terminal     = config?.Terminal ?? string.Empty,
-        });
+            var response = await _paymentService.ProcessPaymentAsync(pType, new PaymentRequest
+            {
+                Amount       = amount * 100,
+                EcrRefNumber = consecutivo.ToString(),
+                Ip           = config?.IP       ?? string.Empty,
+                Port         = config?.Port     ?? 0,
+                Terminal     = config?.Terminal ?? string.Empty,
+            });
 
-        if (response == null || !response.Success)
-        {
-            MessageBox.Show(
-                $"Payment declined: {response?.MsgInfo ?? "No response from terminal."}",
-                "Declined", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return false;
+            waiting.Dispose();
+
+            if (response == null || !response.Success)
+            {
+                MessageBox.Show(
+                    $"Payment declined: {response?.MsgInfo ?? "No response from terminal."}",
+                    "Declined", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            await _paymentSplitService.CreatePaymentAsync(paymentType, amount);
+            return true;
         }
-
-        await _paymentSplitService.CreatePaymentAsync(paymentType, amount);
-        return true;
+        catch
+        {
+            waiting.Dispose();
+            throw;   // bubble up to PaymentButton_Click catch block
+        }
     }
 
     private async void BtnComplete_Click(object? sender, EventArgs e)
@@ -654,7 +668,14 @@ public sealed class frmSplit : Form
         }
     }
 
-    // ── ListView helpers ──────────────────────────────────────────────────────
+    // ── ListView colors — mirrors CartListViewControl exactly ─────────────────
+    private static readonly Color _lvRowEven     = Color.FromArgb(255, 255, 255);   // white
+    private static readonly Color _lvRowOdd      = Color.FromArgb(248, 250, 252);   // near-white
+    private static readonly Color _lvRowSelected = Color.FromArgb(16,  185, 129);   // emerald
+    private static readonly Color _lvHeaderBg    = Color.FromArgb(30,  41,  59);    // deep navy
+    private static readonly Color _lvRowBorder   = Color.FromArgb(20,   0,   0, 0); // 8% black
+
+    // ── ListView factory ──────────────────────────────────────────────────────
     private static ListView MakeListView() => new()
     {
         Dock              = DockStyle.Fill,
@@ -662,10 +683,11 @@ public sealed class frmSplit : Form
         FullRowSelect     = true,
         GridLines         = false,
         MultiSelect       = false,
-        BackColor         = AppColors.SurfaceCard,
+        HideSelection     = false,
+        BackColor         = _lvRowEven,
         ForeColor         = AppColors.TextPrimary,
-        Font              = AppTypography.Body,
-        BorderStyle       = BorderStyle.FixedSingle,
+        Font              = AppTypography.ListItem,
+        BorderStyle       = BorderStyle.None,
         HeaderStyle       = ColumnHeaderStyle.Nonclickable,
         OwnerDraw         = true,
         UseCompatibleStateImageBehavior = false,
@@ -673,53 +695,93 @@ public sealed class frmSplit : Form
 
     private static void AttachOwnerDraw(ListView lv)
     {
+        // ── Column headers ────────────────────────────────────────────────────
         lv.DrawColumnHeader += (_, e) =>
         {
-            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            using var bg = new SolidBrush(AppColors.NavyDark);
-            e.Graphics.FillRectangle(bg, e.Bounds);
+            var g = e.Graphics;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
+            using var bg = new SolidBrush(_lvHeaderBg);
+            g.FillRectangle(bg, e.Bounds);
+
+            // Emerald accent line at bottom
+            using var accent = new Pen(AppColors.AccentGreen, 3f);
+            g.DrawLine(accent, e.Bounds.Left, e.Bounds.Bottom - 3,
+                                e.Bounds.Right, e.Bounds.Bottom - 3);
+
+            // Vertical separator between columns
+            if (e.ColumnIndex > 0)
+            {
+                using var sep = new Pen(Color.FromArgb(40, 255, 255, 255), 1f);
+                g.DrawLine(sep, e.Bounds.Left, e.Bounds.Top + 6,
+                                e.Bounds.Left, e.Bounds.Bottom - 6);
+            }
+
             using var tb = new SolidBrush(AppColors.TextWhite);
             using var sf = new StringFormat
             {
                 Alignment     = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center,
+                Trimming      = StringTrimming.EllipsisCharacter,
             };
-            e.Graphics.DrawString(e.Header.Text, AppTypography.RowLabel, tb, e.Bounds, sf);
+            g.DrawString(e.Header.Text, AppTypography.ColumnHeader, tb, e.Bounds, sf);
         };
 
+        // ── Row fill — sets the base bg; sub-items must also fill ─────────────
         lv.DrawItem += (_, e) =>
         {
-            bool isAlt = e.ItemIndex % 2 == 1;
-            bool isSel = (e.State & ListViewItemStates.Selected) == ListViewItemStates.Selected;
-            var  bg    = isSel ? AppColors.NavyBase
-                       : isAlt ? AppColors.SurfaceMuted
-                       : AppColors.SurfaceCard;
+            bool  isSel = (e.State & ListViewItemStates.Selected) == ListViewItemStates.Selected;
+            Color bg    = isSel            ? _lvRowSelected
+                        : e.ItemIndex % 2 == 0 ? _lvRowEven
+                        :                    _lvRowOdd;
             using var br = new SolidBrush(bg);
             e.Graphics.FillRectangle(br, e.Bounds);
         };
 
+        // ── Cell — fill bg FIRST to prevent Windows default-blue bleed ────────
         lv.DrawSubItem += (_, e) =>
         {
-            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            bool isSel = (e.ItemState & ListViewItemStates.Selected) == ListViewItemStates.Selected;
+            var g = e.Graphics;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            // Respect column alignment (Right for numbers)
-            var colAlign  = e.ColumnIndex < lv.Columns.Count
-                            ? lv.Columns[e.ColumnIndex].TextAlign
-                            : HorizontalAlignment.Left;
-            var strAlign  = colAlign == HorizontalAlignment.Right  ? StringAlignment.Far
-                          : colAlign == HorizontalAlignment.Center ? StringAlignment.Center
-                          : StringAlignment.Near;
+            bool  isSel = (e.ItemState & ListViewItemStates.Selected) == ListViewItemStates.Selected;
+            Color bg    = isSel                  ? _lvRowSelected
+                        : e.Item.Index % 2 == 0  ? _lvRowEven
+                        :                          _lvRowOdd;
 
-            using var tb = new SolidBrush(isSel ? AppColors.TextWhite : AppColors.TextPrimary);
+            // 1. Fill cell background
+            using var bgBr = new SolidBrush(bg);
+            g.FillRectangle(bgBr, e.Bounds);
+
+            // 2. Hairline row divider
+            using var div = new Pen(_lvRowBorder, 1f);
+            g.DrawLine(div, e.Bounds.Left, e.Bounds.Bottom - 1,
+                            e.Bounds.Right, e.Bounds.Bottom - 1);
+
+            // 3. Text — respect column alignment; price/total cols use Consolas
+            var colAlign = e.ColumnIndex < lv.Columns.Count
+                           ? lv.Columns[e.ColumnIndex].TextAlign
+                           : HorizontalAlignment.Left;
+            var strAlign = colAlign == HorizontalAlignment.Right  ? StringAlignment.Far
+                         : colAlign == HorizontalAlignment.Center ? StringAlignment.Center
+                         : StringAlignment.Near;
+
+            // Detect numeric columns by alignment (Right = price/amount/total)
+            Font font = colAlign == HorizontalAlignment.Right
+                        ? AppTypography.ListItemNumber
+                        : AppTypography.ListItem;
+
+            Color fg = isSel ? Color.White : AppColors.TextPrimary;
+            using var tb = new SolidBrush(fg);
             using var sf = new StringFormat
             {
                 Alignment     = strAlign,
                 LineAlignment = StringAlignment.Center,
                 Trimming      = StringTrimming.EllipsisCharacter,
             };
-            var rect = new Rectangle(e.Bounds.X + 6, e.Bounds.Y, e.Bounds.Width - 10, e.Bounds.Height);
-            e.Graphics.DrawString(e.SubItem.Text, lv.Font, tb, rect, sf);
+            var rect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y,
+                                     e.Bounds.Width - 8, e.Bounds.Height);
+            g.DrawString(e.SubItem.Text, font, tb, rect, sf);
         };
     }
 

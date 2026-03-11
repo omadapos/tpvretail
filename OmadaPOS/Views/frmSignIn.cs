@@ -21,11 +21,7 @@ public partial class frmSignIn
     // Overlay
     private Panel?  _pnlOverlay;
     private Label?  _lblOverlayStatus;
-    private Label?  _lblSpinner;
     private System.Windows.Forms.Timer? _spinnerTimer;
-    private int     _spinnerFrame;
-    private static readonly char[] SpinnerFrames =
-        ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'];
 
     // Static brushes for PIN dots — reused on every keypress repaint (avoids 12 allocs per call)
     private static readonly SolidBrush _dotFilledBrush = new(AppColors.NavyDark);
@@ -84,53 +80,105 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     private void BuildOverlay()
     {
-        const int W = 340, H = 200;
+        const int W    = 380;
+        const int H    = 240;
+        const int SpinD = 60;
+        float spinAngle = 0f;
 
+        // ── Brand ────────────────────────────────────────────────────────
         var lblBrand = new Label
         {
-            Text      = "● OMADA POS",
-            Font      = new Font("Segoe UI", 18F, FontStyle.Bold),
-            ForeColor = AppColors.TextWhite,
+            Text      = "OMADA  POS",
+            Font      = new Font("Segoe UI", 24F, FontStyle.Bold),
+            ForeColor = Color.White,
             BackColor = Color.Transparent,
             AutoSize  = false,
             TextAlign = ContentAlignment.MiddleCenter,
-            Bounds    = new Rectangle(0, 0, W, 72),
+            Bounds    = new Rectangle(0, 10, W, 56),
         };
 
-        _lblSpinner = new Label
+        // Emerald "Point of Sale" subtitle
+        var lblSub = new Label
         {
-            Text      = SpinnerFrames[0].ToString(),
-            Font      = new Font("Consolas", 32F, FontStyle.Regular),
-            ForeColor = AppColors.AccentGreenLight,
+            Text      = "Point of Sale",
+            Font      = new Font("Segoe UI", 10F, FontStyle.Regular),
+            ForeColor = AppColors.AccentGreen,
             BackColor = Color.Transparent,
             AutoSize  = false,
             TextAlign = ContentAlignment.MiddleCenter,
-            Bounds    = new Rectangle(0, 72, W, 64),
+            Bounds    = new Rectangle(0, 62, W, 22),
         };
 
+        // ── GDI+ animated spinner (arc) ──────────────────────────────────
+        var spinPanel = new Panel
+        {
+            BackColor = Color.Transparent,
+            Bounds    = new Rectangle((W - SpinD) / 2, 94, SpinD, SpinD),
+        };
+        spinPanel.Paint += (_, e) =>
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var r = new RectangleF(4, 4, SpinD - 8, SpinD - 8);
+
+            // Faint background ring
+            using var bgPen = new Pen(Color.FromArgb(35, 16, 185, 129), 5f)
+                { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawEllipse(bgPen, r);
+
+            // Rotating emerald arc
+            using var fgPen = new Pen(AppColors.AccentGreen, 5f)
+                { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            g.DrawArc(fgPen, r, spinAngle, 100f);
+        };
+
+        // ── Status message ───────────────────────────────────────────────
         _lblOverlayStatus = new Label
         {
             Text      = string.Empty,
-            Font      = new Font("Segoe UI", 11F, FontStyle.Regular),
-            ForeColor = AppColors.TextSecondary,
+            Font      = new Font("Segoe UI", 10F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(148, 163, 184),   // #94A3B8 muted slate
             BackColor = Color.Transparent,
             AutoSize  = false,
             TextAlign = ContentAlignment.MiddleCenter,
-            Bounds    = new Rectangle(0, 136, W, 40),
+            Bounds    = new Rectangle(0, 164, W, 32),
         };
 
+        // Version / footer hint
+        var lblFooter = new Label
+        {
+            Text      = "Iniciando sistema…",
+            Font      = new Font("Segoe UI", 8F, FontStyle.Italic),
+            ForeColor = Color.FromArgb(71, 85, 105),   // #475569 very muted
+            BackColor = Color.Transparent,
+            AutoSize  = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Bounds    = new Rectangle(0, 200, W, 22),
+        };
+
+        // ── Center card panel ────────────────────────────────────────────
         var pnlCenter = new Panel
         {
             BackColor = Color.Transparent,
             Size      = new Size(W, H),
         };
-        pnlCenter.Controls.AddRange([lblBrand, _lblSpinner, _lblOverlayStatus]);
+        pnlCenter.Controls.AddRange([lblBrand, lblSub, spinPanel, _lblOverlayStatus, lblFooter]);
 
+        // ── Full-screen dark overlay ─────────────────────────────────────
         _pnlOverlay = new Panel
         {
-            BackColor = AppColors.BackgroundPrimary,
+            BackColor = Color.FromArgb(10, 17, 32),   // deep navy — always dark regardless of theme
             Visible   = false,
         };
+        // Paint subtle vignette border
+        _pnlOverlay.Paint += (_, e) =>
+        {
+            using var pen = new Pen(AppColors.AccentGreen, 2f);
+            e.Graphics.DrawLine(pen, 0, 0, _pnlOverlay.Width, 0);         // top accent
+            e.Graphics.DrawLine(pen, 0, _pnlOverlay.Height - 2,           // bottom accent
+                _pnlOverlay.Width, _pnlOverlay.Height - 2);
+        };
+
         _pnlOverlay.Controls.Add(pnlCenter);
         _pnlOverlay.Resize += (_, _) => pnlCenter.Location = new Point(
             (_pnlOverlay.Width  - W) / 2,
@@ -138,12 +186,12 @@ public partial class frmSignIn
 
         Controls.Add(_pnlOverlay);
 
-        _spinnerTimer = new System.Windows.Forms.Timer { Interval = 80 };
+        // 40 ms = 25 fps, 6° per tick
+        _spinnerTimer = new System.Windows.Forms.Timer { Interval = 40 };
         _spinnerTimer.Tick += (_, _) =>
         {
-            _spinnerFrame = (_spinnerFrame + 1) % SpinnerFrames.Length;
-            if (_lblSpinner?.IsHandleCreated == true)
-                _lblSpinner.Text = SpinnerFrames[_spinnerFrame].ToString();
+            spinAngle = (spinAngle + 6f) % 360f;
+            if (spinPanel.IsHandleCreated) spinPanel.Invalidate();
         };
     }
 

@@ -51,15 +51,16 @@ public sealed class frmCustomerScreen : Form
     private System.Windows.Forms.Timer? _timerBanner;
     private System.Windows.Forms.Timer? _timerClock;
 
-    // ── Static GDI resources (allocated once, never disposed mid-run) ─────────
-    private static readonly Font _fontHero     = new("Consolas",  38F, FontStyle.Bold);  // hero amount — monospaced
-    private static readonly Font _fontMeta     = new("Segoe UI",  11F, FontStyle.Bold);  // labels
-    private static readonly Font _fontItems    = new("Segoe UI",  15F, FontStyle.Bold);  // item names
-    private static readonly Font _fontDetail   = new("Segoe UI",  10F);
-    private static readonly Font _fontHeader   = new("Segoe UI",  13F, FontStyle.Bold);  // store header
-    private static readonly Font _fontClock    = new("Consolas",  11F);                  // clock = numbers
-    private static readonly Font _fontList     = new("Segoe UI",  12F);
-    private static readonly Font _fontListHdr  = new("Segoe UI",   9F, FontStyle.Bold);  // column headers
+    // ── Static GDI resources ─────────────────────────────────────────────────
+    private static readonly Font _fontHero       = new("Consolas",  52F, FontStyle.Bold);  // grand total
+    private static readonly Font _fontMeta       = new("Segoe UI",  13F, FontStyle.Bold);  // "TOTAL" caption
+    private static readonly Font _fontItems      = new("Segoe UI",  16F, FontStyle.Bold);  // "Items: N"
+    private static readonly Font _fontDetail     = new("Segoe UI",  12F);                  // subtotal/tax line
+    private static readonly Font _fontHeader     = new("Segoe UI",  15F, FontStyle.Bold);  // store name
+    private static readonly Font _fontClock      = new("Consolas",  13F);                  // clock
+    private static readonly Font _fontList       = new("Segoe UI",  15F);                  // list rows — readable at distance
+    private static readonly Font _fontListNum    = new("Consolas",  14F);                  // price/total cols — monospaced
+    private static readonly Font _fontListHdr    = new("Segoe UI",  12F, FontStyle.Bold);  // column headers
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public frmCustomerScreen(IBannerService bannerService, IShoppingCart shoppingCart)
@@ -130,9 +131,9 @@ public sealed class frmCustomerScreen : Form
             Margin      = new Padding(0),
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));   // header
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,  100));  // body
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 180));  // footer
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));   // header — taller, more presence
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  100)); // body
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 190)); // footer — extra space for big total
 
         root.Controls.Add(BuildHeader(), 0, 0);
         root.Controls.Add(BuildBody(),   0, 1);
@@ -210,8 +211,8 @@ public sealed class frmCustomerScreen : Form
             Padding     = new Padding(0),
             Margin      = new Padding(0),
         };
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55)); // cart
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45)); // banner
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62)); // cart — more room for items
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38)); // banner
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         body.Controls.Add(BuildCartPanel(),   0, 0);
@@ -231,25 +232,32 @@ public sealed class frmCustomerScreen : Form
             Margin    = new Padding(0),
         };
 
-        // Sub-header "YOUR ORDER"
+        // Sub-header "YOUR ORDER" — prominent, high-contrast
         var subHeader = new Panel
         {
             Dock      = DockStyle.Top,
-            Height    = 36,
+            Height    = 48,
             BackColor = AppColors.NavyBase,
+        };
+        // Emerald bottom accent on sub-header
+        subHeader.Paint += (_, e) =>
+        {
+            using var pen = new Pen(AppColors.AccentGreen, 2f);
+            e.Graphics.DrawLine(pen, 0, subHeader.Height - 2, subHeader.Width, subHeader.Height - 2);
         };
         var lblTitle = new Label
         {
-            Text      = "🛒  YOUR ORDER",
-            Font      = new Font("Segoe UI", 10F, FontStyle.Bold),
+            Text      = "YOUR ORDER",
+            Font      = new Font("Segoe UI", 13F, FontStyle.Bold),
             ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            Padding   = new Padding(0, 0, 0, 2),
         };
         subHeader.Controls.Add(lblTitle);
 
-        // Cart list
+        // Cart list — larger font for customer-facing 1024×768 screen
         _lvCart = new ListView
         {
             Dock              = DockStyle.Fill,
@@ -257,7 +265,8 @@ public sealed class frmCustomerScreen : Form
             FullRowSelect     = true,
             GridLines         = false,
             MultiSelect       = false,
-            BackColor         = Color.FromArgb(248, 250, 252),
+            HideSelection     = true,
+            BackColor         = Color.FromArgb(255, 255, 255),
             ForeColor         = AppColors.TextPrimary,
             Font              = _fontList,
             BorderStyle       = BorderStyle.None,
@@ -265,11 +274,11 @@ public sealed class frmCustomerScreen : Form
             OwnerDraw         = true,
             UseCompatibleStateImageBehavior = false,
         };
-        _lvCart.Columns.Add("#",       42,  HorizontalAlignment.Center);
-        _lvCart.Columns.Add("Product", 200, HorizontalAlignment.Left);
-        _lvCart.Columns.Add("Qty",     48,  HorizontalAlignment.Center);
-        _lvCart.Columns.Add("Price",   84,  HorizontalAlignment.Right);
-        _lvCart.Columns.Add("Total",   84,  HorizontalAlignment.Right);
+        _lvCart.Columns.Add("#",       44,  HorizontalAlignment.Center);
+        _lvCart.Columns.Add("Product", 220, HorizontalAlignment.Left);
+        _lvCart.Columns.Add("Qty",     52,  HorizontalAlignment.Center);
+        _lvCart.Columns.Add("Price",   100, HorizontalAlignment.Right);
+        _lvCart.Columns.Add("Total",   100, HorizontalAlignment.Right);
         AttachListViewDraw(_lvCart);
         _lvCart.Resize += (_, _) => FillProductColumn(_lvCart, fillIdx: 1);
 
@@ -360,7 +369,7 @@ public sealed class frmCustomerScreen : Form
             Dock      = DockStyle.Fill,
             Text      = "Items: 0",
             Font      = _fontItems,
-            ForeColor = AppColors.TextWhite,
+            ForeColor = AppColors.AccentGreen,
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft,
         };
@@ -371,7 +380,7 @@ public sealed class frmCustomerScreen : Form
             Dock      = DockStyle.Fill,
             Text      = "Subtotal: $0.00   ·   Tax: $0.00",
             Font      = _fontDetail,
-            ForeColor = AppColors.TextMuted,
+            ForeColor = Color.FromArgb(148, 163, 184),
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft,
         };
@@ -453,35 +462,70 @@ public sealed class frmCustomerScreen : Form
     }
 
     // ── ListView owner-draw ───────────────────────────────────────────────────
+    private static readonly Color _csRowEven   = Color.FromArgb(255, 255, 255);   // white
+    private static readonly Color _csRowOdd    = Color.FromArgb(246, 248, 252);   // very pale blue-gray
+    private static readonly Color _csHeaderBg  = Color.FromArgb(30,  41,  59);    // deep navy
+    private static readonly Color _csRowBorder = Color.FromArgb(15,   0,   0, 0); // 6% black hairline
+
     private void AttachListViewDraw(ListView lv)
     {
+        // ── Column header — dark navy + emerald accent + white text ──────────
         lv.DrawColumnHeader += (_, e) =>
         {
-            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            using var bg = new SolidBrush(AppColors.NavyBase);
-            e.Graphics.FillRectangle(bg, e.Bounds);
+            var g = e.Graphics;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
+            using var bg = new SolidBrush(_csHeaderBg);
+            g.FillRectangle(bg, e.Bounds);
+
+            // Emerald accent line at the bottom of each header cell
+            using var accent = new Pen(AppColors.AccentGreen, 3f);
+            g.DrawLine(accent, e.Bounds.Left, e.Bounds.Bottom - 3,
+                                e.Bounds.Right, e.Bounds.Bottom - 3);
+
+            // Column separator
+            if (e.ColumnIndex > 0)
+            {
+                using var sep = new Pen(Color.FromArgb(35, 255, 255, 255), 1f);
+                g.DrawLine(sep, e.Bounds.Left, e.Bounds.Top + 8,
+                                e.Bounds.Left, e.Bounds.Bottom - 8);
+            }
+
             using var tb = new SolidBrush(AppColors.TextWhite);
             using var sf = new StringFormat
             {
                 Alignment     = StringAlignment.Center,
                 LineAlignment = StringAlignment.Center,
+                Trimming      = StringTrimming.EllipsisCharacter,
             };
-            e.Graphics.DrawString(e.Header.Text, _fontListHdr, tb, e.Bounds, sf);
+            g.DrawString(e.Header.Text, _fontListHdr, tb, e.Bounds, sf);
         };
 
+        // ── Row background ────────────────────────────────────────────────────
         lv.DrawItem += (_, e) =>
         {
-            bool isAlt = e.ItemIndex % 2 == 1;
-            var  bg    = isAlt ? Color.FromArgb(241, 245, 250) : Color.FromArgb(248, 250, 252);
+            Color bg = e.ItemIndex % 2 == 0 ? _csRowEven : _csRowOdd;
             using var br = new SolidBrush(bg);
             e.Graphics.FillRectangle(br, e.Bounds);
         };
 
+        // ── Cell — fill bg FIRST, then text (prevents Windows default blue) ──
         lv.DrawSubItem += (_, e) =>
         {
-            e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+            var g = e.Graphics;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            // Respect column text alignment
+            // 1. Fill cell background
+            Color bg = e.Item.Index % 2 == 0 ? _csRowEven : _csRowOdd;
+            using var bgBr = new SolidBrush(bg);
+            g.FillRectangle(bgBr, e.Bounds);
+
+            // 2. Hairline row divider
+            using var div = new Pen(_csRowBorder, 1f);
+            g.DrawLine(div, e.Bounds.Left, e.Bounds.Bottom - 1,
+                            e.Bounds.Right, e.Bounds.Bottom - 1);
+
+            // 3. Text — col 1 = product name (bold), col 3/4 = price/total (Consolas green)
             var colAlign = e.ColumnIndex < lv.Columns.Count
                            ? lv.Columns[e.ColumnIndex].TextAlign
                            : HorizontalAlignment.Left;
@@ -489,20 +533,24 @@ public sealed class frmCustomerScreen : Form
                          : colAlign == HorizontalAlignment.Center ? StringAlignment.Center
                          : StringAlignment.Near;
 
-            // Highlight the product name (col 1) slightly
-            var fg = e.ColumnIndex == 1 ? AppColors.TextPrimary
-                   : e.ColumnIndex >= 3 ? AppColors.NavyBase
-                   : AppColors.TextSecondary;
+            Color fg = e.ColumnIndex >= 3 ? AppColors.AccentGreenDark   // prices in emerald
+                     : e.ColumnIndex == 1 ? AppColors.TextPrimary         // product name
+                     : AppColors.TextSecondary;                           // # and qty
 
-            using var tb   = new SolidBrush(fg);
-            using var sfmt = new StringFormat
+            Font font = e.ColumnIndex >= 3 ? _fontListNum   // Consolas for amounts
+                      : e.ColumnIndex == 1 ? _fontList       // Segoe UI bold-ish
+                      : _fontList;
+
+            using var tb = new SolidBrush(fg);
+            using var sf = new StringFormat
             {
                 Alignment     = strAlign,
                 LineAlignment = StringAlignment.Center,
                 Trimming      = StringTrimming.EllipsisCharacter,
             };
-            var rect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 6, e.Bounds.Height);
-            e.Graphics.DrawString(e.SubItem.Text, lv.Font, tb, rect, sfmt);
+            var rect = new Rectangle(e.Bounds.X + 5, e.Bounds.Y,
+                                     e.Bounds.Width - 8, e.Bounds.Height);
+            g.DrawString(e.SubItem.Text, font, tb, rect, sf);
         };
     }
 
