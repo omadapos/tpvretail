@@ -80,7 +80,7 @@ public partial class frmSignIn
     private void PnlBackground_GridPaint(object? sender, PaintEventArgs e)
     {
         const int Spacing = 28;
-        using var dot = new SolidBrush(Color.FromArgb(30, 255, 255, 255));
+        using var dot = new SolidBrush(Color.FromArgb(45, 255, 255, 255)); // slightly more visible on dark navy
         for (int x = Spacing; x < pnlBackground.Width; x += Spacing)
             for (int y = Spacing; y < pnlBackground.Height; y += Spacing)
                 e.Graphics.FillEllipse(dot, x - 1f, y - 1f, 2f, 2f);

@@ -35,7 +35,7 @@ public class WindowService : IWindowService
     }
 
     public void OpenSplitPayment(IWin32Window? owner = null)
-        => ShowModeless(CreateForm<frmSplit>());
+        => ShowModeless(CreateForm<frmSplit>(), owner);
 
     public void OpenHold(IWin32Window? owner = null, Action? onClosed = null)
     {
@@ -43,14 +43,14 @@ public class WindowService : IWindowService
         if (onClosed != null)
             form.FormClosed += (_, _) => onClosed();
 
-        ShowModeless(form);
+        ShowModeless(form, owner);
     }
 
     public void OpenCheckPrice(IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmCheckPrice>(), owner);
 
     public void OpenProductNew(bool applyTax, IWin32Window? owner = null)
-        => ShowModeless(CreateForm<frmProductNew>(applyTax));
+        => ShowModeless(CreateForm<frmProductNew>(applyTax), owner);
 
     public void OpenSettings(IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmSetting>(), owner);
@@ -62,7 +62,7 @@ public class WindowService : IWindowService
         => ShowDialog(CreateForm<frmPopupQuantity>(number, productId), owner);
 
     public void OpenKeyLookup(IWin32Window? owner = null)
-        => ShowModeless(CreateForm<frmKeyLookup>());
+        => ShowModeless(CreateForm<frmKeyLookup>(), owner);
 
     public void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null, PaymentResponseModel? paymentResponse = null, List<PaymentModel>? splitPayments = null)
     {
@@ -72,11 +72,11 @@ public class WindowService : IWindowService
         if (splitPayments   is not null) args.Add(splitPayments);
 
         var form = CreateForm<frmPopupCashPayment>([.. args]);
-        ShowModeless(form);
+        ShowModeless(form, owner);
     }
 
     public void OpenGiftCard(decimal totalGlobal, int tipo, IWin32Window? owner = null)
-        => ShowModeless(CreateForm<frmGiftCard>(totalGlobal, tipo));
+        => ShowModeless(CreateForm<frmGiftCard>(totalGlobal, tipo), owner);
 
     public void OpenPaymentStatus(string message, IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmPaymentStatus>(message), owner);
@@ -95,16 +95,25 @@ public class WindowService : IWindowService
 
     private static void ShowDialog(Form form, IWin32Window? owner)
     {
-        if (owner != null)
-            form.ShowDialog(owner);
-        else
-            form.ShowDialog();
+        using (form)   // dispose after ShowDialog returns — WinForms does NOT auto-dispose modal forms
+        {
+            if (owner != null)
+                form.ShowDialog(owner);
+            else
+                form.ShowDialog();
+        }
     }
 
-    private void ShowModeless(Form form)
+    private void ShowModeless(Form form, IWin32Window? owner = null)
     {
         _modelessForms.Add(form);
         form.FormClosed += (_, _) => _modelessForms.Remove(form);
-        form.Show();
+        // Passing the owner makes Windows:
+        //   1. always keep the child on top of the owner
+        //   2. automatically close the child when the owner closes (cascade)
+        if (owner != null)
+            form.Show(owner);
+        else
+            form.Show();
     }
 }

@@ -50,7 +50,7 @@ namespace OmadaPOS.Views
             // ════════════════════════════════════════════════════════════════
             pnlHeader.Dock      = DockStyle.Top;
             pnlHeader.Height    = 56;
-            pnlHeader.BackColor = Color.FromArgb(53, 122, 189);   // AccentBlueDark
+            pnlHeader.BackColor = Color.FromArgb(10, 17, 32);   // deep navy header
             pnlHeader.Controls.Add(lblClock);
             pnlHeader.Controls.Add(lblLogo);
             pnlHeader.Name      = "pnlHeader";
@@ -78,7 +78,7 @@ namespace OmadaPOS.Views
             // ════════════════════════════════════════════════════════════════
             pnlFooter.Dock      = DockStyle.Bottom;
             pnlFooter.Height    = 34;
-            pnlFooter.BackColor = Color.FromArgb(53, 122, 189);   // AccentBlueDark
+            pnlFooter.BackColor = Color.FromArgb(10, 17, 32);   // deep navy footer
             pnlFooter.Controls.Add(labelId);
             pnlFooter.Name      = "pnlFooter";
 
@@ -93,7 +93,7 @@ namespace OmadaPOS.Views
             // BACKGROUND  — deep navy fill, hosts the centered card
             // ════════════════════════════════════════════════════════════════
             pnlBackground.Dock      = DockStyle.Fill;
-            pnlBackground.BackColor = Color.FromArgb(74, 144, 226);   // AccentBlue #4A90E2
+            pnlBackground.BackColor = Color.FromArgb(15, 23, 42);   // deep navy background
             pnlBackground.Controls.Add(pnlCard);
             pnlBackground.Name      = "pnlBackground";
             pnlBackground.Resize   += PnlBackground_Resize;
@@ -210,7 +210,7 @@ namespace OmadaPOS.Views
             // ════════════════════════════════════════════════════════════════
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode       = AutoScaleMode.Dpi;
-            BackColor           = Color.FromArgb(74, 144, 226);   // AccentBlue
+            BackColor           = Color.FromArgb(15, 23, 42);   // deep navy — matches pnlBackground, eliminates paint flash
             ClientSize          = new Size(1366, 768);
             FormBorderStyle     = FormBorderStyle.None;
             WindowState         = FormWindowState.Maximized;

@@ -33,6 +33,9 @@ namespace OmadaPOS.Views
         // Cancela cargas anteriores cuando el usuario cambia de pestaña rápido
         private CancellationTokenSource? _productLoadCts;
 
+        // Cancels the previous UPC lookup when the cashier types quickly
+        private CancellationTokenSource? _upcSearchCts;
+
         private const int ProductPageSize = 30;
 
         private readonly IShoppingCart _shoppingCart;
@@ -597,13 +600,17 @@ namespace OmadaPOS.Views
             // unless the supervisor PIN was already verified.
             if (!_supervisorApproved && e.CloseReason == CloseReason.UserClosing)
             {
+                // Cancel the close first so FormClosing completes cleanly,
+                // then show the PIN dialog via BeginInvoke (outside the closing event).
+                // Calling ShowDialog() or Close() from *inside* FormClosing causes
+                // re-entrancy issues in WinForms and is unreliable.
                 e.Cancel = true;
-                if (!VerificarPinSupervisor()) return;
-
-                // PIN accepted for EXIT — set flag and re-trigger close so the
-                // cleanup block below runs, then Application.Exit() is called.
-                _supervisorApproved = true;
-                Close();
+                BeginInvoke(() =>
+                {
+                    if (!VerificarPinSupervisor()) return;
+                    _supervisorApproved = true;
+                    Close();
+                });
                 return;
             }
 
@@ -637,6 +644,8 @@ namespace OmadaPOS.Views
             // Cancelar cargas en vuelo y limpiar caché de productos al cerrar sesión
             _productLoadCts?.Cancel();
             _productLoadCts?.Dispose();
+            _upcSearchCts?.Cancel();
+            _upcSearchCts?.Dispose();
             _homeInitializationService.ClearProductCache();
 
             _scaleBanner?.Dispose();
@@ -906,8 +915,22 @@ namespace OmadaPOS.Views
 
         private async void textBoxUPC_TextChanged(object sender, EventArgs e)
         {
-            await SearchProduct(textBoxUPC.Text);
-            textBoxUPC.Focus();
+            // Cancel any in-flight lookup from a previous keystroke
+            _upcSearchCts?.Cancel();
+            _upcSearchCts?.Dispose();
+            _upcSearchCts = new CancellationTokenSource();
+            var ct = _upcSearchCts.Token;
+
+            try
+            {
+                // Small debounce: wait 120 ms so rapid keystrokes only fire one request
+                await Task.Delay(120, ct);
+                if (ct.IsCancellationRequested) return;
+
+                await SearchProduct(textBoxUPC.Text);
+                textBoxUPC.Focus();
+            }
+            catch (OperationCanceledException) { /* superseded by newer keystroke — ignore */ }
         }
 
         private void buttonCancelOrder_Click(object sender, EventArgs e)
@@ -1147,7 +1170,7 @@ namespace OmadaPOS.Views
                 var result = await _paymentCoordinatorService.ProcessTerminalPaymentAsync(paymentType, totalGlobal, false);
 
                 // Close overlay before showing result popups so they render on top cleanly.
-                waiting.Dispose();
+                waiting.Close();
 
                 if (result.PaymentResponse != null && !result.PaymentResponse.Success)
                 {
@@ -1164,7 +1187,7 @@ namespace OmadaPOS.Views
             }
             catch (Exception ex)
             {
-                waiting.Dispose();
+                waiting.Close();
                 MessageBox.Show($"Payment error: {ex.Message}", "Payment Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }

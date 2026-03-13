@@ -29,7 +29,7 @@ public sealed class frmPopupCashPayment : POSDialog
 
     // ── Payment type helpers ──────────────────────────────────────────────────
     private bool IsSplit => _splitPayments is { Count: > 0 };
-    private bool IsCash  => !IsSplit && _devuelta > 0 && _paymentResponse == null;
+    private bool IsCash  => !IsSplit && _paymentResponse == null;   // includes exact-change (devuelta == 0)
     private bool IsEbt   => !IsSplit && _paymentResponse?.Balance > 0 &&
                             string.IsNullOrWhiteSpace(_paymentResponse?.PaymentCardType);
     private bool IsCard  => !IsSplit && !IsCash && !IsEbt && _paymentResponse != null;

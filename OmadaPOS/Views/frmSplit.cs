@@ -591,7 +591,7 @@ public sealed class frmSplit : Form
                 Terminal     = config?.Terminal ?? string.Empty,
             });
 
-            waiting.Dispose();
+            waiting.Close();
 
             if (response == null || !response.Success)
             {
@@ -606,7 +606,7 @@ public sealed class frmSplit : Form
         }
         catch
         {
-            waiting.Dispose();
+            waiting.Close();
             throw;   // bubble up to PaymentButton_Click catch block
         }
     }
@@ -620,7 +620,7 @@ public sealed class frmSplit : Form
             {
                 MessageBox.Show("Cannot complete payment while there is a remaining balance.",
                     "Incomplete", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                return;   // re-enable happens in finally
             }
 
             await _homeInteractionService.RequestSplitPaymentCompletionAsync();
@@ -631,7 +631,12 @@ public sealed class frmSplit : Form
             _logger.LogError(ex, "Error completing split payment");
             MessageBox.Show($"Error completing payment: {ex.Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
-            _btnComplete.Enabled = true;
+        }
+        finally
+        {
+            // Always re-enable unless the form is already closing/closed.
+            if (!IsDisposed && !Disposing)
+                _btnComplete.Enabled = true;
         }
     }
 

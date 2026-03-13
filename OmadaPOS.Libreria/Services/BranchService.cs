@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Libreria.Models;
+using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -12,35 +12,35 @@ public interface IBranchService
 
 public class BranchService : IBranchService
 {
-
     private readonly HttpClient _client;
 
     public BranchService(HttpClient client)
     {
         _client = client;
-
-        _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", SessionManager.Token);
     }
 
     public async Task<BranchModel?> LoadBranch(int branchId)
     {
-        var branch = new BranchModel();
-
         string url = Constants.BaseUrl + $"/api/branch/{branchId}";
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        // Set token per-request so it always uses the current session token,
+        // not a stale one from a previous login session.
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", SessionManager.Token);
 
-        if (response.IsSuccessStatusCode)
+        HttpResponseMessage response = await _client.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        string content = await response.Content.ReadAsStringAsync();
+
+        System.Diagnostics.Debug.WriteLine($"[Branch API] GET {url} → {content}");
+
+        return JsonSerializer.Deserialize<BranchModel>(content, new JsonSerializerOptions
         {
-            string content = await response.Content.ReadAsStringAsync();
-
-            branch = JsonSerializer.Deserialize<BranchModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return branch;
+            PropertyNameCaseInsensitive = true,
+        });
     }
 }
