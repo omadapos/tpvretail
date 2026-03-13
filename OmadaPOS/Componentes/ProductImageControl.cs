@@ -93,14 +93,13 @@ namespace OmadaPOS.Componentes
 
             this.BackColor = Color.Transparent;
             this.Size      = new Size(CardW + Margin * 2, CardH + Margin * 2);
-            this.Cursor    = Cursors.Hand;
+            this.Cursor    = Cursors.Default;
 
             panelCard = new Panel
             {
                 BackColor = CardBackground,
                 Location  = new Point(Margin, Margin),
                 Size      = new Size(CardW, CardH),
-                Cursor    = Cursors.Hand,
             };
             panelCard.Paint  += PanelCard_Paint;
             panelCard.Click  += OnCardClick;
@@ -110,7 +109,6 @@ namespace OmadaPOS.Componentes
                 BackColor = ImageBackground,
                 Location  = new Point(0, 0),
                 Size      = new Size(CardW, ImageAreaH),
-                Cursor    = Cursors.Hand,
             };
             panelImageArea.Click += OnCardClick;
 
@@ -119,7 +117,6 @@ namespace OmadaPOS.Componentes
                 Dock      = DockStyle.Fill,
                 SizeMode  = PictureBoxSizeMode.Zoom,
                 BackColor = Color.Transparent,
-                Cursor    = Cursors.Hand,
                 Padding   = new Padding(8),
             };
             pictureBoxImage.Click += OnCardClick;
@@ -144,7 +141,6 @@ namespace OmadaPOS.Componentes
                 BackColor = CardBackground,
                 Location  = new Point(0, infoY),
                 Size      = new Size(CardW, infoH),
-                Cursor    = Cursors.Hand,
                 Padding   = new Padding(10, 6, 10, 6),
             };
             panelInfo.Click += OnCardClick;
@@ -158,7 +154,6 @@ namespace OmadaPOS.Componentes
                 ForeColor = NameForeground,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Cursor    = Cursors.Hand,
             };
             labelTitle.Click += OnCardClick;
 
@@ -171,7 +166,6 @@ namespace OmadaPOS.Componentes
                 ForeColor = PriceForeground,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Cursor    = Cursors.Hand,
             };
             labelPrice.Click += OnCardClick;
 

@@ -22,11 +22,11 @@ public static class ElegantButtonStyles
     // PALETA — alineada con AppColors
     // ─────────────────────────────────────────────
 
-    public static readonly Color HeaderNavy  = AppColors.NavyDark;
-    public static readonly Color Keypad      = AppColors.NavyBase;
-    public static readonly Color DebitGray   = AppColors.SlateBlue;
-    public static readonly Color CashGreen   = AppColors.AccentGreen;
-    public static readonly Color Buttonok    = AppColors.AccentGreen;
+    public static readonly Color HeaderNavy       = AppColors.NavyDark;
+    public static readonly Color Keypad           = AppColors.AccentBlue;        // QTY / HOLD / LOOKUP — azul primario
+    public static readonly Color DebitGray        = AppColors.PaymentDebit;      // Débito — gris neutro
+    public static readonly Color CashGreen        = AppColors.AccentGreen;       // Efectivo
+    public static readonly Color Buttonok         = AppColors.AccentGreen;       // Aceptar
     public static readonly Color AlertRed         = AppColors.Danger;
     public static readonly Color ButtonCacnel     = AppColors.Danger;
     public static readonly Color WarningOrange    = AppColors.Warning;
@@ -79,7 +79,7 @@ public static class ElegantButtonStyles
         button.FlatAppearance.BorderSize         = 0;
         button.FlatAppearance.MouseOverBackColor = Color.Transparent;
         button.FlatAppearance.MouseDownBackColor = Color.Transparent;
-        button.Cursor  = Cursors.Hand;
+        button.Cursor  = Cursors.Default;
         button.Padding = new Padding(16, 8, 16, 8);
         button.Height  = Math.Max(44, (int)(fontSize * 1.8f));
         button.TabStop = false;
@@ -132,7 +132,11 @@ public static class ElegantButtonStyles
 
         // ── Borde — AntiAlias solo aquí para curvas suaves ───────────────────
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        using var border = new Pen(AppColors.SeparatorOnDark, 1);
+        // Border color adapts: dark buttons use white separator, light buttons use DEE2E6
+        var borderColor = state.BackColor.GetBrightness() > 0.5f
+            ? AppColors.SurfaceMuted
+            : AppColors.SeparatorOnDark;
+        using var border = new Pen(borderColor, 1);
         g.DrawPath(border, path);
         g.SmoothingMode = SmoothingMode.None;
 

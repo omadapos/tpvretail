@@ -13,30 +13,29 @@ namespace OmadaPOS.Views
 
         private void InitializeComponent()
         {
-            pnlHeader    = new Panel();
-            lblLogo      = new Label();
-            lblClock     = new Label();
-            pnlFooter    = new Panel();
-            labelId      = new Label();
+            pnlHeader     = new Panel();
+            lblLogo       = new Label();
+            lblClock      = new Label();
+            pnlFooter     = new Panel();
+            labelId       = new Label();
             pnlBackground = new Panel();
-            pnlCard      = new Panel();
-            pnlCardTop   = new Panel();
-            lblTitle     = new Label();
-            pnlPinDots   = new Panel();
-            lblError     = new Label();
-            tlpKeypad    = new TableLayoutPanel();
-            button7      = new Button();
-            button8      = new Button();
-            button9      = new Button();
-            button4      = new Button();
-            button5      = new Button();
-            button6      = new Button();
-            button1      = new Button();
-            button2      = new Button();
-            button3      = new Button();
-            buttonClear  = new Button();
-            button0      = new Button();
-            buttonLogin  = new Button();
+            pnlCard       = new Panel();
+            pnlCardTop    = new Panel();
+            pnlPinDots    = new Panel();
+            lblError      = new Label();
+            tlpKeypad     = new TableLayoutPanel();
+            button7       = new Button();
+            button8       = new Button();
+            button9       = new Button();
+            button4       = new Button();
+            button5       = new Button();
+            button6       = new Button();
+            button1       = new Button();
+            button2       = new Button();
+            button3       = new Button();
+            buttonClear   = new Button();
+            button0       = new Button();
+            buttonLogin   = new Button();
 
             pnlHeader.SuspendLayout();
             pnlFooter.SuspendLayout();
@@ -46,22 +45,22 @@ namespace OmadaPOS.Views
             tlpKeypad.SuspendLayout();
             SuspendLayout();
 
-            // ═══════════════════════════════════════════════════════════
-            // HEADER — dark strip 56px
-            // ═══════════════════════════════════════════════════════════
+            // ════════════════════════════════════════════════════════════════
+            // HEADER  — dark strip 56 px
+            // ════════════════════════════════════════════════════════════════
             pnlHeader.Dock      = DockStyle.Top;
             pnlHeader.Height    = 56;
-            pnlHeader.BackColor = Color.FromArgb(15, 23, 42);
+            pnlHeader.BackColor = Color.FromArgb(53, 122, 189);   // AccentBlueDark
             pnlHeader.Controls.Add(lblClock);
             pnlHeader.Controls.Add(lblLogo);
             pnlHeader.Name      = "pnlHeader";
             pnlHeader.Paint    += PnlHeader_Paint;
 
-            lblLogo.Text      = "● Omada POS";
-            lblLogo.Font      = new Font("Segoe UI", 14F, FontStyle.Bold);
+            lblLogo.Text      = "OMADA  POS";
+            lblLogo.Font      = new Font("Segoe UI", 12F, FontStyle.Bold);
             lblLogo.ForeColor = Color.FromArgb(248, 250, 252);
             lblLogo.AutoSize  = true;
-            lblLogo.Location  = new Point(24, 16);
+            lblLogo.Location  = new Point(28, 17);
             lblLogo.BackColor = Color.Transparent;
             lblLogo.Name      = "lblLogo";
 
@@ -74,77 +73,68 @@ namespace OmadaPOS.Views
             lblClock.Name      = "lblClock";
             lblClock.Text      = "00:00 AM";
 
-            // ═══════════════════════════════════════════════════════════
-            // FOOTER — terminal ID strip 34px
-            // ═══════════════════════════════════════════════════════════
+            // ════════════════════════════════════════════════════════════════
+            // FOOTER  — terminal ID 34 px
+            // ════════════════════════════════════════════════════════════════
             pnlFooter.Dock      = DockStyle.Bottom;
             pnlFooter.Height    = 34;
-            pnlFooter.BackColor = Color.FromArgb(15, 23, 42);
+            pnlFooter.BackColor = Color.FromArgb(53, 122, 189);   // AccentBlueDark
             pnlFooter.Controls.Add(labelId);
             pnlFooter.Name      = "pnlFooter";
 
             labelId.Dock      = DockStyle.Fill;
-            labelId.Font      = new Font("Consolas", 10F, FontStyle.Regular);
-            labelId.ForeColor = Color.FromArgb(71, 85, 105);
+            labelId.Font      = new Font("Consolas", 9F, FontStyle.Regular);
+            labelId.ForeColor = Color.FromArgb(45, 55, 72);
             labelId.TextAlign = ContentAlignment.MiddleCenter;
             labelId.BackColor = Color.Transparent;
             labelId.Name      = "labelId";
 
-            // ═══════════════════════════════════════════════════════════
-            // BACKGROUND — dark fill, hosts the centered card
-            // ═══════════════════════════════════════════════════════════
+            // ════════════════════════════════════════════════════════════════
+            // BACKGROUND  — deep navy fill, hosts the centered card
+            // ════════════════════════════════════════════════════════════════
             pnlBackground.Dock      = DockStyle.Fill;
-            pnlBackground.BackColor = Color.FromArgb(15, 23, 42);
+            pnlBackground.BackColor = Color.FromArgb(74, 144, 226);   // AccentBlue #4A90E2
             pnlBackground.Controls.Add(pnlCard);
             pnlBackground.Name      = "pnlBackground";
             pnlBackground.Resize   += PnlBackground_Resize;
 
-            // ═══════════════════════════════════════════════════════════
-            // CARD — white centered card 400 × 560
-            // ═══════════════════════════════════════════════════════════
-            pnlCard.Size      = new Size(400, 560);
-            pnlCard.BackColor = Color.White;
+            // ════════════════════════════════════════════════════════════════
+            // CARD  — dark slate, 420 × 500, centered, rounded via Region
+            // ════════════════════════════════════════════════════════════════
+            pnlCard.Size      = new Size(420, 500);
+            pnlCard.BackColor = Color.FromArgb(30, 41, 59);    // NavyBase #1E293B
             pnlCard.Controls.Add(tlpKeypad);
             pnlCard.Controls.Add(pnlCardTop);
             pnlCard.Name      = "pnlCard";
             pnlCard.Paint    += PnlCard_Paint;
 
-            // ── Card top: title + PIN dots + error ─────────────────────
+            // ── PIN area (top 96 px): 6 dots + error
             pnlCardTop.Dock      = DockStyle.Top;
-            pnlCardTop.Height    = 168;
-            pnlCardTop.BackColor = Color.White;
+            pnlCardTop.Height    = 96;
+            pnlCardTop.BackColor = Color.Transparent;
             pnlCardTop.Controls.Add(lblError);
             pnlCardTop.Controls.Add(pnlPinDots);
-            pnlCardTop.Controls.Add(lblTitle);
             pnlCardTop.Name      = "pnlCardTop";
 
-            lblTitle.Text      = "Enter Employee PIN";
-            lblTitle.Font      = new Font("Segoe UI", 12F, FontStyle.Regular);
-            lblTitle.ForeColor = Color.FromArgb(100, 116, 139);
-            lblTitle.Dock      = DockStyle.Top;
-            lblTitle.Height    = 52;
-            lblTitle.TextAlign = ContentAlignment.BottomCenter;
-            lblTitle.BackColor = Color.White;
-            lblTitle.Name      = "lblTitle";
-
             pnlPinDots.Dock      = DockStyle.Top;
-            pnlPinDots.Height    = 72;
-            pnlPinDots.BackColor = Color.White;
+            pnlPinDots.Height    = 56;
+            pnlPinDots.BackColor = Color.Transparent;
             pnlPinDots.Name      = "pnlPinDots";
             pnlPinDots.Paint    += PnlPinDots_Paint;
 
             lblError.Dock      = DockStyle.Top;
-            lblError.Height    = 44;
-            lblError.Font      = new Font("Segoe UI", 11F, FontStyle.Regular);
-            lblError.ForeColor = Color.FromArgb(220, 38, 38);
+            lblError.Height    = 40;
+            lblError.Font      = new Font("Segoe UI", 10F, FontStyle.Regular);
+            lblError.ForeColor = Color.FromArgb(252, 165, 165);
             lblError.TextAlign = ContentAlignment.MiddleCenter;
-            lblError.BackColor = Color.White;
+            lblError.BackColor = Color.Transparent;
             lblError.Visible   = false;
             lblError.Name      = "lblError";
 
-            // ═══════════════════════════════════════════════════════════
-            // KEYPAD — 3 cols × 4 rows fills remaining card height
-            // ═══════════════════════════════════════════════════════════
+            // ════════════════════════════════════════════════════════════════
+            // KEYPAD  — 3 × 4 grid, fills remaining card height
+            // tlpKeypad BackColor shows as thin gap between buttons
+            // ════════════════════════════════════════════════════════════════
             tlpKeypad.Dock        = DockStyle.Fill;
             tlpKeypad.ColumnCount = 3;
             tlpKeypad.RowCount    = 4;
@@ -155,8 +145,8 @@ namespace OmadaPOS.Views
             tlpKeypad.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
             tlpKeypad.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
             tlpKeypad.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
-            tlpKeypad.Padding   = new Padding(16, 8, 16, 16);
-            tlpKeypad.BackColor = Color.White;
+            tlpKeypad.Padding   = new Padding(14, 4, 14, 16);
+            tlpKeypad.BackColor = Color.FromArgb(30, 41, 59);    // dark gaps between buttons
             tlpKeypad.Name      = "tlpKeypad";
             tlpKeypad.Controls.Add(button7, 0, 0);
             tlpKeypad.Controls.Add(button8, 1, 0);
@@ -168,10 +158,10 @@ namespace OmadaPOS.Views
             tlpKeypad.Controls.Add(button2, 1, 2);
             tlpKeypad.Controls.Add(button3, 2, 2);
             tlpKeypad.Controls.Add(buttonClear, 0, 3);
-            tlpKeypad.Controls.Add(button0, 1, 3);
-            tlpKeypad.Controls.Add(buttonLogin, 2, 3);
+            tlpKeypad.Controls.Add(button0,     1, 3);
+            tlpKeypad.Controls.Add(buttonLogin,  2, 3);
 
-            // ── Number buttons: navy bg, white text ────────────────────
+            // ── Number buttons
             ConfigureNumButton(button7, "7", 0);
             ConfigureNumButton(button8, "8", 1);
             ConfigureNumButton(button9, "9", 2);
@@ -183,44 +173,44 @@ namespace OmadaPOS.Views
             ConfigureNumButton(button3, "3", 8);
             ConfigureNumButton(button0, "0", 9);
 
-            // ── Clear — amber ───────────────────────────────────────────
+            // ── Clear — amber
             buttonClear.Dock      = DockStyle.Fill;
-            buttonClear.Margin    = new Padding(4);
+            buttonClear.Margin    = new Padding(3);
             buttonClear.Text      = "⌫";
-            buttonClear.Font      = new Font("Segoe UI", 22F, FontStyle.Regular);
+            buttonClear.Font      = new Font("Segoe UI", 20F, FontStyle.Regular);
             buttonClear.ForeColor = Color.White;
-            buttonClear.BackColor = Color.FromArgb(180, 83, 9);
+            buttonClear.BackColor = Color.FromArgb(146, 64, 14);
             buttonClear.FlatStyle = FlatStyle.Flat;
             buttonClear.FlatAppearance.BorderSize         = 0;
-            buttonClear.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            buttonClear.FlatAppearance.MouseOverBackColor = Color.FromArgb(146, 64, 14);
             buttonClear.FlatAppearance.MouseDownBackColor = Color.FromArgb(146, 64, 14);
-            buttonClear.Cursor    = Cursors.Hand;
+            buttonClear.Cursor    = Cursors.Default;
             buttonClear.TabIndex  = 10;
             buttonClear.Name      = "buttonClear";
             buttonClear.Click    += ButtonClear_Click;
 
-            // ── Login — emerald ─────────────────────────────────────────
+            // ── Login — emerald
             buttonLogin.Dock      = DockStyle.Fill;
-            buttonLogin.Margin    = new Padding(4);
-            buttonLogin.Text      = "▶";
-            buttonLogin.Font      = new Font("Segoe UI", 22F, FontStyle.Regular);
+            buttonLogin.Margin    = new Padding(3);
+            buttonLogin.Text      = "✓";
+            buttonLogin.Font      = new Font("Segoe UI", 20F, FontStyle.Bold);
             buttonLogin.ForeColor = Color.White;
-            buttonLogin.BackColor = Color.FromArgb(5, 150, 105);
+            buttonLogin.BackColor = Color.FromArgb(4, 120, 87);
             buttonLogin.FlatStyle = FlatStyle.Flat;
             buttonLogin.FlatAppearance.BorderSize         = 0;
-            buttonLogin.FlatAppearance.MouseOverBackColor = Color.Transparent;
+            buttonLogin.FlatAppearance.MouseOverBackColor = Color.FromArgb(4, 120, 87);
             buttonLogin.FlatAppearance.MouseDownBackColor = Color.FromArgb(4, 120, 87);
-            buttonLogin.Cursor    = Cursors.Hand;
+            buttonLogin.Cursor    = Cursors.Default;
             buttonLogin.TabIndex  = 11;
             buttonLogin.Name      = "buttonLogin";
             buttonLogin.Click    += ButtonLogin_Click;
 
-            // ═══════════════════════════════════════════════════════════
+            // ════════════════════════════════════════════════════════════════
             // FORM
-            // ═══════════════════════════════════════════════════════════
+            // ════════════════════════════════════════════════════════════════
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode       = AutoScaleMode.Dpi;
-            BackColor           = Color.FromArgb(15, 23, 42);
+            BackColor           = Color.FromArgb(74, 144, 226);   // AccentBlue
             ClientSize          = new Size(1366, 768);
             FormBorderStyle     = FormBorderStyle.None;
             WindowState         = FormWindowState.Maximized;
@@ -241,23 +231,24 @@ namespace OmadaPOS.Views
             ResumeLayout(false);
         }
 
+        // ── Number button factory
         private static void ConfigureNumButton(Button b, string digit, int tabIndex)
         {
             b.Dock      = DockStyle.Fill;
-            b.Margin    = new Padding(4);
+            b.Margin    = new Padding(3);
             b.Text      = digit;
             b.Tag       = digit;
             b.Font      = new Font("Segoe UI", 26F, FontStyle.Bold);
             b.ForeColor = Color.FromArgb(248, 250, 252);
-            b.BackColor = Color.FromArgb(15, 23, 42);
+            b.BackColor = Color.FromArgb(22, 34, 54);           // slightly lighter than gap → visible cells
             b.FlatStyle = FlatStyle.Flat;
             b.FlatAppearance.BorderSize         = 0;
-            b.FlatAppearance.MouseOverBackColor = Color.Transparent;
-            b.FlatAppearance.MouseDownBackColor = Color.FromArgb(51, 88, 140);
-            b.Cursor    = Cursors.Hand;
+            b.FlatAppearance.MouseOverBackColor = Color.FromArgb(22, 34, 54);  // same — no hover
+            b.FlatAppearance.MouseDownBackColor = Color.FromArgb(22, 34, 54);  // same — no press
+            b.Cursor    = Cursors.Default;
             b.TabIndex  = tabIndex;
             b.Name      = $"button{digit}";
-            b.Click    += (s, e) =>
+            b.Click    += (s, _) =>
             {
                 if (s is Button btn && btn.FindForm() is frmSignIn frm)
                     frm.AppendDigit(digit);
@@ -273,7 +264,8 @@ namespace OmadaPOS.Views
         private Panel            pnlBackground;
         private Panel            pnlCard;
         private Panel            pnlCardTop;
-        private Label            lblTitle;
+        private Label            lblTitle;      // unused — kept to avoid breaking partial class
+        private Panel            pnlBrand;      // unused — kept to avoid breaking partial class
         private Panel            pnlPinDots;
         private Label            lblError;
         private TableLayoutPanel tlpKeypad;

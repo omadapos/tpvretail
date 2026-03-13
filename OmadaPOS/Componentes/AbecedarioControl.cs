@@ -58,7 +58,7 @@ namespace OmadaPOS.Componentes
                 Text                  = "✕\nALL",
                 Tag                   = "",
                 Dock                  = DockStyle.Fill,
-                Cursor                = Cursors.Hand,
+                Cursor                = Cursors.Default,
                 FlatStyle             = FlatStyle.Flat,
                 BackColor             = AppColors.Danger,
                 ForeColor             = AppColors.TextWhite,
@@ -68,7 +68,7 @@ namespace OmadaPOS.Componentes
             };
             buttonAll.FlatAppearance.BorderSize         = 0;
             buttonAll.FlatAppearance.MouseOverBackColor = Color.Transparent;
-            buttonAll.FlatAppearance.MouseDownBackColor = Color.FromArgb(140, 30, 30);
+            buttonAll.FlatAppearance.MouseDownBackColor = Color.Transparent;
 
             // Ocupa las 2 filas del TableLayoutPanel
             tableLayoutPanelButton.Controls.Add(buttonAll, 13, 0);

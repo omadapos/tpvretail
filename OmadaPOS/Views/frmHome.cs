@@ -30,6 +30,11 @@ namespace OmadaPOS.Views
         public List<CategoryModel> Categories { get; } = new();
         public List<ProductModel> Products { get; } = new();
 
+        // Cancela cargas anteriores cuando el usuario cambia de pestaña rápido
+        private CancellationTokenSource? _productLoadCts;
+
+        private const int ProductPageSize = 30;
+
         private readonly IShoppingCart _shoppingCart;
         private readonly IUserService _userService;
         private readonly IPaymentSplitService _paymentSplitService;
@@ -43,9 +48,11 @@ namespace OmadaPOS.Views
         private readonly frmCustomerScreen _customerScreen;
 
         // ── Age verification ───────────────────────────────────────────────────
-        private readonly IAgeVerificationService _ageVerificationService;
-        private AgeVerificationResult?           _currentAgeVerification;
-        private Label                            _labelAgeVerificationStatus = null!;
+        private readonly IAgeVerificationService      _ageVerificationService;
+        private readonly IAgeRestrictionConfigService _ageRestrictionConfig = null!;
+        private AgeVerificationResult?               _currentAgeVerification;
+        private Label                                _labelAgeVerificationStatus = null!;
+
 
         public frmHome(
             ZebraScannerService zebraScannerService,
@@ -91,15 +98,189 @@ namespace OmadaPOS.Views
 
             // Age verification — resolved via service locator (matches existing pattern)
             _ageVerificationService = Program.GetService<IAgeVerificationService>();
+            _ageRestrictionConfig   = Program.GetService<IAgeRestrictionConfigService>();
             SetupAgeVerificationBadge();
 
             _zebraScannerService = zebraScannerService;
 
             _zebraScannerService.OnBarcodeDataReceived += _zebraScannerService_OnBarcodeDataReceived;
             _zebraScannerService.OnWeightUpdated       += _zebraScannerService_OnWeightUpdated;
+        }
 
-            // Report scale connection status into the payment panel's scale zone.
-            _paymentPanelControl!.SetScaleStatus(zebraScannerService.Initialize());
+        // ── Scanner disconnected banner ────────────────────────────────────────
+        private Label?  _scannerBanner;
+        private Button? _scannerBannerBtn;
+
+        private void ShowScannerBanner()
+        {
+            if (_scannerBanner != null) return; // already shown
+
+            _scannerBanner = new Label
+            {
+                Text      = "⚠  Scanner no conectado — verifique el cable USB",
+                AutoSize  = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font      = AppTypography.BodySmall,
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(180, 83, 9),   // amber-700
+                Dock      = DockStyle.Top,
+                Height    = 32,
+                Padding   = new Padding(12, 0, 0, 0),
+            };
+
+            _scannerBannerBtn = new Button
+            {
+                Text      = "Reconectar",
+                FlatStyle = FlatStyle.Flat,
+                Font      = AppTypography.BodySmall,
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(154, 52, 18),  // amber-800
+                Size      = new Size(90, 22),
+                Anchor    = AnchorStyles.Right | AnchorStyles.Top,
+            };
+            _scannerBannerBtn.FlatAppearance.BorderSize = 0;
+            _scannerBannerBtn.Click += ScannerBannerBtn_Click;
+
+            _scannerBanner.Controls.Add(_scannerBannerBtn);
+
+            Controls.Add(_scannerBanner);
+            _scannerBanner.BringToFront();
+            PerformLayout();
+        }
+
+        private void ScannerBannerBtn_Click(object? sender, EventArgs e)
+        {
+            if (_zebraScannerService == null) return;
+            if (_scannerBannerBtn != null)
+            {
+                _scannerBannerBtn.Enabled = false;
+                _scannerBannerBtn.Text    = "Conectando…";
+            }
+
+            // UI thread (STA) — same apartment as the COM objects. Blocks max 1 s (ClaimDevice).
+            bool ok = _zebraScannerService.TryReconnectScanner();
+
+            if (ok)
+            {
+                Controls.Remove(_scannerBanner);
+                _scannerBanner?.Dispose();
+                _scannerBanner    = null;
+                _scannerBannerBtn = null;
+                _paymentPanelControl?.SetScaleStatus("");
+                ShowToast("Scanner conectado");
+            }
+            else
+            {
+                if (_scannerBannerBtn != null)
+                {
+                    _scannerBannerBtn.Enabled = true;
+                    _scannerBannerBtn.Text    = "Reintentar";
+                }
+            }
+        }
+
+        // ── Scale disconnected banner ──────────────────────────────────────────
+        private Label?  _scaleBanner;
+        private Button? _scaleBannerBtn;
+
+        private void ShowScaleBanner()
+        {
+            if (_scaleBanner != null) return;
+
+            _scaleBanner = new Label
+            {
+                Text      = "⚖  Báscula no conectada — verifique el cable USB",
+                AutoSize  = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font      = AppTypography.BodySmall,
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(30, 64, 175),   // blue-800
+                Dock      = DockStyle.Top,
+                Height    = 32,
+                Padding   = new Padding(12, 0, 0, 0),
+            };
+
+            _scaleBannerBtn = new Button
+            {
+                Text      = "Reconectar",
+                FlatStyle = FlatStyle.Flat,
+                Font      = AppTypography.BodySmall,
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(29, 78, 216),   // blue-700
+                Size      = new Size(90, 22),
+                Anchor    = AnchorStyles.Right | AnchorStyles.Top,
+                Cursor    = Cursors.Default,
+            };
+            _scaleBannerBtn.FlatAppearance.BorderSize         = 0;
+            _scaleBannerBtn.FlatAppearance.MouseOverBackColor = Color.FromArgb(29, 78, 216);
+            _scaleBannerBtn.FlatAppearance.MouseDownBackColor = Color.FromArgb(29, 78, 216);
+            _scaleBannerBtn.Click += ScaleBannerBtn_Click;
+
+            _scaleBanner.Controls.Add(_scaleBannerBtn);
+            Controls.Add(_scaleBanner);
+            _scaleBanner.BringToFront();
+            PerformLayout();
+        }
+
+        private void ScaleBannerBtn_Click(object? sender, EventArgs e)
+        {
+            if (_zebraScannerService == null) return;
+            if (_scaleBannerBtn != null)
+            {
+                _scaleBannerBtn.Enabled = false;
+                _scaleBannerBtn.Text    = "Conectando…";
+            }
+
+            // UI thread (STA) — same apartment as the COM objects. Blocks max 2 s (ClaimDevice).
+            bool ok = _zebraScannerService.TryReconnectScale();
+
+            if (ok)
+            {
+                Controls.Remove(_scaleBanner);
+                _scaleBanner?.Dispose();
+                _scaleBanner    = null;
+                _scaleBannerBtn = null;
+                _paymentPanelControl?.SetScaleStatus("");
+                ShowToast("Báscula conectada");
+            }
+            else
+            {
+                if (_scaleBannerBtn != null)
+                {
+                    _scaleBannerBtn.Enabled = true;
+                    _scaleBannerBtn.Text    = "Reintentar";
+                }
+                ShowToast("No se pudo conectar la báscula", success: false);
+            }
+        }
+
+        private void ShowToast(string message, bool success = true)
+        {
+            var toast = new Label
+            {
+                Text      = message,
+                AutoSize  = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font      = AppTypography.Body,
+                ForeColor = Color.White,
+                BackColor = success ? Color.FromArgb(22, 163, 74) : Color.FromArgb(220, 38, 38),
+                Size      = new Size(260, 40),
+                Location  = new Point((ClientSize.Width - 260) / 2, 12),
+                Padding   = new Padding(0),
+            };
+
+            Controls.Add(toast);
+            toast.BringToFront();
+
+            var fadeTimer = new System.Windows.Forms.Timer { Interval = 2_500 };
+            fadeTimer.Tick += (_, _) =>
+            {
+                fadeTimer.Stop();
+                fadeTimer.Dispose();
+                Controls.Remove(toast);
+                toast.Dispose();
+            };
+            fadeTimer.Start();
         }
 
         private void InicializarControlesUI()
@@ -343,7 +524,6 @@ namespace OmadaPOS.Views
                 Cursor = Cursors.WaitCursor;
 
                 // Show the customer display on the secondary screen (LED 1024×768).
-                // Done here — after login — so the screen only activates for an active session.
                 if (!_customerScreen.Visible)
                 {
                     _customerScreen.PositionOnSecondaryScreen();
@@ -352,10 +532,13 @@ namespace OmadaPOS.Views
 
                 AplicarEstiloVisual();
 
-                await LoadMenuCategoriesAsync();
-                await LoadCategoriesAsync();
-
-                await LoadLastInvoiceAsync();
+                // Fire the 3 independent data calls in parallel — cuts sequential latency by ~2/3.
+                // LoadTabInfoAsync must wait because it builds tabs from MenuCategories + Categories.
+                await Task.WhenAll(
+                    LoadMenuCategoriesAsync(),
+                    LoadCategoriesAsync(),
+                    LoadLastInvoiceAsync()
+                );
 
                 // CRÍTICO: await explícito para evitar race condition con UpdateProductsDisplay
                 await LoadTabInfoAsync();
@@ -365,6 +548,12 @@ namespace OmadaPOS.Views
                 _posHeaderControl?.UpdateCashier(SessionManager.Name ?? "");
 
                 await ActualizarEstadoBotonHold();
+
+                // Defer OPOS init until AFTER the form is fully painted.
+                // BeginInvoke posts to the message queue — the form renders first,
+                // then InitializeDevices() runs on the UI thread (STA), which is the same
+                // apartment where the COM objects live. No cross-apartment marshaling.
+                BeginInvoke(InitializeDevices);
             }
             catch (Exception ex)
             {
@@ -375,6 +564,25 @@ namespace OmadaPOS.Views
             {
                 Cursor = Cursors.Default;
             }
+        }
+
+        /// <summary>
+        /// Called via BeginInvoke from frmHome_Load — runs on the UI thread (STA) after
+        /// the form has been fully painted. OPOS COM objects were created on the UI thread
+        /// in the ZebraScannerService constructor, so Initialize() runs in the correct apartment.
+        /// DataEvent callbacks fire on Zebra's OPOS thread; InvokeRequired dispatches them to UI.
+        /// </summary>
+        private void InitializeDevices()
+        {
+            if (_zebraScannerService == null) return;
+
+            _zebraScannerService.Initialize();
+
+            if (!_zebraScannerService.IsConnected)
+                ShowScannerBanner();
+
+            if (!_zebraScannerService.IsScaleConnected)
+                ShowScaleBanner();
         }
 
         // _supervisorApproved: set by EjecutarLogout() so FormClosing skips the PIN prompt.
@@ -425,6 +633,15 @@ namespace OmadaPOS.Views
             }
 
             _homeInteractionService.ClearHandlers();
+
+            // Cancelar cargas en vuelo y limpiar caché de productos al cerrar sesión
+            _productLoadCts?.Cancel();
+            _productLoadCts?.Dispose();
+            _homeInitializationService.ClearProductCache();
+
+            _scaleBanner?.Dispose();
+            _scaleBanner    = null;
+            _scaleBannerBtn = null;
 
             // On full exit (not a logout) tear down the app cleanly.
             if (!_isLoggingOut)
@@ -480,27 +697,64 @@ namespace OmadaPOS.Views
                     await LoadProductsAsync(categoryIds);
                     UpdateProductsDisplay();
                 }
+
             }
         }
 
         private async void tabControlMenuCategories_SelectedIndexChanged(object sender, EventArgs e)
         {
+            // Cancelar cualquier carga anterior en vuelo si el usuario cambia de pestaña rápido
+            _productLoadCts?.Cancel();
+            _productLoadCts?.Dispose();
+            _productLoadCts = new CancellationTokenSource();
+            var ct = _productLoadCts.Token;
+
             try
             {
                 _selectedTab = tabControlMenuCategories.SelectedTab;
 
-                if (_selectedTab?.Tag != null)
-                {
-                    var categoryIds = Array.ConvertAll(_selectedTab.Tag.ToString()!.Split(','), int.Parse);
-                    await LoadProductsAsync(categoryIds);
+                if (_selectedTab?.Tag == null) return;
+
+                var categoryIds = Array.ConvertAll(_selectedTab.Tag.ToString()!.Split(','), int.Parse);
+
+                // Solo mostrar "Cargando..." si la categoría NO está en caché (primera visita)
+                bool needsNetwork = !_homeInitializationService.IsCached(categoryIds);
+                if (needsNetwork)
+                    ShowLoadingInCurrentTab();
+
+                await LoadProductsAsync(categoryIds, ct: ct);
+
+                if (!ct.IsCancellationRequested)
                     UpdateProductsDisplay();
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Normal — el usuario cambió de pestaña antes de que terminara la carga
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading products: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (!ct.IsCancellationRequested)
+                    MessageBox.Show($"Error loading products: {ex.Message}", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private void ShowLoadingInCurrentTab()
+        {
+            if (_selectedTab?.Controls[0] is not FlowLayoutPanel flow) return;
+
+            foreach (Control c in flow.Controls) c.Dispose();
+            flow.Controls.Clear();
+
+            flow.Controls.Add(new Label
+            {
+                Text      = "Cargando productos...",
+                Font      = new Font("Segoe UI", 13f, FontStyle.Regular),
+                ForeColor = AppColors.TextMuted,
+                AutoSize  = false,
+                Dock      = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+            });
         }
 
         private async void AbecedarioControl1_LetraClicked(object sender, string letra)
@@ -523,47 +777,90 @@ namespace OmadaPOS.Views
 
         private void UpdateProductsDisplay()
         {
-            if (_selectedTab?.Controls[0] is FlowLayoutPanel flowLayoutPanel)
+            if (_selectedTab?.Controls[0] is not FlowLayoutPanel flowLayoutPanel) return;
+
+            // Dispose explícito de cada control antes de removerlo.
+            // ControlCollection.Clear() NO llama Dispose — los ProductImageControl
+            // descartados retendrían HWNDs, Regions y Fonts activos.
+            foreach (Control c in flowLayoutPanel.Controls)
+                c.Dispose();
+
+            flowLayoutPanel.Controls.Clear();
+
+            // Renderizar solo la primera página para que la UI responda rápido.
+            // Si hay más productos, se muestra un botón "Ver más".
+            var page = Products.Take(ProductPageSize).ToList();
+
+            flowLayoutPanel.SuspendLayout();
+
+            foreach (var product in page)
+                flowLayoutPanel.Controls.Add(BuildProductControl(product));
+
+            if (Products.Count > ProductPageSize)
+                flowLayoutPanel.Controls.Add(BuildVerMasButton(flowLayoutPanel, ProductPageSize));
+
+            flowLayoutPanel.ResumeLayout();
+        }
+
+        private ProductImageControl BuildProductControl(ProductModel product)
+        {
+            var ctrl = new ProductImageControl(product);
+            ctrl.ProductClicked += (_, _) =>
             {
-                // Dispose explícito de cada control antes de removerlo.
-                // ControlCollection.Clear() NO llama Dispose — los ProductImageControl
-                // descartados retendrían HWNDs, Regions y Fonts activos.
-                foreach (Control c in flowLayoutPanel.Controls)
-                    c.Dispose();
-
-                flowLayoutPanel.Controls.Clear();
-
-                foreach (var product in Products)
+                try
                 {
-                    var productControl = new ProductImageControl(product);
-                    productControl.ProductClicked += (sender, e) =>
-                    {
-                        try
-                        {
-                            var selection = _barcodeSaleService.HandleProductSelection(product, Categories);
+                    var selection = _barcodeSaleService.HandleProductSelection(product, Categories);
 
-                            if (selection.IsWeighted)
-                            {
-                                _paymentPanelControl?.SetScaleProduct(
-                                    selection.WeightDisplayText ?? string.Empty,
-                                    selection.ProductIdText     ?? string.Empty,
-                                    selection.ImageLocation     ?? string.Empty);
-                            }
-                            else if (selection.AddedToCart)
-                            {
-                                _posHeaderControl?.UpdateProductName(selection.ProductName ?? string.Empty);
-                                UpdateCartDisplay();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show("Error adding product to cart. Please try again.", "Error",
-                                MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        }
-                    };
-                    flowLayoutPanel.Controls.Add(productControl);
+                    if (selection.IsWeighted)
+                    {
+                        _paymentPanelControl?.SetScaleProduct(
+                            selection.WeightDisplayText ?? string.Empty,
+                            selection.ProductIdText     ?? string.Empty,
+                            selection.ImageLocation     ?? string.Empty);
+                    }
+                    else if (selection.AddedToCart)
+                    {
+                        _posHeaderControl?.UpdateProductName(selection.ProductName ?? string.Empty);
+                        UpdateCartDisplay();
+                    }
                 }
-            }
+                catch
+                {
+                    MessageBox.Show("Error adding product to cart. Please try again.", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+            return ctrl;
+        }
+
+        private Button BuildVerMasButton(FlowLayoutPanel flow, int alreadyShown)
+        {
+            var remaining = Products.Count - alreadyShown;
+            var btn = new Button
+            {
+                Text      = $"Ver {remaining} productos más ▼",
+                Height    = 48,
+                Width     = flow.ClientSize.Width - 24,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = AppColors.SurfaceCard,
+                ForeColor = AppColors.TextSecondary,
+                Font      = new Font("Segoe UI", 11f, FontStyle.Regular),
+                Margin    = new Padding(4),
+                Cursor    = Cursors.Default,
+            };
+            btn.FlatAppearance.BorderColor        = AppColors.SurfaceMuted;
+            btn.FlatAppearance.MouseOverBackColor  = Color.Transparent;
+            btn.FlatAppearance.MouseDownBackColor  = Color.Transparent;
+
+            btn.Click += (_, _) =>
+            {
+                btn.Dispose();
+                flow.SuspendLayout();
+                foreach (var product in Products.Skip(alreadyShown))
+                    flow.Controls.Add(BuildProductControl(product));
+                flow.ResumeLayout();
+            };
+            return btn;
         }
 
         private void DisplayTotales()
@@ -920,8 +1217,8 @@ namespace OmadaPOS.Views
         public async Task LoadMenuCategoriesAsync()
             => await _homeInitializationService.LoadMenuCategoriesAsync(MenuCategories);
 
-        public async Task LoadProductsAsync(int[] categoryIds, string? searchLetter = null)
-            => await _homeInitializationService.LoadProductsAsync(Products, categoryIds, searchLetter);
+        public async Task LoadProductsAsync(int[] categoryIds, string? searchLetter = null, CancellationToken ct = default)
+            => await _homeInitializationService.LoadProductsAsync(Products, categoryIds, searchLetter, ct);
 
         private async Task ProcessPaymentMultipleAsync()
         {
@@ -990,19 +1287,34 @@ namespace OmadaPOS.Views
         }
 
         /// <summary>
+        /// Returns true if any cart item requires age verification — checks both the
+        /// stored flag and a real-time lookup in the restriction config (safety net for
+        /// items whose flag was incorrectly set to false at add-time due to UPC mismatch).
+        /// </summary>
+        private bool CartHasAgeRestrictedItem()
+            => _ageVerificationService.RequiresVerification(_shoppingCart.Items)
+               || _shoppingCart.Items.Any(i => _ageRestrictionConfig.IsRestricted(i.UPC, 0));
+
+        /// <summary>
         /// Updates the badge text and color based on the current verification state.
-        /// Hides the badge when no restricted items are in the cart.
+        /// Shows a pending warning as soon as a restricted item is in the cart.
         /// </summary>
         private void UpdateAgeVerificationBadge()
         {
-            if (_currentAgeVerification == null
-                || !_ageVerificationService.RequiresVerification(_shoppingCart.Items))
+            if (!CartHasAgeRestrictedItem())
             {
                 _labelAgeVerificationStatus.Visible = false;
                 return;
             }
 
             _labelAgeVerificationStatus.Visible = true;
+
+            if (_currentAgeVerification == null)
+            {
+                _labelAgeVerificationStatus.BackColor = Color.FromArgb(180, 83, 9);
+                _labelAgeVerificationStatus.Text      = "⚠️  Age Verification Required";
+                return;
+            }
 
             switch (_currentAgeVerification.Status)
             {
@@ -1016,7 +1328,7 @@ namespace OmadaPOS.Views
                     break;
                 default:
                     _labelAgeVerificationStatus.BackColor = Color.FromArgb(180, 83, 9);
-                    _labelAgeVerificationStatus.Text      = "⚠️  Pending Age Verification";
+                    _labelAgeVerificationStatus.Text      = "⚠️  Age Verification Required";
                     break;
             }
         }
@@ -1026,11 +1338,8 @@ namespace OmadaPOS.Views
         /// </summary>
         private void CheckAgeVerificationValidity()
         {
-            if (_currentAgeVerification != null
-                && !_ageVerificationService.RequiresVerification(_shoppingCart.Items))
-            {
+            if (_currentAgeVerification != null && !CartHasAgeRestrictedItem())
                 _currentAgeVerification = null;
-            }
 
             UpdateAgeVerificationBadge();
         }
@@ -1043,7 +1352,7 @@ namespace OmadaPOS.Views
         /// </summary>
         private async Task<bool> EnsureAgeVerificationAsync()
         {
-            if (!_ageVerificationService.RequiresVerification(_shoppingCart.Items))
+            if (!CartHasAgeRestrictedItem())
                 return true;
 
             if (_currentAgeVerification?.Status == AgeVerificationStatus.Approved)

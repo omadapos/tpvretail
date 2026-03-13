@@ -1,148 +1,201 @@
-using OmadaPOS.Componentes;
+using System.Drawing.Drawing2D;
+using System.Drawing.Text;
 using OmadaPOS.Presentation.Styling;
 
 namespace OmadaPOS.Presentation.Controls;
 
 /// <summary>
-/// Self-contained totals card for the POS cart column.
-/// Owns its own RoundedPanel, TableLayoutPanel, and all labels.
-/// Call <see cref="Attach"/> to insert it into a parent grid; then wire
-/// <see cref="UpdateTotals"/> / <see cref="ResetTotals"/> as needed.
+/// Self-contained totals card drawn entirely in a single OnPaint call.
+///
+/// Design rationale:
+///   The previous implementation used a RoundedPanel → TableLayoutPanel → 6 Labels
+///   hierarchy, all with BackColor=Transparent. Every Label.Text change triggered
+///   WM_ERASEBKGND bubbling through 4 transparent layers, forcing 3 independent
+///   paint cycles (one per label) with 4 GDI+ allocations each — visible as white
+///   flashes and horizontal artifact lines.
+///
+///   This control eliminates all children. OnPaint draws background, border, separator
+///   and all three text rows in one atomic double-buffered operation. UpdateTotals()
+///   calls a single Invalidate() regardless of how many values changed.
 /// </summary>
 public sealed class CartTotalsControl : UserControl
 {
-    // ── Value labels (updated at runtime) ────────────────────────────────────
-    private readonly Label _lblSubtotalValue;
-    private readonly Label _lblTaxValue;
-    private readonly Label _lblTotalValue;
+    // ── Static GDI+ resources — one allocation per process lifetime ───────────
+    private static readonly SolidBrush _brushBg     = new(AppColors.NavyDark);
+    private static readonly SolidBrush _brushShadow = new(Color.FromArgb(50, 0, 0, 0));
+    private static readonly SolidBrush _brushMuted  = new(AppColors.TextOnDarkMuted);
+    private static readonly SolidBrush _brushSec    = new(AppColors.TextOnDarkSecondary);
+    private static readonly SolidBrush _brushWhite  = new(AppColors.TextWhite);
+    private static readonly SolidBrush _brushGreen  = new(AppColors.AccentGreen);
+    private static readonly Pen        _penBorder   = new(AppColors.SlateBlue, 1f);
+    private static readonly Pen        _penSep      = new(Color.FromArgb(55, 255, 255, 255), 1f);
 
-    // ── Colors (dark-chrome card) ─────────────────────────────────────────────
-    private static readonly Color _bg       = Color.FromArgb(15,  23,  42);  // navy dark
-    private static readonly Color _separator = Color.FromArgb(55, 255, 255, 255);
+    private static readonly StringFormat _sfLeft  = new()
+    {
+        Alignment     = StringAlignment.Near,
+        LineAlignment = StringAlignment.Center,
+        FormatFlags   = StringFormatFlags.NoWrap,
+        Trimming      = StringTrimming.EllipsisCharacter,
+    };
+    private static readonly StringFormat _sfRight = new()
+    {
+        Alignment     = StringAlignment.Far,
+        LineAlignment = StringAlignment.Center,
+        FormatFlags   = StringFormatFlags.NoWrap,
+        Trimming      = StringTrimming.EllipsisCharacter,
+    };
+
+    // ── Cached GraphicsPath — rebuilt only when the control is resized ─────────
+    private GraphicsPath? _pathMain;
+    private GraphicsPath? _pathShadow;
+    private Rectangle     _cachedBounds = Rectangle.Empty;
+
+    // ── Cached display strings ─────────────────────────────────────────────────
+    private string _subtotal = "$0.00";
+    private string _tax      = "$0.00";
+    private string _total    = "$0.00";
 
     // ── Constructor ───────────────────────────────────────────────────────────
     private CartTotalsControl()
     {
-        DoubleBuffered = true;
-        Dock           = DockStyle.Fill;
-        Margin         = new Padding(6, 4, 6, 4);
-        Padding        = new Padding(0);
-        BackColor      = Color.Transparent;
+        Dock    = DockStyle.Fill;
+        Margin  = new Padding(6, 4, 6, 4);
+        Padding = new Padding(0);
 
-        // ── Dark rounded card ─────────────────────────────────────────────────
-        var card = new RoundedPanel
-        {
-            Dock            = DockStyle.Fill,
-            BackgroundStart = AppColors.NavyDark,
-            BorderColor     = AppBorders.AccentLine,
-            CornerRadius    = AppRadii.Panel,
-            Padding         = new Padding(0),
-        };
+        // AllPaintingInWmPaint: background + foreground painted in one message,
+        // no separate WM_ERASEBKGND. OptimizedDoubleBuffer: rendered off-screen,
+        // blitted atomically — zero visible intermediate states.
+        SetStyle(
+            ControlStyles.UserPaint            |
+            ControlStyles.AllPaintingInWmPaint |
+            ControlStyles.OptimizedDoubleBuffer |
+            ControlStyles.ResizeRedraw          |
+            ControlStyles.SupportsTransparentBackColor, true);
 
-        // ── Outer table: Subtotal | Tax | ── separator ── | Total ────────────
-        //   Row 0: Subtotal row  (fixed 38px)
-        //   Row 1: Tax row       (fixed 34px)
-        //   Row 2: Total hero    (fills remaining — ample room for 26pt Consolas)
-        var tbl = new TableLayoutPanel
-        {
-            Dock        = DockStyle.Fill,
-            ColumnCount = 2,
-            RowCount    = 3,
-            BackColor   = Color.Transparent,
-            Padding     = new Padding(18, 10, 18, 6),
-            Margin      = new Padding(0),
-        };
-        tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-        tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));   // subtotal
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));   // tax
-        tbl.RowStyles.Add(new RowStyle(SizeType.Percent,  100));  // total — fills rest
-
-        // Subtotal row
-        tbl.Controls.Add(Label("Subtotal", AppColors.TextOnDarkMuted,      AppTypography.RowLabel,  ContentAlignment.MiddleLeft),  0, 0);
-        _lblSubtotalValue = Label("$0.00",  AppColors.TextOnDarkSecondary,  AppTypography.AmountMono, ContentAlignment.MiddleRight);
-        tbl.Controls.Add(_lblSubtotalValue, 1, 0);
-
-        // Tax row
-        tbl.Controls.Add(Label("Tax",    AppColors.TextOnDarkMuted,  AppTypography.RowLabel,  ContentAlignment.MiddleLeft),  0, 1);
-        _lblTaxValue = Label("$0.00",    AppColors.TextOnDarkMuted,  AppTypography.AmountMono, ContentAlignment.MiddleRight);
-        tbl.Controls.Add(_lblTaxValue, 1, 1);
-
-        // Total hero — spans both columns
-        var totalRow = BuildTotalRow(out _lblTotalValue);
-        tbl.Controls.Add(totalRow, 0, 2);
-        tbl.SetColumnSpan(totalRow, 2);
-
-        card.Controls.Add(tbl);
-        Controls.Add(card);
+        BackColor = Color.Transparent;
     }
 
-    // ── Total hero row ────────────────────────────────────────────────────────
-    private static Panel BuildTotalRow(out Label valueLabel)
+    // ── Paint ─────────────────────────────────────────────────────────────────
+    protected override void OnPaint(PaintEventArgs e)
     {
-        var panel = new Panel
+        var g      = e.Graphics;
+        var bounds = ClientRectangle;
+
+        g.SmoothingMode      = SmoothingMode.AntiAlias;
+        g.TextRenderingHint  = TextRenderingHint.ClearTypeGridFit;
+        g.CompositingQuality = CompositingQuality.HighSpeed;
+
+        // Rebuild rounded paths only when the control is resized
+        if (bounds != _cachedBounds)
         {
-            Dock      = DockStyle.Fill,
-            BackColor = Color.Transparent,
-            Padding   = new Padding(0),
-            Margin    = new Padding(0),
-        };
+            _cachedBounds = bounds;
+            RebuildPaths(bounds);
+        }
 
-        // Hairline separator at the top
-        panel.Paint += (_, e) =>
+        // ── 1. Shadow ────────────────────────────────────────────────────────
+        if (_pathShadow != null)
+            g.FillPath(_brushShadow, _pathShadow);
+
+        // ── 2. Background + border ───────────────────────────────────────────
+        if (_pathMain != null)
         {
-            using var pen = new Pen(_separator, 1f);
-            e.Graphics.DrawLine(pen, 0, 2, panel.Width, 2);
-        };
+            g.FillPath(_brushBg,     _pathMain);
+            g.DrawPath(_penBorder,   _pathMain);
+        }
 
-        var inner = new TableLayoutPanel
-        {
-            Dock        = DockStyle.Fill,
-            ColumnCount = 2,
-            RowCount    = 1,
-            BackColor   = Color.Transparent,
-            Padding     = new Padding(0, 6, 0, 4),
-            Margin      = new Padding(0),
-        };
-        inner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
-        inner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62));
-        inner.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        // ── 3. Text content ──────────────────────────────────────────────────
+        // Layout mirrors the original TableLayoutPanel:
+        //   Padding  18px left/right, 10px top, 6px bottom
+        //   Row 0    Subtotal  38px
+        //   Row 1    Tax       34px
+        //   Hairline separator
+        //   Row 2    TOTAL     fills remaining
 
-        var lblCaption = Label("TOTAL", AppColors.TextWhite,   AppTypography.SectionTitle, ContentAlignment.MiddleLeft);
-        valueLabel     = Label("$0.00", AppColors.AccentGreen, AppTypography.AmountGrand,  ContentAlignment.MiddleRight);
+        const int px   = 18;
+        const int pt   = 10;
+        const int rH0  = 38;   // subtotal row height
+        const int rH1  = 34;   // tax row height
 
-        inner.Controls.Add(lblCaption, 0, 0);
-        inner.Controls.Add(valueLabel, 1, 0);
+        int areaX = bounds.X + px;
+        int areaW = bounds.Width  - px * 2;
+        int y0    = bounds.Y + pt;
+        int col1W = (int)(areaW * 0.40f);   // 40% label | 60% value  (subtotal/tax)
 
-        panel.Controls.Add(inner);
-        return panel;
+        // ── Subtotal ─────────────────────────────────────────────────────────
+        var lR0 = new RectangleF(areaX,          y0,      col1W,          rH0);
+        var vR0 = new RectangleF(areaX + col1W,  y0,      areaW - col1W,  rH0);
+        g.DrawString("Subtotal",  AppTypography.RowLabel,  _brushMuted, lR0, _sfLeft);
+        g.DrawString(_subtotal,   AppTypography.AmountMono, _brushSec,  vR0, _sfRight);
+
+        // ── Tax ───────────────────────────────────────────────────────────────
+        var lR1 = new RectangleF(areaX,          y0 + rH0,  col1W,          rH1);
+        var vR1 = new RectangleF(areaX + col1W,  y0 + rH0,  areaW - col1W,  rH1);
+        g.DrawString("Tax",  AppTypography.RowLabel,   _brushMuted, lR1, _sfLeft);
+        g.DrawString(_tax,   AppTypography.AmountMono, _brushMuted, vR1, _sfRight);
+
+        // ── Hairline separator ────────────────────────────────────────────────
+        int sepY = y0 + rH0 + rH1 + 2;
+        g.DrawLine(_penSep, areaX, sepY, areaX + areaW, sepY);
+
+        // ── TOTAL (hero) ──────────────────────────────────────────────────────
+        int totalY = sepY + 6;
+        int totalH = Math.Max(bounds.Bottom - totalY - 6, 0);
+        int col1TW = (int)(areaW * 0.38f);   // 38% "TOTAL" | 62% amount
+
+        var lR2 = new RectangleF(areaX,           totalY, col1TW,          totalH);
+        var vR2 = new RectangleF(areaX + col1TW,  totalY, areaW - col1TW,  totalH);
+        g.DrawString("TOTAL",  AppTypography.SectionTitle, _brushWhite, lR2, _sfLeft);
+        g.DrawString(_total,   AppTypography.AmountGrand,  _brushGreen, vR2, _sfRight);
     }
 
-    // ── Label factory ─────────────────────────────────────────────────────────
-    private static Label Label(string text, Color fg, Font font, ContentAlignment align) =>
-        new()
+    // ── Path management ───────────────────────────────────────────────────────
+    private void RebuildPaths(Rectangle b)
+    {
+        _pathMain?.Dispose();
+        _pathShadow?.Dispose();
+
+        int r = AppRadii.Panel;
+        _pathMain   = BuildRoundedPath(new Rectangle(b.X,     b.Y,     b.Width - 3, b.Height - 3), r);
+        _pathShadow = BuildRoundedPath(new Rectangle(b.X + 3, b.Y + 3, b.Width - 6, b.Height - 6), r);
+    }
+
+    private static GraphicsPath BuildRoundedPath(Rectangle rect, int radius)
+    {
+        var path     = new GraphicsPath();
+        int diameter = radius * 2;
+        var arc      = new Rectangle(rect.X, rect.Y, diameter, diameter);
+
+        path.AddArc(arc, 180, 90);
+        arc.X = rect.Right - diameter;
+        path.AddArc(arc, 270, 90);
+        arc.Y = rect.Bottom - diameter;
+        path.AddArc(arc, 0, 90);
+        arc.X = rect.Left;
+        path.AddArc(arc, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
         {
-            Text      = text,
-            ForeColor = fg,
-            Font      = font,
-            BackColor = Color.Transparent,
-            Dock      = DockStyle.Fill,
-            TextAlign = align,
-            AutoSize  = false,
-        };
+            _pathMain?.Dispose();
+            _pathShadow?.Dispose();
+        }
+        base.Dispose(disposing);
+    }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a <see cref="CartTotalsControl"/> and inserts it into
-    /// <paramref name="parent"/> at the specified grid cell.
-    /// The old control at that position (if any) is removed first.
+    /// Inserts a new <see cref="CartTotalsControl"/> into the specified
+    /// TableLayoutPanel cell, removing any previous occupant.
     /// </summary>
     public static CartTotalsControl Attach(TableLayoutPanel parent, int column, int row)
     {
         ArgumentNullException.ThrowIfNull(parent);
 
-        // Remove whatever was at this cell (old designer placeholder)
         var existing = parent.GetControlFromPosition(column, row);
         if (existing != null)
             parent.Controls.Remove(existing);
@@ -152,21 +205,33 @@ public sealed class CartTotalsControl : UserControl
         return ctrl;
     }
 
-    /// <summary>Updates all three displayed amounts.</summary>
+    /// <summary>
+    /// Updates the three displayed amounts.
+    /// No-ops when all values are identical to what is already painted — zero redraws.
+    /// When something changes, issues a single Invalidate() → one OnPaint call.
+    /// </summary>
     public void UpdateTotals(decimal subtotal, decimal tax, decimal total)
     {
-        _lblSubtotalValue.Text = subtotal.ToString("C");
-        _lblTaxValue.Text      = tax.ToString("C");
-        _lblTotalValue.Text    = total.ToString("C");
+        var s = subtotal.ToString("C");
+        var t = tax.ToString("C");
+        var g = total.ToString("C");
+
+        if (s == _subtotal && t == _tax && g == _total) return;
+
+        _subtotal = s;
+        _tax      = t;
+        _total    = g;
+
+        Invalidate();   // one call → one OnPaint → one blit
     }
 
-    /// <summary>Resets displayed amounts to zero.</summary>
+    /// <summary>Resets amounts to $0.00. Triggers a single repaint only if needed.</summary>
     public void ResetTotals(bool includeGrandTotal)
     {
-        _lblSubtotalValue.Text = "$0.00";
-        _lblTaxValue.Text      = "$0.00";
-        if (includeGrandTotal)
-            _lblTotalValue.Text = "$0.00";
+        bool changed = false;
+        if (_subtotal != "$0.00") { _subtotal = "$0.00"; changed = true; }
+        if (_tax      != "$0.00") { _tax      = "$0.00"; changed = true; }
+        if (includeGrandTotal && _total != "$0.00") { _total = "$0.00"; changed = true; }
+        if (changed) Invalidate();
     }
-
 }

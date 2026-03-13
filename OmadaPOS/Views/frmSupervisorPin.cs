@@ -112,7 +112,7 @@ public sealed class frmSupervisorPin : Form
             Font      = AppTypography.PaymentLabel,
             ForeColor = AppColors.TextMuted,
             BackColor = Color.Transparent,
-            Cursor    = Cursors.Hand,
+            Cursor    = Cursors.Default,
         };
         btnCancel.FlatAppearance.BorderColor    = AppColors.TextMuted;
         btnCancel.FlatAppearance.BorderSize     = 1;

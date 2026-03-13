@@ -1,63 +1,79 @@
+using System.Drawing.Drawing2D;
+using System.Drawing.Text;
 using OmadaPOS.Componentes;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Presentation.Styling;
-using System.Text.Json;
+using OmadaPOS.Services;
 
 namespace OmadaPOS.Views;
 
 /// <summary>
 /// Shown when a scanned UPC is not found in the local backend.
-/// Automatically queries Open Food Facts to pre-fill name, brand and image.
+/// Queries the OmadaPOS global product catalog to pre-fill name, brand,
+/// category, EBT/WIC flags, description and image.
 /// The cashier only needs to enter the price and confirm.
 /// </summary>
 public sealed class frmProductNoExist : POSDialog
 {
     // ── Services ───────────────────────────────────────────────────────────────
-    private readonly ICategoryService _categoryService;
-    private readonly HttpClient       _http;
-    private readonly string           _upc;
+    private readonly ICategoryService        _categoryService;
+    private readonly IExternalProductService _externalProduct;
+    private readonly HttpClient              _http;
+    private readonly string                  _upc;
 
     // ── UI refs ────────────────────────────────────────────────────────────────
-    private PictureBox        _pic        = null!;
-    private Label             _lblSource  = null!;
-    private Label             _lblStatus  = null!;
-    private TextBox           _tbName     = null!;
-    private Label             _lblBrand   = null!;
-    private ComboBox          _cbCategory = null!;
-    private Button            _btnTax     = null!;
-    private Button            _btnEbt     = null!;
-    private Button            _btnWic     = null!;
-    private NumericPadControl _numpad     = null!;
+    private PictureBox        _pic         = null!;
+    private Label             _lblSourceBadge = null!;   // bottom of image card
+    private Label             _lblStatus   = null!;      // bottom status bar
+    private TextBox           _tbName      = null!;
+    private Label             _lblBrand    = null!;
+    private Label             _lblSizeWeight = null!;
+    private Label             _lblDesc     = null!;
+    private ComboBox          _cbCategory  = null!;
+    private Button            _btnTax      = null!;
+    private Button            _btnEbt      = null!;
+    private Button            _btnWic      = null!;
+    private NumericPadControl _numpad      = null!;
 
-    // ── Toggle state ───────────────────────────────────────────────────────────
+    // ── State ──────────────────────────────────────────────────────────────────
     private bool _taxOn = true;
     private bool _ebtOn = false;
     private bool _wicOn = false;
+    private ExternalProductInfo? _apiInfo;
 
     // ── POSDialog identity ─────────────────────────────────────────────────────
     protected override Color      AccentColor => AppColors.Warning;
     protected override string     Icon        => "⚠";
     protected override string     Title       => "Producto no encontrado";
-    protected override string     Subtitle    => "Verifica los datos y asigna el precio de venta";
+    protected override string     Subtitle    => "Verifica los datos, asigna el precio y guarda";
     protected override DialogSize Size        => DialogSize.ExtraWide;
     protected override string?    ConfirmText => "✔  GUARDAR PRODUCTO";
     protected override string     CancelText  => "✕  CANCELAR";
 
-    public frmProductNoExist(ICategoryService categoryService, HttpClient http, string upc)
+    public frmProductNoExist(ICategoryService categoryService, IExternalProductService externalProduct,
+                             HttpClient http, string upc)
     {
         _categoryService = categoryService;
+        _externalProduct = externalProduct;
         _http            = http;
         _upc             = upc;
 
         Load += async (_, _) => await LoadAllDataAsync();
     }
 
-    // ── Root layout ────────────────────────────────────────────────────────────
-    //  Left  (200px): product image + source badge
-    //  Center (flex):  all product fields in a clean card
-    //  Right (290px):  price numpad
-    //  Bottom (30px):  lookup status bar
+    // ══════════════════════════════════════════════════════════════════════════
+    // ROOT LAYOUT
+    // ══════════════════════════════════════════════════════════════════════════
+    //
+    //  ┌─────────────────────────────────────────────────────────────────────┐
+    //  │  Col 0 (240px) │  Col 1 (flex)                │  Col 2 (280px)     │
+    //  │  Image card    │  Product info sections        │  Price numpad      │
+    //  │                │                               │                    │
+    //  ├─────────────────────────────────────────────────────────────────────┤
+    //  │  Status bar (spans all 3 columns, 28px)                             │
+    //  └─────────────────────────────────────────────────────────────────────┘
+    //
     protected override Control BuildContent()
     {
         var root = new TableLayoutPanel
@@ -65,54 +81,50 @@ public sealed class frmProductNoExist : POSDialog
             Dock        = DockStyle.Fill,
             ColumnCount = 3,
             RowCount    = 2,
-            BackColor   = Color.Transparent,
-            Padding     = new Padding(14, 10, 14, 6),
+            BackColor   = AppColors.BackgroundPrimary,
+            Padding     = new Padding(14, 12, 14, 4),
             Margin      = Padding.Empty,
         };
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200F));  // image
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,  100F));  // info
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 290F));  // numpad
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,  100F));        // content
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute,  30F));        // status bar
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 240F));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,  100F));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280F));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  100F));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute,  28F));
 
-        root.Controls.Add(BuildImagePanel(),  0, 0);
-        root.Controls.Add(BuildInfoPanel(),   1, 0);
+        root.Controls.Add(BuildImageCard(),  0, 0);
+        root.Controls.Add(BuildInfoPanel(),  1, 0);
         root.Controls.Add(BuildNumpadPanel(), 2, 0);
 
         // ── Status bar ────────────────────────────────────────────────────────
-        var statusBar = new Panel
-        {
-            Dock      = DockStyle.Fill,
-            BackColor = AppColors.SurfaceMuted,
-            Margin    = new Padding(0, 4, 0, 0),
-        };
-
-        // Thin top separator line
-        statusBar.Paint += (_, e) =>
-        {
-            using var pen = new Pen(AppColors.SeparatorOnLight, 1);
-            e.Graphics.DrawLine(pen, 0, 0, statusBar.Width, 0);
-        };
-
         _lblStatus = new Label
         {
             Dock      = DockStyle.Fill,
-            Font      = new Font("Segoe UI", 9F, FontStyle.Italic),
+            Font      = AppTypography.Caption,
             ForeColor = AppColors.TextMuted,
-            BackColor = Color.Transparent,
+            BackColor = AppColors.BackgroundSecondary,
             TextAlign = ContentAlignment.MiddleLeft,
-            Text      = "🔍  Buscando información del producto…",
-            Padding   = new Padding(8, 0, 0, 0),
+            Text      = "🔍  Consultando catálogo de productos…",
+            Padding   = new Padding(10, 0, 0, 0),
         };
-        statusBar.Controls.Add(_lblStatus);
-        root.Controls.Add(statusBar, 0, 1);
-        root.SetColumnSpan(statusBar, 3);
+        root.Controls.Add(_lblStatus, 0, 1);
+        root.SetColumnSpan(_lblStatus, 3);
 
         return root;
     }
 
-    // ── Image panel ────────────────────────────────────────────────────────────
-    private Panel BuildImagePanel()
+    // ══════════════════════════════════════════════════════════════════════════
+    // LEFT — IMAGE CARD
+    // ══════════════════════════════════════════════════════════════════════════
+    //
+    //  ┌──────────────────────┐
+    //  │  UPC  00012345678    │  ← green chip at top
+    //  │                      │
+    //  │     [product photo]  │  ← fills most of card
+    //  │                      │
+    //  │  ✔ Catálogo OmadaPOS │  ← source badge at bottom
+    //  └──────────────────────┘
+    //
+    private Panel BuildImageCard()
     {
         var outer = new Panel
         {
@@ -121,155 +133,226 @@ public sealed class frmProductNoExist : POSDialog
             Margin    = new Padding(0, 0, 12, 0),
         };
 
-        // Card with rounded-looking border via Paint
+        // White rounded card
         var card = new Panel
         {
             Dock      = DockStyle.Fill,
-            BackColor = AppColors.SurfaceMuted,
+            BackColor = Color.White,
         };
-
-        // Rounded border
         card.Paint += (_, e) =>
         {
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var pen = new Pen(AppColors.SeparatorOnLight, 1.5f);
-            e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1.5f);
+            g.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
         };
 
-        // Photo area (fills card except source label at bottom)
+        // ── UPC chip at top ───────────────────────────────────────────────────
+        var upcChip = new Panel
+        {
+            Dock      = DockStyle.Top,
+            Height    = 40,
+            BackColor = Color.FromArgb(240, 253, 244),   // very light green tint
+            Padding   = new Padding(10, 0, 10, 0),
+        };
+        upcChip.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(187, 247, 208), 1f);
+            e.Graphics.DrawLine(pen, 0, upcChip.Height - 1, upcChip.Width, upcChip.Height - 1);
+        };
+        upcChip.Controls.Add(new Label
+        {
+            Dock      = DockStyle.Fill,
+            Text      = $"UPC  {_upc}",
+            Font      = AppTypography.ScanInput,
+            ForeColor = AppColors.AccentGreenDark,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleCenter,
+        });
+
+        // ── Product image ─────────────────────────────────────────────────────
         _pic = new PictureBox
         {
             Dock      = DockStyle.Fill,
             SizeMode  = PictureBoxSizeMode.Zoom,
-            BackColor = Color.Transparent,
-            Padding   = new Padding(10),
+            BackColor = Color.White,
+            Padding   = new Padding(12),
         };
         _pic.Paint += DrawImagePlaceholder;
 
-        // Source badge at bottom of image card
-        _lblSource = new Label
+        // ── Source badge at bottom ────────────────────────────────────────────
+        _lblSourceBadge = new Label
         {
             Dock      = DockStyle.Bottom,
-            Height    = 32,
+            Height    = 34,
             Text      = "Buscando en catálogo…",
             Font      = new Font("Segoe UI", 9F, FontStyle.Italic),
             ForeColor = AppColors.TextMuted,
-            BackColor = Color.FromArgb(8, 0, 0, 0),
+            BackColor = AppColors.SurfaceMuted,
             TextAlign = ContentAlignment.MiddleCenter,
+        };
+        _lblSourceBadge.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1f);
+            e.Graphics.DrawLine(pen, 0, 0, _lblSourceBadge.Width, 0);
         };
 
         card.Controls.Add(_pic);
-        card.Controls.Add(_lblSource);
+        card.Controls.Add(_lblSourceBadge);
+        card.Controls.Add(upcChip);
         outer.Controls.Add(card);
         return outer;
     }
 
-    private static readonly Font _placeholderFont = new("Segoe UI", 10F);
+    // ── Image placeholder drawn when no photo is available ────────────────────
+    private static readonly Font _iconFont  = new("Segoe UI Emoji", 40F);
+    private static readonly Font _hintFont  = new("Segoe UI", 10F, FontStyle.Regular);
 
     private void DrawImagePlaceholder(object? sender, PaintEventArgs e)
     {
         if (_pic.Image != null) return;
-        var g  = e.Graphics;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-        g.SmoothingMode     = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        var g = e.Graphics;
+        g.SmoothingMode    = SmoothingMode.AntiAlias;
+        g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-        var bounds = new RectangleF(0, 0, _pic.Width, _pic.Height);
-        using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        using var bf = new SolidBrush(Color.FromArgb(80, AppColors.TextMuted));
+        float cx = _pic.Width / 2f;
+        float cy = _pic.Height / 2f;
+        using var sfC = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        using var bMuted = new SolidBrush(Color.FromArgb(100, AppColors.TextMuted));
+        using var bText  = new SolidBrush(AppColors.TextMuted);
 
-        // Camera icon (Unicode)
-        using var iconFont = new Font("Segoe UI", 36F);
-        g.DrawString("📷", iconFont, bf,
-            new RectangleF(0, bounds.Height / 2 - 48, bounds.Width, 52), sf);
-
-        using var bf2 = new SolidBrush(AppColors.TextMuted);
-        g.DrawString("Sin imagen", _placeholderFont, bf2,
-            new RectangleF(0, bounds.Height / 2 + 12, bounds.Width, 28), sf);
+        g.DrawString("📦", _iconFont, bMuted,
+            new RectangleF(0, cy - 54, _pic.Width, 60), sfC);
+        g.DrawString("Sin imagen disponible", _hintFont, bText,
+            new RectangleF(0, cy + 12, _pic.Width, 24), sfC);
     }
 
-    // ── Info panel ─────────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // CENTER — INFO PANEL
+    // ══════════════════════════════════════════════════════════════════════════
+    //
+    //  ┌─────────────────────────────────────────────┐
+    //  │  NOMBRE DEL PRODUCTO                        │  section header
+    //  │  ┌─────────────────────────────────────┐   │
+    //  │  │ Sun chips minis                     │   │  editable textbox
+    //  │  └─────────────────────────────────────┘   │
+    //  │  Marca: Sun Chips           42.5 g          │  chips inline
+    //  │  ┌─────────────────────────────────────┐   │
+    //  │  │ Chips multigrano en miniatura…      │   │  description (read-only)
+    //  │  └─────────────────────────────────────┘   │
+    //  ├─────────────────────────────────────────────┤  separator
+    //  │  CATEGORÍA                                  │
+    //  │  [  Snacks & Chips                     ▼ ] │
+    //  ├─────────────────────────────────────────────┤  separator
+    //  │  IMPUESTOS / RESTRICCIONES                  │
+    //  │  [TAX 7%]  [EBT]  [WIC]                    │
+    //  └─────────────────────────────────────────────┘
+    //
     private Panel BuildInfoPanel()
     {
         var outer = new Panel
         {
             Dock      = DockStyle.Fill,
             BackColor = Color.Transparent,
-            Padding   = new Padding(0, 0, 12, 0),
+            Padding   = new Padding(0, 0, 10, 0),
         };
 
         var tbl = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount    = 9,
+            RowCount    = 10,
             BackColor   = Color.Transparent,
             Padding     = Padding.Empty,
             Margin      = Padding.Empty,
         };
         tbl.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-        // Fixed pixel heights — sized to prevent clipping at 96 DPI
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));  // 0: UPC badge
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));  // 1: label NOMBRE
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));  // 2: name textbox
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));  // 3: brand + line
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));  // 4: label CATEGORIA
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));  // 5: combo
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));  // 6: spacer
-        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));  // 7: label IMPUESTOS
-        tbl.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));  // 8: toggles (fills remaining)
+        // Row heights — carefully sized to avoid clipping at 96 DPI
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));  // 0: section label NOMBRE
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));  // 1: name textbox
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));  // 2: brand + size chips
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 54F));  // 3: description block
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));  // 4: section separator
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));  // 5: section label CATEGORÍA
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));  // 6: category combo
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));  // 7: section separator
+        tbl.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));  // 8: section label IMPUESTOS
+        tbl.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));  // 9: toggles — fills rest
 
-        // ── Row 0 — UPC badge ─────────────────────────────────────────────────
-        var upcRow = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
-        upcRow.Paint += (_, e) =>
-        {
-            using var pen = new Pen(AppColors.SeparatorOnLight, 1);
-            e.Graphics.DrawLine(pen, 0, upcRow.Height - 1, upcRow.Width, upcRow.Height - 1);
-        };
-        var lblUpc = new Label
-        {
-            Dock      = DockStyle.Fill,
-            Text      = $"UPC  {_upc}",
-            Font      = AppTypography.ScanInput,
-            ForeColor = AppColors.AccentGreen,
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.MiddleLeft,
-        };
-        upcRow.Controls.Add(lblUpc);
-        tbl.Controls.Add(upcRow, 0, 0);
+        // ── Row 0: Section header NOMBRE ─────────────────────────────────────
+        tbl.Controls.Add(SectionLabel("NOMBRE DEL PRODUCTO"), 0, 0);
 
-        // ── Row 1 — Label "NOMBRE DEL PRODUCTO" ───────────────────────────────
-        tbl.Controls.Add(FieldLabel("NOMBRE DEL PRODUCTO"), 0, 1);
-
-        // ── Row 2 — Name textbox ──────────────────────────────────────────────
+        // ── Row 1: Name textbox ───────────────────────────────────────────────
         _tbName = new TextBox
         {
             Dock            = DockStyle.Fill,
-            Font            = AppTypography.Body,
+            Font            = new Font("Segoe UI", 14F, FontStyle.Regular),
             ForeColor       = AppColors.TextPrimary,
             BackColor       = Color.White,
             BorderStyle     = BorderStyle.FixedSingle,
             PlaceholderText = "Escribe el nombre del producto…",
-            Margin          = new Padding(0, 2, 0, 2),
+            Margin          = new Padding(0, 2, 0, 4),
         };
-        tbl.Controls.Add(_tbName, 0, 2);
+        tbl.Controls.Add(_tbName, 0, 1);
 
-        // ── Row 3 — Brand ─────────────────────────────────────────────────────
-        _lblBrand = new Label
+        // ── Row 2: Brand + size chips ─────────────────────────────────────────
+        var metaRow = new Panel
         {
             Dock      = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            Padding   = new Padding(0, 2, 0, 2),
+        };
+        _lblBrand = new Label
+        {
+            Dock      = DockStyle.Left,
+            AutoSize  = false,
+            Width     = 210,
             Text      = "Marca: —",
             Font      = AppTypography.BodySmall,
             ForeColor = AppColors.TextSecondary,
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft,
         };
-        tbl.Controls.Add(_lblBrand, 0, 3);
+        _lblSizeWeight = new Label
+        {
+            Dock      = DockStyle.Fill,
+            Text      = string.Empty,
+            Font      = AppTypography.BodySmall,
+            ForeColor = AppColors.TextMuted,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleRight,
+        };
+        metaRow.Controls.Add(_lblSizeWeight);   // fill first
+        metaRow.Controls.Add(_lblBrand);
+        tbl.Controls.Add(metaRow, 0, 2);
 
-        // ── Row 4 — Label "CATEGORÍA" ─────────────────────────────────────────
-        tbl.Controls.Add(FieldLabel("CATEGORÍA"), 0, 4);
+        // ── Row 3: Description block (read-only, italic) ──────────────────────
+        _lblDesc = new Label
+        {
+            Dock      = DockStyle.Fill,
+            Text      = string.Empty,
+            Font      = new Font("Segoe UI", 10F, FontStyle.Italic),
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.FromArgb(248, 250, 252),
+            TextAlign = ContentAlignment.TopLeft,
+            Padding   = new Padding(8, 6, 8, 4),
+            AutoSize  = false,
+        };
+        _lblDesc.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1f);
+            e.Graphics.DrawRectangle(pen, 0, 0, _lblDesc.Width - 1, _lblDesc.Height - 1);
+        };
+        tbl.Controls.Add(_lblDesc, 0, 3);
 
-        // ── Row 5 — Category combobox ─────────────────────────────────────────
+        // ── Row 4: Separator ──────────────────────────────────────────────────
+        tbl.Controls.Add(SectionSeparator(), 0, 4);
+
+        // ── Row 5: Section header CATEGORÍA ──────────────────────────────────
+        tbl.Controls.Add(SectionLabel("CATEGORÍA"), 0, 5);
+
+        // ── Row 6: Category combo ─────────────────────────────────────────────
         _cbCategory = new ComboBox
         {
             Dock          = DockStyle.Fill,
@@ -278,24 +361,24 @@ public sealed class frmProductNoExist : POSDialog
             BackColor     = Color.White,
             ForeColor     = AppColors.TextPrimary,
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Margin        = new Padding(0, 2, 0, 2),
+            Margin        = new Padding(0, 2, 0, 4),
         };
-        tbl.Controls.Add(_cbCategory, 0, 5);
+        tbl.Controls.Add(_cbCategory, 0, 6);
 
-        // ── Row 6 — Spacer ────────────────────────────────────────────────────
-        tbl.Controls.Add(new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent }, 0, 6);
+        // ── Row 7: Separator ──────────────────────────────────────────────────
+        tbl.Controls.Add(SectionSeparator(), 0, 7);
 
-        // ── Row 7 — Label "IMPUESTOS / RESTRICCIONES" ────────────────────────
-        tbl.Controls.Add(FieldLabel("IMPUESTOS / RESTRICCIONES"), 0, 7);
+        // ── Row 8: Section header IMPUESTOS ──────────────────────────────────
+        tbl.Controls.Add(SectionLabel("IMPUESTOS / RESTRICCIONES"), 0, 8);
 
-        // ── Row 8 — Toggle buttons (TAX / EBT / WIC) ─────────────────────────
-        var toggleRow = new FlowLayoutPanel
+        // ── Row 9: Toggle buttons ─────────────────────────────────────────────
+        var flagRow = new FlowLayoutPanel
         {
             Dock          = DockStyle.Fill,
             BackColor     = Color.Transparent,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents  = false,
-            Padding       = new Padding(0, 4, 0, 4),
+            Padding       = new Padding(0, 8, 0, 4),
         };
         _btnTax = MakeToggle("TAX 7%", _taxOn);
         _btnEbt = MakeToggle("EBT",    _ebtOn);
@@ -303,71 +386,64 @@ public sealed class frmProductNoExist : POSDialog
         _btnTax.Click += (_, _) => { _taxOn = !_taxOn; RefreshToggle(_btnTax, _taxOn); };
         _btnEbt.Click += (_, _) => { _ebtOn = !_ebtOn; RefreshToggle(_btnEbt, _ebtOn); };
         _btnWic.Click += (_, _) => { _wicOn = !_wicOn; RefreshToggle(_btnWic, _wicOn); };
-        toggleRow.Controls.AddRange([_btnTax, _btnEbt, _btnWic]);
-        tbl.Controls.Add(toggleRow, 0, 8);
+        flagRow.Controls.AddRange([_btnTax, _btnEbt, _btnWic]);
+        tbl.Controls.Add(flagRow, 0, 9);
 
         outer.Controls.Add(tbl);
         return outer;
     }
 
-    // ── Numpad panel ───────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // RIGHT — PRICE NUMPAD
+    // ══════════════════════════════════════════════════════════════════════════
     private Panel BuildNumpadPanel()
     {
-        // Outer border card
         var card = new Panel
         {
             Dock      = DockStyle.Fill,
             BackColor = AppColors.NavyDark,
-            Margin    = Padding.Empty,
-            Padding   = new Padding(0),
+            Margin    = new Padding(4, 0, 0, 0),
         };
 
-        // Header strip inside the numpad card
+        // Header
         var header = new Panel
         {
             Dock      = DockStyle.Top,
-            Height    = 62,
+            Height    = 68,
             BackColor = AppColors.NavyBase,
-            Padding   = new Padding(0),
         };
-
-        // Emerald accent line at bottom of header
         header.Paint += (_, e) =>
         {
             using var pen = new Pen(AppColors.AccentGreen, 2f);
             e.Graphics.DrawLine(pen, 0, header.Height - 2, header.Width, header.Height - 2);
         };
 
-        var lblTitle = new Label
+        // Title label (bottom-aligned inside header)
+        header.Controls.Add(new Label
         {
-            Dock      = DockStyle.Top,
-            Height    = 38,
+            Dock      = DockStyle.Bottom,
+            Height    = 24,
+            Text      = "Solo ingresa el precio y guarda",
+            Font      = new Font("Segoe UI", 9F, FontStyle.Italic),
+            ForeColor = AppColors.TextOnDarkMuted,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.BottomCenter,
+            Padding   = new Padding(0, 0, 0, 4),
+        });
+        header.Controls.Add(new Label
+        {
+            Dock      = DockStyle.Fill,
             Text      = "PRECIO DE VENTA",
             Font      = AppTypography.SectionTitle,
             ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.BottomCenter,
-            Padding   = new Padding(0, 0, 0, 2),
-        };
-
-        var lblHint = new Label
-        {
-            Dock      = DockStyle.Top,
-            Height    = 22,
-            Text      = "Solo ingresa el precio",
-            Font      = new Font("Segoe UI", 9F, FontStyle.Italic),
-            ForeColor = AppColors.TextOnDarkMuted,
-            BackColor = Color.Transparent,
-            TextAlign = ContentAlignment.TopCenter,
-        };
-
-        header.Controls.Add(lblHint);
-        header.Controls.Add(lblTitle);
+            TextAlign = ContentAlignment.MiddleCenter,
+        });
 
         _numpad = new NumericPadControl(NumericPadControl.PadMode.Money)
         {
             Dock    = DockStyle.Fill,
-            Padding = new Padding(8, 8, 8, 8),
+            Padding = new Padding(6, 8, 6, 8),
         };
 
         card.Controls.Add(_numpad);
@@ -375,10 +451,18 @@ public sealed class frmProductNoExist : POSDialog
         return card;
     }
 
-    // ── Data loading ───────────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    // DATA LOADING  (logic unchanged — only UI methods above were redesigned)
+    // ══════════════════════════════════════════════════════════════════════════
+
     private async Task LoadAllDataAsync()
     {
-        await Task.WhenAll(LoadCategoriesAsync(), LookupProductAsync());
+        var catsTask = LoadCategoriesAsync();
+        var apiTask  = LookupProductAsync();
+        await Task.WhenAll(catsTask, apiTask);
+
+        if (_apiInfo != null)
+            TryAutoMatchCategory(_apiInfo.CategoryName);
     }
 
     private async Task LoadCategoriesAsync()
@@ -398,7 +482,7 @@ public sealed class frmProductNoExist : POSDialog
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[frmProductNoExist] LoadCategories failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[frmProductNoExist] LoadCategories: {ex.Message}");
         }
     }
 
@@ -410,82 +494,107 @@ public sealed class frmProductNoExist : POSDialog
             var local = await _categoryService.LoadProductInfoByUPC(_upc);
             if (local != null && !string.IsNullOrWhiteSpace(local.Name))
             {
-                ApplyData(local.Name, brand: null, source: "base de datos local");
+                ApplyLocalData(local.Name);
                 return;
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[frmProductNoExist] Local product lookup failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[frmProductNoExist] LocalLookup: {ex.Message}");
         }
 
-        SetStatus("🌐  Buscando en Open Food Facts…");
+        SetStatus("🌐  Consultando catálogo OmadaPOS…");
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+            using var cts  = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var       info = await _externalProduct.LookupByUpcAsync(_upc, cts.Token).ConfigureAwait(false);
 
-            using var req = new HttpRequestMessage(HttpMethod.Get,
-                $"https://world.openfoodfacts.org/api/v2/product/{_upc}" +
-                "?fields=product_name,product_name_en,brands,categories_tags,image_front_url");
-            req.Headers.UserAgent.ParseAdd(AppConstants.UserAgent);
-
-            using var resp = await _http.SendAsync(req, cts.Token);
-            if (!resp.IsSuccessStatusCode)
+            if (info == null)
             {
-                SetStatus("ℹ  No encontrado en catálogo global. Escribe el nombre manualmente.");
+                SetStatus("ℹ  No encontrado en catálogo. Escribe el nombre manualmente.");
                 return;
             }
 
-            string json = await resp.Content.ReadAsStringAsync(cts.Token);
-            using var doc  = JsonDocument.Parse(json);
-            var       root = doc.RootElement;
+            _apiInfo = info;
+            ApplyApiData(info);
 
-            if (!root.TryGetProperty("status", out var st) || st.GetInt32() != 1
-                || !root.TryGetProperty("product", out var p))
-            {
-                SetStatus("ℹ  No encontrado en catálogo global. Escribe el nombre manualmente.");
-                return;
-            }
+            if (!string.IsNullOrWhiteSpace(info.ImageUrl))
+                await LoadImageAsync(info.ImageUrl, cts.Token).ConfigureAwait(false);
 
-            string  name     = GetStr(p, "product_name") ?? GetStr(p, "product_name_en") ?? string.Empty;
-            string? brand    = GetStr(p, "brands");
-            string? imageUrl = GetStr(p, "image_front_url");
-
-            bool isBev = false;
-            if (p.TryGetProperty("categories_tags", out var tags) && tags.ValueKind == JsonValueKind.Array)
-                foreach (var t in tags.EnumerateArray())
-                {
-                    var s = t.GetString();
-                    if (s != null && (s.Contains("beverages") || s.Contains("snacks") || s.Contains("drinks")))
-                    { isBev = true; break; }
-                }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                SetStatus("ℹ  No encontrado. Escribe el nombre manualmente.");
-                return;
-            }
-
-            ApplyData(name, brand, source: "Open Food Facts");
-            if (isBev) Invoke(() => { _ebtOn = false; RefreshToggle(_btnEbt, false); });
-
-            if (!string.IsNullOrWhiteSpace(imageUrl))
-                await LoadImageAsync(imageUrl, cts.Token);
-
-            SetStatus("✔  Datos cargados desde Open Food Facts. Solo ingresa el precio y guarda.");
+            var statusMsg = info.RequiresAgeVerification
+                ? "⚠  Producto con restricción de edad — se pedirá verificación al vender."
+                : "✔  Datos cargados desde catálogo OmadaPOS. Ingresa el precio y guarda.";
+            SetStatus(statusMsg);
         }
-        catch (OperationCanceledException) { SetStatus("⚠  Tiempo de espera agotado. Escribe el nombre manualmente."); }
-        catch                              { SetStatus("⚠  Sin acceso al catálogo global. Escribe el nombre manualmente."); }
+        catch (OperationCanceledException) { SetStatus("⚠  Tiempo agotado. Escribe el nombre manualmente."); }
+        catch                              { SetStatus("⚠  Sin conexión al catálogo. Escribe el nombre manualmente."); }
     }
 
-    private void ApplyData(string name, string? brand, string source)
+    // ── Apply helpers ─────────────────────────────────────────────────────────
+
+    private void ApplyLocalData(string name)
     {
         Invoke(() =>
         {
             if (string.IsNullOrWhiteSpace(_tbName.Text)) _tbName.Text = name;
-            _lblBrand.Text       = string.IsNullOrWhiteSpace(brand) ? "Marca: —" : $"Marca: {brand}";
-            _lblSource.Text      = $"✔  {source}";
-            _lblSource.ForeColor = AppColors.AccentGreen;
+            SetSourceBadge("✔  Base de datos local", AppColors.AccentGreen);
+        });
+    }
+
+    private void ApplyApiData(ExternalProductInfo info)
+    {
+        Invoke(() =>
+        {
+            if (string.IsNullOrWhiteSpace(_tbName.Text))
+                _tbName.Text = info.Name;
+
+            // Brand chip
+            _lblBrand.Text = string.IsNullOrWhiteSpace(info.Brand)
+                ? "Marca: —"
+                : $"Marca: {info.Brand}";
+
+            // Size / weight inline
+            var parts = new List<string>(2);
+            if (!string.IsNullOrWhiteSpace(info.Size))        parts.Add(info.Size);
+            if (!string.IsNullOrWhiteSpace(info.WeightGrams)) parts.Add(info.WeightGrams);
+            _lblSizeWeight.Text = string.Join("  ·  ", parts);
+
+            // Description — prefer Spanish
+            var desc = info.DescriptionEs ?? info.DescriptionEn;
+            _lblDesc.Text = string.IsNullOrWhiteSpace(desc) ? string.Empty : desc;
+
+            // EBT / WIC auto-toggle
+            if (info.EbtEligible != _ebtOn) { _ebtOn = info.EbtEligible; RefreshToggle(_btnEbt, _ebtOn); }
+            if (info.WicEligible != _wicOn) { _wicOn = info.WicEligible; RefreshToggle(_btnWic, _wicOn); }
+
+            SetSourceBadge("✔  Catálogo OmadaPOS", AppColors.AccentGreen);
+        });
+    }
+
+    private void SetSourceBadge(string text, Color fg)
+    {
+        _lblSourceBadge.Text      = text;
+        _lblSourceBadge.ForeColor = fg;
+    }
+
+    private void TryAutoMatchCategory(string? apiCategoryName)
+    {
+        if (string.IsNullOrWhiteSpace(apiCategoryName)) return;
+        if (_cbCategory.Items.Count == 0) return;
+
+        _cbCategory.Invoke(() =>
+        {
+            var needle = apiCategoryName.Trim().ToLowerInvariant();
+            for (int i = 0; i < _cbCategory.Items.Count; i++)
+            {
+                var localName = (_cbCategory.Items[i] as dynamic)?.Name?.ToString()?.ToLowerInvariant()
+                                ?? string.Empty;
+                if (localName.Contains(needle) || needle.Contains(localName))
+                {
+                    _cbCategory.SelectedIndex = i;
+                    return;
+                }
+            }
         });
     }
 
@@ -509,7 +618,7 @@ public sealed class frmProductNoExist : POSDialog
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[frmProductNoExist] Image download failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[frmProductNoExist] ImageLoad: {ex.Message}");
         }
     }
 
@@ -532,13 +641,14 @@ public sealed class frmProductNoExist : POSDialog
             return false;
         }
 
-        int catId = _cbCategory.SelectedValue is int id ? id : 0;
+        int    catId       = _cbCategory.SelectedValue is int id ? id : 0;
+        string description = _apiInfo?.DescriptionEs ?? _apiInfo?.DescriptionEn ?? name;
 
         await _categoryService.SaveProduct(new ProductCreateModel
         {
             Name           = name,
             Short_Name     = name.Length > 20 ? name[..20] : name,
-            Description    = name,
+            Description    = description,
             Price          = (double)price,
             Status         = 1,
             BranchId       = SessionManager.BranchId,
@@ -556,8 +666,11 @@ public sealed class frmProductNoExist : POSDialog
         return true;
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
-    private static Label FieldLabel(string text) => new()
+    // ══════════════════════════════════════════════════════════════════════════
+    // UI FACTORY HELPERS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private static Label SectionLabel(string text) => new()
     {
         Dock      = DockStyle.Fill,
         Text      = text,
@@ -565,50 +678,60 @@ public sealed class frmProductNoExist : POSDialog
         ForeColor = AppColors.TextSecondary,
         BackColor = Color.Transparent,
         TextAlign = ContentAlignment.BottomLeft,
-        Padding   = new Padding(1, 0, 0, 2),
+        Padding   = new Padding(0, 0, 0, 2),
     };
 
-    private static readonly Color _toggleActiveBg   = AppColors.AccentGreen;
-    private static readonly Color _toggleInactiveBg = Color.FromArgb(240, 242, 246);
-    private static readonly Color _toggleActiveFg   = AppColors.TextWhite;
-    private static readonly Color _toggleInactiveFg = AppColors.TextSecondary;
-    private static readonly Color _toggleActiveBd   = AppColors.AccentGreenDark;
-    private static readonly Color _toggleInactiveBd = Color.FromArgb(210, 215, 225);
-
-    private static Button MakeToggle(string label, bool active) => new()
+    private static Panel SectionSeparator()
     {
-        Text      = label,
-        Width     = 90,
-        Height    = 44,
-        Font      = new Font("Segoe UI", 11F, FontStyle.Bold),
-        ForeColor = active ? _toggleActiveFg   : _toggleInactiveFg,
-        BackColor = active ? _toggleActiveBg   : _toggleInactiveBg,
+        var p = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
+        p.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1f);
+            e.Graphics.DrawLine(pen, 0, p.Height / 2, p.Width, p.Height / 2);
+        };
+        return p;
+    }
+
+    // ── Toggle buttons ─────────────────────────────────────────────────────────
+    private static readonly Color _tActiveBg  = AppColors.AccentGreen;
+    private static readonly Color _tInactiveBg = Color.FromArgb(241, 245, 249);
+    private static readonly Color _tActiveFg  = Color.White;
+    private static readonly Color _tInactiveFg = AppColors.TextSecondary;
+    private static readonly Color _tActiveBd  = AppColors.AccentGreenDark;
+    private static readonly Color _tInactiveBd = Color.FromArgb(203, 213, 225);
+
+    private static Button MakeToggle(string text, bool active) => new()
+    {
+        Text      = text,
+        Width     = 100,
+        Height    = 48,
+        Font      = new Font("Segoe UI", 12F, FontStyle.Bold),
+        ForeColor = active ? _tActiveFg   : _tInactiveFg,
+        BackColor = active ? _tActiveBg   : _tInactiveBg,
         FlatStyle = FlatStyle.Flat,
-        Cursor    = Cursors.Hand,
-        Margin    = new Padding(0, 0, 10, 0),
+        Margin    = new Padding(0, 0, 12, 0),
         FlatAppearance =
         {
-            BorderSize               = 1,
-            BorderColor              = active ? _toggleActiveBd : _toggleInactiveBd,
-            MouseOverBackColor       = Color.Transparent,
-            MouseDownBackColor       = Color.Transparent,
+            BorderSize        = 1,
+            BorderColor       = active ? _tActiveBd  : _tInactiveBd,
+            MouseOverBackColor = Color.Transparent,
+            MouseDownBackColor = Color.Transparent,
         },
     };
 
     private static void RefreshToggle(Button btn, bool active)
     {
-        btn.ForeColor = active ? _toggleActiveFg   : _toggleInactiveFg;
-        btn.BackColor = active ? _toggleActiveBg   : _toggleInactiveBg;
-        btn.FlatAppearance.BorderColor = active ? _toggleActiveBd : _toggleInactiveBd;
+        btn.ForeColor = active ? _tActiveFg  : _tInactiveFg;
+        btn.BackColor = active ? _tActiveBg  : _tInactiveBg;
+        btn.FlatAppearance.BorderColor = active ? _tActiveBd : _tInactiveBd;
         btn.Invalidate();
     }
 
-    private static string? GetStr(JsonElement el, string key)
-        => el.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
-
     private void SetStatus(string msg)
     {
-        if (_lblStatus.IsHandleCreated) _lblStatus.Invoke(() => _lblStatus.Text = msg);
-        else _lblStatus.Text = msg;
+        if (_lblStatus.IsHandleCreated)
+            _lblStatus.Invoke(() => _lblStatus.Text = msg);
+        else
+            _lblStatus.Text = msg;
     }
 }

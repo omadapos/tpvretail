@@ -25,7 +25,12 @@ internal static class Program
         services.AddSingleton<IWindowService, WindowService>();
         services.AddSingleton<IHomeInteractionService, HomeInteractionService>();
         services.AddSingleton<IPricingEngine, PricingEngine>();
-        services.AddSingleton<HttpClient>();
+        services.AddSingleton<HttpClient>(_ => new HttpClient
+        {
+            // Default is 100 s — too long for a POS terminal. With 4 sequential startup
+            // calls, a hung backend would freeze the UI for up to 400 s without this limit.
+            Timeout = TimeSpan.FromSeconds(15)
+        });
         services.AddSingleton<ZebraScannerService>();
 
         // ── Session state — Singleton (one cart per POS session) ─────────────────
@@ -48,6 +53,7 @@ internal static class Program
         // ── Age verification — Singleton config cache + Transient service ─────────
         services.AddSingleton<IAgeRestrictionConfigService, AgeRestrictionConfigService>();
         services.AddTransient<IAgeVerificationService, AgeVerificationService>();
+        services.AddSingleton<IExternalProductService, ExternalProductService>();
 
         // ── Application services — Transient ──────────────────────────────────────
         services.AddTransient<IOrderApplicationService, OrderApplicationService>();

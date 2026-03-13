@@ -21,9 +21,9 @@ public sealed class POSHeaderControl : UserControl
     private readonly Label _lblProductName;
 
     // ── Header palette — dark chrome ───────────────────────────────────────────
-    private static readonly Color _headerBg    = Color.FromArgb(20, 30, 48);    // deep navy
-    private static readonly Color _headerBg2   = Color.FromArgb(26, 38, 57);    // slightly lighter band
-    private static readonly Color _btnMenuBg   = Color.FromArgb(40, 52, 72);    // slate — menu button bg
+    private static readonly Color _headerBg    = Color.FromArgb(74, 144, 226);   // AccentBlue #4A90E2
+    private static readonly Color _headerBg2   = Color.FromArgb(53, 122, 189);  // AccentBlueDark #357ABD
+    private static readonly Color _btnMenuBg   = Color.FromArgb(46, 109, 164);  // AccentBlueDarker #2E6DA4
     private static readonly Color _btnExitBg   = Color.FromArgb(185, 28, 28);   // red — exit button bg
     private static readonly Color _accentLine  = AppColors.AccentGreen;
     private static readonly Color _iconColor   = Color.FromArgb(220, 230, 245); // near-white icon
@@ -234,7 +234,6 @@ public sealed class POSHeaderControl : UserControl
             Dock      = DockStyle.Fill,
             BackColor = bg,
             Margin    = new Padding(1, 10, 4, 10),
-            Cursor    = Cursors.Hand,
         };
 
         p.Paint += (_, e) =>

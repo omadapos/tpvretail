@@ -17,12 +17,22 @@ public class CartListViewControl : UserControl
     {
         _listView = listView ?? throw new ArgumentNullException(nameof(listView));
 
-        Dock = DockStyle.Fill;
-        Margin = _listView.Margin;
-        Padding = new Padding(0);
+        Dock      = DockStyle.Fill;
+        Margin    = _listView.Margin;
+        Padding   = new Padding(0);
         BackColor = Color.Transparent;
 
         _listView.Dock = DockStyle.Fill;
+
+        // Enable double-buffering on the native ListView control.
+        // WinForms exposes this only via the protected SetStyle mechanism,
+        // so we reach it through reflection — the standard WinForms idiom.
+        typeof(ListView)
+            .GetProperty("DoubleBuffered",
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic)
+            ?.SetValue(_listView, true);
+
         Controls.Add(_listView);
     }
 
@@ -67,38 +77,48 @@ public class CartListViewControl : UserControl
 
     public CartListRenderResult UpdateCartItems(IReadOnlyList<CartItem> items)
     {
-        _listView.Items.Clear();
+        decimal subTotal = 0m;
+        decimal taxTotal = 0m;
+        decimal total    = 0m;
 
-        decimal subTotal = 0.0m;
-        decimal taxTotal = 0.0m;
-        decimal total = 0.0m;
-
-        foreach (var item in items)
+        // Build all ListViewItem objects before touching the control so the
+        // single BeginUpdate/EndUpdate block suppresses every intermediate repaint.
+        var lviArray = new ListViewItem[items.Count];
+        for (int i = 0; i < items.Count; i++)
         {
-            var listItem = new ListViewItem(
+            var item = items[i];
+            lviArray[i] = new ListViewItem(
             [
                 item.Number.ToString(),
                 item.ProductName,
                 item.Quantity.ToString(),
                 item.UnitPrice.ToString("N2"),
-                item.Subtotal.ToString("N2")
+                item.Subtotal.ToString("N2"),
             ])
-            {
-                Tag = item.ProductId
-            };
-
-            _listView.Items.Add(listItem);
+            { Tag = item.ProductId };
 
             subTotal += item.Subtotal;
             taxTotal += item.TaxAmount;
-            total += item.Total;
+            total    += item.Total;
+        }
+
+        // BeginUpdate prevents any repaints until EndUpdate — eliminates flicker
+        _listView.BeginUpdate();
+        try
+        {
+            _listView.Items.Clear();
+            _listView.Items.AddRange(lviArray);   // single batch insert
+        }
+        finally
+        {
+            _listView.EndUpdate();   // triggers exactly one repaint
         }
 
         return new CartListRenderResult
         {
             SubTotal = subTotal,
             TaxTotal = taxTotal,
-            Total = total
+            Total    = total,
         };
     }
 

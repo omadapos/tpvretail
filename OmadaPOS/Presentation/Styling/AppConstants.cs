@@ -12,8 +12,18 @@ public static class AppConstants
     /// <summary>Marketing tagline shown on the login overlay.</summary>
     public const string AppTagline = "Point of Sale";
 
-    /// <summary>User-Agent header sent to external APIs (e.g. Open Food Facts).</summary>
-    public const string UserAgent  = "OmadaPOS/1.0 (internal-use)";
+    /// <summary>User-Agent header sent to external HTTP requests.</summary>
+    public const string UserAgent = "OmadaPOS/1.0 (internal-use)";
+
+    // ── External Product Catalog API ───────────────────────────────────────────
+    /// <summary>Base URL for the OmadaPOS global product catalog API.</summary>
+    public const string ExternalProductApiBase = "https://api.omadapos.com/v1/products/upc/";
+
+    /// <summary>
+    /// API key for the OmadaPOS product catalog.
+    /// For production, move this to encrypted app settings or a secrets manager.
+    /// </summary>
+    public const string ExternalProductApiKey  = "ext_c29e8323471fbfe00527f6cbb01535d8e01e42563fa6097109f265be";
 }
 
 /// <summary>

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 
@@ -8,13 +9,18 @@ public interface IHomeInitializationService
     Task<int> LoadLastInvoiceAsync();
     Task LoadCategoriesAsync(ICollection<CategoryModel> categories);
     Task LoadMenuCategoriesAsync(ICollection<MenuCategoryModel> menuCategories);
-    Task LoadProductsAsync(ICollection<ProductModel> products, int[] categoryIds, string? searchLetter = null);
+    Task LoadProductsAsync(ICollection<ProductModel> products, int[] categoryIds, string? searchLetter = null, CancellationToken ct = default);
+    bool IsCached(int[] categoryIds);
+    void ClearProductCache();
 }
 
 public class HomeInitializationService : IHomeInitializationService
 {
     private readonly ICategoryService _categoryService;
     private readonly IOrderService _orderService;
+
+    // Caché por sesión: clave = IDs de categoría ordenados, valor = lista de productos
+    private readonly ConcurrentDictionary<string, List<ProductModel>> _productCache = new();
 
     public HomeInitializationService(ICategoryService categoryService, IOrderService orderService)
     {
@@ -46,18 +52,43 @@ public class HomeInitializationService : IHomeInitializationService
             menuCategories.Add(menuCategory);
     }
 
-    public async Task LoadProductsAsync(ICollection<ProductModel> products, int[] categoryIds, string? searchLetter = null)
+    public async Task LoadProductsAsync(ICollection<ProductModel> products, int[] categoryIds, string? searchLetter = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(products);
         ArgumentNullException.ThrowIfNull(categoryIds);
 
-        var loadedProducts = string.IsNullOrEmpty(searchLetter)
-            ? await _categoryService.LoadProductIdCategories(new IdCategoryDTO { Ids = categoryIds })
-            : await _categoryService.LoadProductsByCategoryLetra(new IdCategoryDTO { Ids = categoryIds }, searchLetter).ConfigureAwait(false);
+        List<ProductModel> loadedProducts;
+
+        if (string.IsNullOrEmpty(searchLetter))
+        {
+            var cacheKey = string.Join(",", categoryIds.OrderBy(x => x));
+
+            if (!_productCache.TryGetValue(cacheKey, out var cached))
+            {
+                cached = await _categoryService.LoadProductIdCategories(new IdCategoryDTO { Ids = categoryIds }).ConfigureAwait(false);
+                ct.ThrowIfCancellationRequested();
+                _productCache.TryAdd(cacheKey, cached);
+            }
+
+            loadedProducts = cached;
+        }
+        else
+        {
+            loadedProducts = await _categoryService.LoadProductsByCategoryLetra(new IdCategoryDTO { Ids = categoryIds }, searchLetter).ConfigureAwait(false);
+        }
+
+        ct.ThrowIfCancellationRequested();
 
         products.Clear();
-
         foreach (var product in loadedProducts)
             products.Add(product);
     }
+
+    public bool IsCached(int[] categoryIds)
+    {
+        var cacheKey = string.Join(",", categoryIds.OrderBy(x => x));
+        return _productCache.ContainsKey(cacheKey);
+    }
+
+    public void ClearProductCache() => _productCache.Clear();
 }

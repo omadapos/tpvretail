@@ -257,7 +257,6 @@ public sealed class PaymentPanelControl : UserControl
             Dock      = DockStyle.Fill,
             BackColor = AppColors.SurfaceCard,           // white — matches product photos
             SizeMode  = PictureBoxSizeMode.Zoom,
-            Cursor    = Cursors.Hand,
         };
         _pbScale.Click += (s, e) => ScalePictureClicked?.Invoke(s, e);
 

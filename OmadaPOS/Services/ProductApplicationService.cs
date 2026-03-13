@@ -129,6 +129,13 @@ public class ProductApplicationService : IProductApplicationService
         if (product == null)
             return new BarcodeSearchResult { IsFound = false, ProductNotFoundOnServer = true };
 
+        // Check restriction against both the API's stored UPC and the actually-scanned
+        // barcode — they may differ when the API stores a canonical UPC that differs from
+        // the barcode on the physical product (e.g. leading zeros, null, etc.).
+        bool ageRestricted = product.RequiresAgeVerification
+                             || _ageConfig.IsRestricted(product.UPC, product.CategoryId)
+                             || _ageConfig.IsRestricted(upc,         product.CategoryId);
+
         return new BarcodeSearchResult
         {
             IsFound = true,
@@ -139,15 +146,14 @@ public class ProductApplicationService : IProductApplicationService
                 ProductName             = product.Name,
                 UnitPrice               = product.Price ?? 0.0m,
                 Quantity                = 1,
-                UPC                     = product.UPC,
+                UPC                     = string.IsNullOrWhiteSpace(product.UPC) ? upc : product.UPC,
                 Image                   = product.Image,
                 Tax                     = product.Tax ?? 0,
                 PromotionName           = product.PromotionName,
                 PromotionValue          = product.PromotionValue,
                 PromotionLimit          = product.PromotionLimit,
                 IsEBT                   = product.Ebt,
-                RequiresAgeVerification = product.RequiresAgeVerification
-                                          || _ageConfig.IsRestricted(product.UPC, product.CategoryId),
+                RequiresAgeVerification = ageRestricted,
             }
         };
     }

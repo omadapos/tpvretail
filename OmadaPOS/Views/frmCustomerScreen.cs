@@ -6,23 +6,21 @@ using System.Drawing.Text;
 namespace OmadaPOS.Views;
 
 /// <summary>
-/// Customer-facing secondary display — optimized for 1024×768 LED screen (4:3).
+/// Customer-facing secondary display — optimised for 1024×768 (4:3).
 ///
-/// Lifecycle contract:
-///   • Opened by frmHome.Load (after cashier logs in), positioned on the secondary screen.
-///   • Closed by frmHome.FormClosed — never by the customer.
-///   • User-initiated close attempts (Alt+F4, etc.) are silently blocked.
-///   • Registered as Singleton in DI — always the same instance per app session.
+/// Two modes switch automatically based on cart state:
 ///
-/// Layout (1024 × 768):
-///   ┌────────────────────────────────────────────┐  64px  Header
-///   ├──────────────────────┬─────────────────────┤
-///   │  🛒 YOUR ORDER       │   BANNER IMAGE       │  fill  Body
-///   │  ListView (55%)      │   Carousel  (45%)    │
-///   ├──────────────────────┴─────────────────────┤
-///   │  Items: 5    Subtotal: $52.30  Tax: $3.66  │  180px Footer
-///   │  ⚖ 0.0 lb                   TOTAL $55.96  │
-///   └────────────────────────────────────────────┘
+///   IDLE (cart empty)
+///   ┌──────────────┬──────────────────────────────┐  header
+///   │ Welcome card │  Banner carousel (full-tall)  │  body
+///   └──────────────┴──────────────────────────────┘  footer
+///
+///   ACTIVE (cart has items)
+///   ┌────────────────────────┬────────────────────┐  header
+///   │  YOUR ORDER (ListView) │  Banner (sidebar)  │  body
+///   └────────────────────────┴────────────────────┘  footer
+///
+/// The idle-card animates a pulsing glow on the WELCOME text.
 /// </summary>
 public sealed class frmCustomerScreen : Form
 {
@@ -38,28 +36,40 @@ public sealed class frmCustomerScreen : Form
     private decimal  _grandTotal  = 0;
     private double   _itemCount   = 0;
 
+    // Idle animation — drives a sine-wave alpha on the WELCOME glow
+    private float    _pulseAngle  = 0f;
+
     // ── Controls ──────────────────────────────────────────────────────────────
-    private ListView   _lvCart    = null!;
-    private PictureBox _pbBanner  = null!;
-    private Label      _lblTotal  = null!;
-    private Label      _lblSubTax = null!;
-    private Label      _lblItems  = null!;
-    private Label      _lblWeight = null!;
-    private Label      _lblClock  = null!;
+    private ListView   _lvCart      = null!;
+    private PictureBox _pbBannerAct = null!;   // active-mode sidebar
+    private PictureBox _pbBannerIdle= null!;   // idle-mode right column
+    private Label      _lblTotal    = null!;
+    private Label      _lblSubTax   = null!;
+    private Label      _lblItems    = null!;
+    private Label      _lblWeight   = null!;
+    private Label      _lblClock    = null!;
+    private Label      _lblIdleClock= null!;   // big clock shown in idle card
+    private Panel      _pnlGlow     = null!;   // custom-drawn pulsing WELCOME
+    private Panel      _idlePanel   = null!;
+    private Panel      _activePanel = null!;
 
     // ── Timers ────────────────────────────────────────────────────────────────
     private System.Windows.Forms.Timer? _timerBanner;
     private System.Windows.Forms.Timer? _timerClock;
+    private System.Windows.Forms.Timer? _timerIdle;    // 50 ms — drives glow animation
 
     // ── Static GDI resources ─────────────────────────────────────────────────
-    private static readonly Font _fontHero       = new("Consolas",  52F, FontStyle.Bold);  // grand total
-    private static readonly Font _fontMeta       = new("Segoe UI",  13F, FontStyle.Bold);  // "TOTAL" caption
-    private static readonly Font _fontItems      = new("Segoe UI",  16F, FontStyle.Bold);  // "Items: N"
-    private static readonly Font _fontDetail     = new("Segoe UI",  12F);                  // subtotal/tax line
-    private static readonly Font _fontHeader     = new("Segoe UI",  15F, FontStyle.Bold);  // store name
-    private static readonly Font _fontClock      = new("Consolas",  13F);                  // clock
-    private static readonly Font _fontList       = new("Segoe UI",  15F);                  // list rows — readable at distance
-    private static readonly Font _fontListHdr    = new("Segoe UI",  12F, FontStyle.Bold);  // column headers
+    private static readonly Font _fontHero      = new("Consolas",  52F, FontStyle.Bold);
+    private static readonly Font _fontMeta      = new("Segoe UI",  13F, FontStyle.Bold);
+    private static readonly Font _fontItems     = new("Segoe UI",  16F, FontStyle.Bold);
+    private static readonly Font _fontDetail    = new("Segoe UI",  12F);
+    private static readonly Font _fontHeader    = new("Segoe UI",  15F, FontStyle.Bold);
+    private static readonly Font _fontClock     = new("Consolas",  13F);
+    private static readonly Font _fontList      = new("Segoe UI",  15F);
+    private static readonly Font _fontIdleWelcome = new("Segoe UI", 52F, FontStyle.Bold);
+    private static readonly Font _fontIdleSub   = new("Segoe UI",  15F);
+    private static readonly Font _fontIdleClock = new("Consolas",  26F, FontStyle.Bold);
+    private static readonly Font _fontIdleHint  = new("Segoe UI",  13F);
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public frmCustomerScreen(IBannerService bannerService, IShoppingCart shoppingCart)
@@ -83,10 +93,6 @@ public sealed class frmCustomerScreen : Form
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Positions this form on the secondary (customer) monitor.
-    /// Falls back to a 1024×768 window if only one screen is connected.
-    /// </summary>
     public void PositionOnSecondaryScreen()
     {
         var secondary = Screen.AllScreens.FirstOrDefault(s => !s.Primary);
@@ -98,7 +104,6 @@ public sealed class frmCustomerScreen : Form
         }
         else
         {
-            // Single-monitor — show as a resizable test window
             StartPosition = FormStartPosition.Manual;
             Size          = new Size(1024, 768);
             Location      = new Point(Screen.PrimaryScreen!.WorkingArea.Right - 1040, 20);
@@ -113,8 +118,6 @@ public sealed class frmCustomerScreen : Form
         BackColor       = AppColors.NavyDark;
         Text            = "Customer Display";
 
-        // Block customer-initiated close (Alt+F4). Programmatic Close() uses
-        // CloseReason.None and passes through normally.
         FormClosing += (_, e) =>
         {
             if (e.CloseReason == CloseReason.UserClosing)
@@ -131,9 +134,9 @@ public sealed class frmCustomerScreen : Form
             Margin      = new Padding(0),
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));   // header — taller, more presence
-        root.RowStyles.Add(new RowStyle(SizeType.Percent,  100)); // body
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 190)); // footer — extra space for big total
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute,  72));  // header
+        root.RowStyles.Add(new RowStyle(SizeType.Percent,  100));  // body
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 190));  // footer
 
         root.Controls.Add(BuildHeader(), 0, 0);
         root.Controls.Add(BuildBody(),   0, 1);
@@ -142,7 +145,7 @@ public sealed class frmCustomerScreen : Form
         Controls.Add(root);
     }
 
-    // ── Header (64px) ─────────────────────────────────────────────────────────
+    // ── Header ────────────────────────────────────────────────────────────────
     private Panel BuildHeader()
     {
         var header = new Panel
@@ -151,7 +154,6 @@ public sealed class frmCustomerScreen : Form
             BackColor = AppColors.NavyDark,
             Padding   = new Padding(0),
         };
-        // Emerald accent line at the bottom
         header.Paint += (_, e) =>
         {
             using var accent = new SolidBrush(AppColors.AccentGreen);
@@ -182,7 +184,7 @@ public sealed class frmCustomerScreen : Form
 
         _lblClock = new Label
         {
-            Text      = DateTime.Now.ToString("ddd, MMM dd  ·  HH:mm:ss"),
+            Text      = DateTime.Now.ToString("ddd, MMM dd  ·  hh:mm tt"),
             Font      = _fontClock,
             ForeColor = AppColors.TextMuted,
             BackColor = Color.Transparent,
@@ -192,15 +194,244 @@ public sealed class frmCustomerScreen : Form
             Padding   = new Padding(0, 0, 18, 0),
         };
 
-        header.Controls.Add(lblWelcome);   // fill — must be added first so Dock.Fill works
+        header.Controls.Add(lblWelcome);
         header.Controls.Add(_lblClock);
         header.Controls.Add(lblStore);
 
         return header;
     }
 
-    // ── Body (fill — 2 columns) ───────────────────────────────────────────────
-    private Control BuildBody()
+    // ── Body (container that holds both idle and active panels) ───────────────
+    private Panel BuildBody()
+    {
+        var container = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            Padding   = new Padding(0),
+            Margin    = new Padding(0),
+        };
+
+        _activePanel = BuildActivePanel();
+        _idlePanel   = BuildIdlePanel();
+
+        _activePanel.Dock = DockStyle.Fill;
+        _idlePanel.Dock   = DockStyle.Fill;
+
+        container.Controls.Add(_activePanel);
+        container.Controls.Add(_idlePanel);  // added last → on top by default
+        // Idle is shown first; RefreshCart() will switch as needed.
+
+        return container;
+    }
+
+    // ── IDLE panel ────────────────────────────────────────────────────────────
+    private Panel BuildIdlePanel()
+    {
+        var panel = new Panel
+        {
+            BackColor = AppColors.NavyDark,
+            Padding   = new Padding(0),
+            Margin    = new Padding(0),
+        };
+
+        var layout = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount    = 1,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0),
+            Margin      = new Padding(0),
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        layout.Controls.Add(BuildIdleCard(), 0, 0);
+        layout.Controls.Add(BuildIdleBanner(), 1, 0);
+
+        panel.Controls.Add(layout);
+        return panel;
+    }
+
+    private Panel BuildIdleCard()
+    {
+        var card = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyBase,
+            Padding   = new Padding(32, 0, 24, 0),
+        };
+        // Right border separator
+        card.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(40, 255, 255, 255), 1f);
+            e.Graphics.DrawLine(pen, card.Width - 1, 0, card.Width - 1, card.Height);
+        };
+
+        var inner = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 5,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0),
+            Margin      = new Padding(0),
+        };
+        inner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        inner.RowStyles.Add(new RowStyle(SizeType.Percent,  14)); // spacer
+        inner.RowStyles.Add(new RowStyle(SizeType.Absolute,  36)); // store name
+        inner.RowStyles.Add(new RowStyle(SizeType.Absolute,  80)); // WELCOME (glow panel)
+        inner.RowStyles.Add(new RowStyle(SizeType.Absolute,  26)); // tagline
+        inner.RowStyles.Add(new RowStyle(SizeType.Percent,  100)); // clock + hint
+
+        // Store name
+        var lblStore = new Label
+        {
+            Text      = "DAILY STOP",
+            Font      = new Font("Segoe UI", 15F, FontStyle.Bold),
+            ForeColor = AppColors.TextOnDarkSecondary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        // Pulsing WELCOME — custom drawn
+        _pnlGlow = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
+        _pnlGlow.Paint += PaintWelcomeGlow;
+
+        // Tagline
+        var lblTag = new Label
+        {
+            Text      = "Please scan your items",
+            Font      = _fontIdleHint,
+            ForeColor = AppColors.TextOnDarkMuted,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.TopLeft,
+        };
+
+        // Clock + hint bottom
+        var bottomPanel = BuildIdleBottomPanel();
+
+        inner.Controls.Add(new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent }, 0, 0);
+        inner.Controls.Add(lblStore,    0, 1);
+        inner.Controls.Add(_pnlGlow,    0, 2);
+        inner.Controls.Add(lblTag,      0, 3);
+        inner.Controls.Add(bottomPanel, 0, 4);
+
+        card.Controls.Add(inner);
+        return card;
+    }
+
+    private Panel BuildIdleBottomPanel()
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount    = 2,
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0, 24, 0, 32),
+            Margin      = new Padding(0),
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // clock
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // prompt
+
+        _lblIdleClock = new Label
+        {
+            Text      = DateTime.Now.ToString("hh:mm tt"),
+            Font      = _fontIdleClock,
+            ForeColor = AppColors.AccentGreenLight,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.BottomLeft,
+        };
+
+        var lblHint = new Label
+        {
+            Text      = "Ready to serve you  ✦",
+            Font      = new Font("Segoe UI", 11F, FontStyle.Italic),
+            ForeColor = Color.FromArgb(80, 255, 255, 255),
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.TopLeft,
+        };
+
+        panel.Controls.Add(_lblIdleClock, 0, 0);
+        panel.Controls.Add(lblHint,       0, 1);
+        return panel;
+    }
+
+    // Custom GDI+ draw — WELCOME text with sine-wave glow intensity
+    private void PaintWelcomeGlow(object? sender, PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode     = SmoothingMode.AntiAlias;
+        g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+
+        var panel = (Panel)sender!;
+        var rect  = panel.ClientRectangle;
+
+        // Sine pulse — base 200, amplitude 55 → range [145, 255]
+        double sin    = Math.Sin(_pulseAngle * Math.PI / 180.0);
+        int    alpha  = 200 + (int)(55 * sin);
+        var    color  = Color.FromArgb(alpha, AppColors.AccentGreen);
+
+        // Drop shadow for depth
+        using var shadow = new SolidBrush(Color.FromArgb(60, 0, 0, 0));
+        var shadowRc = rect with { X = rect.X + 2, Y = rect.Y + 3 };
+        TextRenderer.DrawText(g, "WELCOME", _fontIdleWelcome, shadowRc, Color.FromArgb(60, 0, 0, 0),
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+        TextRenderer.DrawText(g, "WELCOME", _fontIdleWelcome, rect, color,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+    }
+
+    private Panel BuildIdleBanner()
+    {
+        var panel = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyDark,
+            Padding   = new Padding(0),
+            Margin    = new Padding(0),
+        };
+
+        _pbBannerIdle = new PictureBox
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.NavyDark,
+            SizeMode  = PictureBoxSizeMode.Zoom,
+        };
+
+        // When no banner: paint a subtle pattern
+        _pbBannerIdle.Paint += (_, e) =>
+        {
+            if (_pbBannerIdle.Image != null) return;
+            var g  = e.Graphics;
+            var rc = _pbBannerIdle.ClientRectangle;
+
+            // Diagonal stripe pattern (very subtle)
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var pen = new Pen(Color.FromArgb(12, 255, 255, 255), 1f);
+            for (int i = -rc.Height; i < rc.Width; i += 28)
+                g.DrawLine(pen, i, 0, i + rc.Height, rc.Height);
+
+            // Centered logo placeholder
+            using var font = new Font("Segoe UI", 48F, FontStyle.Bold);
+            TextRenderer.DrawText(g, "🏪", font, rc, Color.FromArgb(40, 255, 255, 255),
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        };
+
+        panel.Controls.Add(_pbBannerIdle);
+        return panel;
+    }
+
+    // ── ACTIVE panel ──────────────────────────────────────────────────────────
+    private Panel BuildActivePanel()
     {
         var body = new TableLayoutPanel
         {
@@ -211,17 +442,16 @@ public sealed class frmCustomerScreen : Form
             Padding     = new Padding(0),
             Margin      = new Padding(0),
         };
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62)); // cart — more room for items
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38)); // banner
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62));
+        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
         body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        body.Controls.Add(BuildCartPanel(),   0, 0);
-        body.Controls.Add(BuildBannerPanel(), 1, 0);
+        body.Controls.Add(BuildCartPanel(),    0, 0);
+        body.Controls.Add(BuildBannerPanel(),  1, 0);
 
         return body;
     }
 
-    // ── Cart panel ─────────────────────────────────────────────────────────────
     private Control BuildCartPanel()
     {
         var panel = new Panel
@@ -232,20 +462,18 @@ public sealed class frmCustomerScreen : Form
             Margin    = new Padding(0),
         };
 
-        // Sub-header "YOUR ORDER" — prominent, high-contrast
         var subHeader = new Panel
         {
             Dock      = DockStyle.Top,
-            Height    = 48,
+            Height    = 46,
             BackColor = AppColors.NavyBase,
         };
-        // Emerald bottom accent on sub-header
         subHeader.Paint += (_, e) =>
         {
             using var pen = new Pen(AppColors.AccentGreen, 2f);
             e.Graphics.DrawLine(pen, 0, subHeader.Height - 2, subHeader.Width, subHeader.Height - 2);
         };
-        var lblTitle = new Label
+        subHeader.Controls.Add(new Label
         {
             Text      = "YOUR ORDER",
             Font      = new Font("Segoe UI", 13F, FontStyle.Bold),
@@ -253,25 +481,22 @@ public sealed class frmCustomerScreen : Form
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Padding   = new Padding(0, 0, 0, 2),
-        };
-        subHeader.Controls.Add(lblTitle);
+        });
 
-        // Cart list — larger font for customer-facing 1024×768 screen
         _lvCart = new ListView
         {
-            Dock              = DockStyle.Fill,
-            View              = View.Details,
-            FullRowSelect     = true,
-            GridLines         = false,
-            MultiSelect       = false,
-            HideSelection     = true,
-            BackColor         = Color.FromArgb(255, 255, 255),
-            ForeColor         = AppColors.TextPrimary,
-            Font              = _fontList,
-            BorderStyle       = BorderStyle.None,
-            HeaderStyle       = ColumnHeaderStyle.Nonclickable,
-            OwnerDraw         = true,
+            Dock          = DockStyle.Fill,
+            View          = View.Details,
+            FullRowSelect = true,
+            GridLines     = false,
+            MultiSelect   = false,
+            HideSelection = true,
+            BackColor     = Color.FromArgb(255, 255, 255),
+            ForeColor     = AppColors.TextPrimary,
+            Font          = _fontList,
+            BorderStyle   = BorderStyle.None,
+            HeaderStyle   = ColumnHeaderStyle.Nonclickable,
+            OwnerDraw     = true,
             UseCompatibleStateImageBehavior = false,
         };
         _lvCart.Columns.Add("#",       44,  HorizontalAlignment.Center);
@@ -279,16 +504,14 @@ public sealed class frmCustomerScreen : Form
         _lvCart.Columns.Add("Qty",     52,  HorizontalAlignment.Center);
         _lvCart.Columns.Add("Price",   100, HorizontalAlignment.Right);
         _lvCart.Columns.Add("Total",   100, HorizontalAlignment.Right);
-        AttachListViewDraw(_lvCart);
+        ListViewTheme.Apply(_lvCart);
         _lvCart.Resize += (_, _) => FillProductColumn(_lvCart, fillIdx: 1);
 
         panel.Controls.Add(_lvCart);
         panel.Controls.Add(subHeader);
-
         return panel;
     }
 
-    // ── Banner panel ──────────────────────────────────────────────────────────
     private Panel BuildBannerPanel()
     {
         var panel = new Panel
@@ -299,18 +522,18 @@ public sealed class frmCustomerScreen : Form
             Margin    = new Padding(0),
         };
 
-        _pbBanner = new PictureBox
+        _pbBannerAct = new PictureBox
         {
             Dock      = DockStyle.Fill,
             BackColor = AppColors.NavyDark,
             SizeMode  = PictureBoxSizeMode.Zoom,
         };
 
-        panel.Controls.Add(_pbBanner);
+        panel.Controls.Add(_pbBannerAct);
         return panel;
     }
 
-    // ── Footer (180px) ────────────────────────────────────────────────────────
+    // ── Footer ────────────────────────────────────────────────────────────────
     private Control BuildFooter()
     {
         var footer = new Panel
@@ -320,7 +543,6 @@ public sealed class frmCustomerScreen : Form
             Padding   = new Padding(0),
             Margin    = new Padding(0),
         };
-        // Emerald accent line at the top
         footer.Paint += (_, e) =>
         {
             using var accent = new SolidBrush(AppColors.AccentGreen);
@@ -336,8 +558,8 @@ public sealed class frmCustomerScreen : Form
             Padding     = new Padding(0),
             Margin      = new Padding(0),
         };
-        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52)); // details
-        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48)); // total
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52));
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         grid.Controls.Add(BuildFooterDetails(), 0, 0);
@@ -359,14 +581,13 @@ public sealed class frmCustomerScreen : Form
             Margin      = new Padding(0),
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 38)); // items count
-        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 32)); // subtotal + tax
-        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 30)); // weight
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 32));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
 
         _lblItems = new Label
         {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
+            AutoSize  = false, Dock      = DockStyle.Fill,
             Text      = "Items: 0",
             Font      = _fontItems,
             ForeColor = AppColors.AccentGreen,
@@ -376,8 +597,7 @@ public sealed class frmCustomerScreen : Form
 
         _lblSubTax = new Label
         {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
+            AutoSize  = false, Dock      = DockStyle.Fill,
             Text      = "Subtotal: $0.00   ·   Tax: $0.00",
             Font      = _fontDetail,
             ForeColor = Color.FromArgb(148, 163, 184),
@@ -387,8 +607,7 @@ public sealed class frmCustomerScreen : Form
 
         _lblWeight = new Label
         {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
+            AutoSize  = false, Dock      = DockStyle.Fill,
             Text      = $"⚖  {SharedData.WeightUnit}",
             Font      = _fontDetail,
             ForeColor = AppColors.Warning,
@@ -399,7 +618,6 @@ public sealed class frmCustomerScreen : Form
         panel.Controls.Add(_lblItems,  0, 0);
         panel.Controls.Add(_lblSubTax, 0, 1);
         panel.Controls.Add(_lblWeight, 0, 2);
-
         return panel;
     }
 
@@ -411,7 +629,6 @@ public sealed class frmCustomerScreen : Form
             BackColor = Color.Transparent,
             Padding   = new Padding(16, 10, 24, 10),
         };
-        // Subtle vertical separator on the left
         panel.Paint += (_, e) =>
         {
             using var sep = new Pen(Color.FromArgb(50, 255, 255, 255), 1f);
@@ -428,13 +645,12 @@ public sealed class frmCustomerScreen : Form
             Margin      = new Padding(0),
         };
         inner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        inner.RowStyles.Add(new RowStyle(SizeType.Percent, 30)); // "TOTAL" label
-        inner.RowStyles.Add(new RowStyle(SizeType.Percent, 70)); // amount
+        inner.RowStyles.Add(new RowStyle(SizeType.Percent, 28));
+        inner.RowStyles.Add(new RowStyle(SizeType.Percent, 72));
 
         var lblCaption = new Label
         {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
+            AutoSize  = false, Dock      = DockStyle.Fill,
             Text      = "TOTAL",
             Font      = _fontMeta,
             ForeColor = AppColors.TextMuted,
@@ -445,8 +661,7 @@ public sealed class frmCustomerScreen : Form
 
         _lblTotal = new Label
         {
-            AutoSize  = false,
-            Dock      = DockStyle.Fill,
+            AutoSize  = false, Dock      = DockStyle.Fill,
             Text      = "$0.00",
             Font      = _fontHero,
             ForeColor = AppColors.AccentGreen,
@@ -456,15 +671,11 @@ public sealed class frmCustomerScreen : Form
 
         inner.Controls.Add(lblCaption, 0, 0);
         inner.Controls.Add(_lblTotal,  0, 1);
-
         panel.Controls.Add(inner);
         return panel;
     }
 
-    // ── ListView owner-draw — delegated to shared ListViewTheme ──────────────
-    private static void AttachListViewDraw(ListView lv)
-        => ListViewTheme.Apply(lv);
-
+    // ── ListView helpers ──────────────────────────────────────────────────────
     private static void FillProductColumn(ListView lv, int fillIdx)
     {
         if (lv.Columns.Count == 0) return;
@@ -505,6 +716,7 @@ public sealed class frmCustomerScreen : Form
 
         _grandTotal = _subtotal + _taxTotal;
         UpdateFooter();
+        UpdateMode();   // switch idle ↔ active based on cart content
     }
 
     private void UpdateFooter()
@@ -512,6 +724,28 @@ public sealed class frmCustomerScreen : Form
         if (_lblTotal  != null) _lblTotal.Text  = _grandTotal.ToString("C");
         if (_lblItems  != null) _lblItems.Text  = $"Items: {_itemCount:G}";
         if (_lblSubTax != null) _lblSubTax.Text = $"Subtotal: {_subtotal:C}   ·   Tax: {_taxTotal:C}";
+    }
+
+    // ── Idle / Active switching ───────────────────────────────────────────────
+    private bool _isIdle = true;
+
+    private void UpdateMode()
+    {
+        bool shouldBeIdle = _shoppingCart.Items.Count == 0;
+        if (shouldBeIdle == _isIdle) return;
+
+        _isIdle = shouldBeIdle;
+
+        if (_isIdle)
+        {
+            _idlePanel.BringToFront();
+            _timerIdle?.Start();
+        }
+        else
+        {
+            _activePanel.BringToFront();
+            _timerIdle?.Stop();
+        }
     }
 
     // ── Weight ────────────────────────────────────────────────────────────────
@@ -541,14 +775,15 @@ public sealed class frmCustomerScreen : Form
     private void ShowBanner()
     {
         if (_bannerUrls.Length == 0) return;
-        try { _pbBanner.LoadAsync(_bannerUrls[_bannerIndex]); }
-        catch { /* silent — bad URL or network issue */ }
+        string url = _bannerUrls[_bannerIndex];
+        try { _pbBannerAct.LoadAsync(url);  } catch { }
+        try { _pbBannerIdle.LoadAsync(url); } catch { }
     }
 
     // ── Timers ────────────────────────────────────────────────────────────────
     private void StartTimers()
     {
-        _timerBanner = new System.Windows.Forms.Timer { Interval = 4000 };
+        _timerBanner = new System.Windows.Forms.Timer { Interval = 4_000 };
         _timerBanner.Tick += (_, _) =>
         {
             if (_bannerUrls.Length > 0)
@@ -559,10 +794,23 @@ public sealed class frmCustomerScreen : Form
         };
         _timerBanner.Start();
 
-        _timerClock = new System.Windows.Forms.Timer { Interval = 1000 };
+        _timerClock = new System.Windows.Forms.Timer { Interval = 1_000 };
         _timerClock.Tick += (_, _) =>
-            _lblClock.Text = DateTime.Now.ToString("ddd, MMM dd  ·  HH:mm:ss");
+        {
+            string t = DateTime.Now.ToString("ddd, MMM dd  ·  hh:mm tt");
+            if (_lblClock     != null) _lblClock.Text     = t;
+            if (_lblIdleClock != null) _lblIdleClock.Text = DateTime.Now.ToString("hh:mm tt");
+        };
         _timerClock.Start();
+
+        // Idle animation — 50 ms ticks advance the pulse angle by 3°
+        _timerIdle = new System.Windows.Forms.Timer { Interval = 50 };
+        _timerIdle.Tick += (_, _) =>
+        {
+            _pulseAngle = (_pulseAngle + 3f) % 360f;
+            _pnlGlow?.Invalidate();
+        };
+        if (_isIdle) _timerIdle.Start();   // only run when idle panel is visible
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────────
@@ -571,10 +819,9 @@ public sealed class frmCustomerScreen : Form
         _shoppingCart.CartChanged    -= OnCartChanged;
         SharedData.WeightUnitChanged -= OnWeightChanged;
 
-        _timerBanner?.Stop();
-        _timerBanner?.Dispose();
-        _timerClock?.Stop();
-        _timerClock?.Dispose();
+        _timerBanner?.Stop(); _timerBanner?.Dispose();
+        _timerClock?.Stop();  _timerClock?.Dispose();
+        _timerIdle?.Stop();   _timerIdle?.Dispose();
 
         base.OnFormClosed(e);
     }

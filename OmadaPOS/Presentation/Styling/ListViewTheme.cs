@@ -45,6 +45,7 @@ public static class ListViewTheme
         lv.GridLines    = false;
         lv.FullRowSelect = true;
         lv.HideSelection = false;
+        lv.HotTracking  = false;   // disable OS hover highlight — we owner-draw everything
 
         // ── Column headers ────────────────────────────────────────────────────
         lv.DrawColumnHeader += (_, e) =>
@@ -74,9 +75,11 @@ public static class ListViewTheme
         };
 
         // ── Row background ────────────────────────────────────────────────────
+        // Only Selected changes the row color — Hot (hover) is intentionally ignored
+        // because this is a touch screen and hover highlights are distracting.
         lv.DrawItem += (_, e) =>
         {
-            bool selected = e.State.HasFlag(ListViewItemStates.Selected);
+            bool selected = e.Item?.Selected == true;
             var bg = selected ? RowSelected : (e.ItemIndex % 2 == 0 ? RowEven : RowOdd);
             using var brush = new SolidBrush(bg);
             e.Graphics.FillRectangle(brush, e.Bounds);
@@ -88,8 +91,8 @@ public static class ListViewTheme
             var g = e.Graphics;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            bool selected = e.Item!.Selected;
-            var bg = selected ? RowSelected : (e.Item.Index % 2 == 0 ? RowEven : RowOdd);
+            bool selected = e.Item?.Selected == true;
+            var bg = selected ? RowSelected : (e.Item!.Index % 2 == 0 ? RowEven : RowOdd);
 
             using var bgBrush = new SolidBrush(bg);
             g.FillRectangle(bgBrush, e.Bounds);

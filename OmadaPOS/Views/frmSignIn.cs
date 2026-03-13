@@ -23,9 +23,9 @@ public partial class frmSignIn
     private Label?  _lblOverlayStatus;
     private System.Windows.Forms.Timer? _spinnerTimer;
 
-    // Static brushes for PIN dots — reused on every keypress repaint (avoids 12 allocs per call)
-    private static readonly SolidBrush _dotFilledBrush = new(AppColors.NavyDark);
-    private static readonly SolidBrush _dotEmptyBrush  = new(AppColors.TextOnDarkSecondary);
+    // Static brushes for PIN dots — emerald filled, dark slate empty
+    private static readonly SolidBrush _dotFilledBrush = new(Color.FromArgb(52, 211, 153));   // AccentGreenLight
+    private static readonly SolidBrush _dotEmptyBrush  = new(Color.FromArgb(51, 65, 85));     // NavyLight
 
     // ─────────────────────────────────────────────────────────────────
     //  Constructor
@@ -54,8 +54,36 @@ public partial class frmSignIn
         _clock.Start();
         UpdateClock();
 
+        // Rounded card corners — 14 px radius
+        ApplyCardRegion();
+
+        // Subtle dot-grid on background
+        pnlBackground.Paint += PnlBackground_GridPaint;
+
         // Center card
         CenterCard();
+    }
+
+    private void ApplyCardRegion()
+    {
+        const int R = 14;
+        int w = pnlCard.Width, h = pnlCard.Height;
+        var path = new System.Drawing.Drawing2D.GraphicsPath();
+        path.AddArc(0,     0,     R * 2, R * 2, 180, 90);
+        path.AddArc(w - R * 2, 0,     R * 2, R * 2, 270, 90);
+        path.AddArc(w - R * 2, h - R * 2, R * 2, R * 2,   0, 90);
+        path.AddArc(0,     h - R * 2, R * 2, R * 2,  90, 90);
+        path.CloseAllFigures();
+        pnlCard.Region = new Region(path);
+    }
+
+    private void PnlBackground_GridPaint(object? sender, PaintEventArgs e)
+    {
+        const int Spacing = 28;
+        using var dot = new SolidBrush(Color.FromArgb(30, 255, 255, 255));
+        for (int x = Spacing; x < pnlBackground.Width; x += Spacing)
+            for (int y = Spacing; y < pnlBackground.Height; y += Spacing)
+                e.Graphics.FillEllipse(dot, x - 1f, y - 1f, 2f, 2f);
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)
@@ -234,10 +262,14 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     internal void AppendDigit(string digit)
     {
-        if (_pin.Length >= 20 || _loginInProgress) return;
+        if (_pin.Length >= 6 || _loginInProgress) return;
         _pin += digit;
         pnlPinDots.Invalidate();
         HideError();
+
+        // Auto-submit when the 6th digit is entered
+        if (_pin.Length == 6)
+            ButtonLogin_Click(this, EventArgs.Empty);
     }
 
     private void ClearPin()
@@ -364,17 +396,17 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     private void PnlHeader_Paint(object? sender, PaintEventArgs e)
     {
-        using var pen = new Pen(AppColors.AccentGreenDark, 2f);
+        using var pen = new Pen(Color.FromArgb(16, 185, 129), 2f);
         e.Graphics.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
     }
 
     // ─────────────────────────────────────────────────────────────────
-    //  Custom Paint — Card top emerald border
+    //  Custom Paint — Card top emerald border (3 px, respects rounded Region)
     // ─────────────────────────────────────────────────────────────────
     private void PnlCard_Paint(object? sender, PaintEventArgs e)
     {
-        using var pen = new Pen(AppColors.AccentGreenDark, 3f);
-        e.Graphics.DrawLine(pen, 0, 0, pnlCard.Width, 0);
+        using var pen = new Pen(Color.FromArgb(5, 150, 105), 3f);
+        e.Graphics.DrawLine(pen, 14, 1, pnlCard.Width - 14, 1);
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -384,27 +416,21 @@ public partial class frmSignIn
     private void PnlPinDots_Paint(object? sender, PaintEventArgs e)
     {
         var g = e.Graphics;
-        g.SmoothingMode     = SmoothingMode.AntiAlias;
-        g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        const int   MaxDots = 12;
-        const float DotSize = 13f;
-        const float Gap     = 14f;
+        const int   MaxDots = 6;
+        const float DotSize = 18f;
+        const float Gap     = 22f;
 
         float totalW = MaxDots * DotSize + (MaxDots - 1) * Gap;
         float startX = (pnlPinDots.Width  - totalW) / 2f;
-        float y      = (pnlPinDots.Height - DotSize) / 2f - 4f;
+        float y      = (pnlPinDots.Height - DotSize) / 2f;
 
         for (int i = 0; i < MaxDots; i++)
         {
-            float x      = startX + i * (DotSize + Gap);
-            var   brush  = i < _pin.Length ? _dotFilledBrush : _dotEmptyBrush;
+            float x     = startX + i * (DotSize + Gap);
+            var   brush = i < _pin.Length ? _dotFilledBrush : _dotEmptyBrush;
             g.FillEllipse(brush, x, y, DotSize, DotSize);
         }
-
-        // Underline accent
-        float lineY = y + DotSize + 10f;
-        using var linePen = new Pen(AppColors.AccentGreenDark, 2f);
-        g.DrawLine(linePen, startX - 4, lineY, startX + totalW + 4, lineY);
     }
 }

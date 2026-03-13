@@ -46,6 +46,14 @@ public sealed class frmAgeVerification : Form
     // ── KeyDown attachment state ───────────────────────────────────────────────
     private bool _scanHandlerAttached = true;
 
+    // ── Keyboard-wedge scan timer ─────────────────────────────────────────────
+    // PDF417 barcodes (driver licences) contain multiple \r characters (one per
+    // field). Processing on the first Enter would give us only a fragment. Instead
+    // we accumulate raw keystrokes — including \r — in a StringBuilder and fire
+    // a 250 ms idle timer; when no more keystrokes arrive the full barcode is ready.
+    private readonly System.Text.StringBuilder _kwBuffer = new();
+    private readonly System.Windows.Forms.Timer _kwTimer  = new() { Interval = 250 };
+
     // ── Colors ────────────────────────────────────────────────────────────────
     private static readonly Color _pendingBg = Color.FromArgb(55, 65, 81);   // gray-700
     private static readonly Color _approvedBg = Color.FromArgb(16, 120, 70); // emerald
@@ -59,14 +67,22 @@ public sealed class frmAgeVerification : Form
         DoubleBuffered = true;
         InitForm();
 
-        // Subscribe to OPOS scanner for environments where scanner is in OPOS mode.
-        // frmHome unsubscribes its own handler before showing this form so that the
-        // barcode is routed here, not to the product lookup.
         if (_scanner != null)
             _scanner.OnBarcodeDataReceived += OnOposBarcode;
 
+        _kwTimer.Tick += (_, _) =>
+        {
+            _kwTimer.Stop();
+            string data = _kwBuffer.ToString();
+            _kwBuffer.Clear();
+            if (!string.IsNullOrWhiteSpace(data))
+                ProcessBarcodeString(data);
+        };
+
         FormClosed += (_, _) =>
         {
+            _kwTimer.Stop();
+            _kwTimer.Dispose();
             if (_scanner != null)
                 _scanner.OnBarcodeDataReceived -= OnOposBarcode;
         };
@@ -390,7 +406,6 @@ public sealed class frmAgeVerification : Form
             ForeColor = AppColors.TextWhite,
             BackColor = AppColors.Info,
             FlatStyle = FlatStyle.Flat,
-            Cursor    = Cursors.Hand,
             FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.Transparent, MouseDownBackColor = Color.Transparent },
         };
         btnVerify.Click += (_, _) => VerifyManual();
@@ -469,7 +484,6 @@ public sealed class frmAgeVerification : Form
             ForeColor = Color.White,
             BackColor = Color.FromArgb(185, 28, 28),
             FlatStyle = FlatStyle.Flat,
-            Cursor    = Cursors.Hand,
             FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.Transparent, MouseDownBackColor = Color.Transparent },
         };
         _btnCancel.Click += (_, _) =>
@@ -487,7 +501,6 @@ public sealed class frmAgeVerification : Form
             ForeColor = Color.White,
             BackColor = AppColors.AccentGreenDark,
             FlatStyle = FlatStyle.Flat,
-            Cursor    = Cursors.Hand,
             Visible   = false,
             FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.Transparent, MouseDownBackColor = Color.Transparent },
         };
@@ -506,7 +519,6 @@ public sealed class frmAgeVerification : Form
             ForeColor = Color.White,
             BackColor = Color.FromArgb(185, 28, 28),
             FlatStyle = FlatStyle.Flat,
-            Cursor    = Cursors.Hand,
             Visible   = false,
             FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.Transparent, MouseDownBackColor = Color.Transparent },
         };
@@ -528,16 +540,42 @@ public sealed class frmAgeVerification : Form
     private void Form_KeyDown(object? sender, KeyEventArgs e)
     {
         if (!_scanHandlerAttached) return;
-        if (e.KeyCode != Keys.Enter) return;
 
-        e.SuppressKeyPress = true;
-        ProcessScanCapture();
+        // Accumulate every keystroke — including Enter (\r) — into the buffer.
+        // PDF417 / AAMVA barcodes use \r as a field terminator, so we must NOT
+        // stop on the first Enter. The 250 ms idle timer fires when the full
+        // barcode burst has been received.
+        char ch = e.KeyCode switch
+        {
+            Keys.Enter  => '\r',
+            Keys.Tab    => '\t',
+            _           => (char)0
+        };
+
+        if (ch != 0)
+        {
+            e.SuppressKeyPress = true;
+            _kwBuffer.Append(ch);
+        }
+        else if (e.KeyValue >= 32 && e.KeyValue <= 126 && !e.Control && !e.Alt)
+        {
+            // Printable ASCII — let it fall through to _txtScanCapture naturally;
+            // also mirror it into the buffer so the timer path gets the full string.
+            _kwBuffer.Append((char)e.KeyValue);
+        }
+
+        // Reset idle timer on every keystroke.
+        _kwTimer.Stop();
+        _kwTimer.Start();
     }
 
     // Called by OPOS scanner event (arrives on background thread → invoke to UI)
     private void OnOposBarcode(string barcode)
     {
         if (InvokeRequired) { Invoke(() => OnOposBarcode(barcode)); return; }
+        // OPOS delivers the complete barcode in one shot — no buffering needed.
+        _kwTimer.Stop();
+        _kwBuffer.Clear();
         ProcessBarcodeString(barcode);
     }
 
