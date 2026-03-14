@@ -121,25 +121,42 @@ public sealed class frmCheckPrice : POSDialog
             if (upc.Length >= WeightBarcodeMinLength && upc.StartsWith("20"))
             {
                 decimal price = decimal.Parse(upc.Substring(7, 4)) / 100;
-                string  code  = upc.Substring(1, 5);
+                // Positions 2-6 (5 digits) hold the PLU code in the "20CCCCCPPPP?" format.
+                string code = upc.Substring(2, 5);
                 ct.ThrowIfCancellationRequested();
                 var plu = await _categoryService.LoadProductByUPC_Promotion(code);
-                if (plu != null && !ct.IsCancellationRequested)
+                if (!ct.IsCancellationRequested)
                 {
-                    _lblName.Text  = plu.Name;
-                    _lblPrice.Text = price.ToString("C");
-                    _textUPC.Clear();
+                    if (plu != null)
+                    {
+                        _lblName.Text  = plu.Name;
+                        _lblPrice.Text = price.ToString("C");
+                        _textUPC.Clear();
+                    }
+                    else
+                    {
+                        _lblName.Text  = "Not found";
+                        _lblPrice.Text = "—";
+                    }
                 }
             }
             else
             {
                 ct.ThrowIfCancellationRequested();
                 var plu = await _categoryService.LoadProductByUPC_Promotion(upc);
-                if (plu != null && !ct.IsCancellationRequested)
+                if (!ct.IsCancellationRequested)
                 {
-                    _lblName.Text  = plu.Name;
-                    _lblPrice.Text = plu.Price?.ToString("C") ?? "—";
-                    _textUPC.Clear();
+                    if (plu != null)
+                    {
+                        _lblName.Text  = plu.Name;
+                        _lblPrice.Text = plu.Price?.ToString("C") ?? "—";
+                        _textUPC.Clear();
+                    }
+                    else
+                    {
+                        _lblName.Text  = "Not found";
+                        _lblPrice.Text = "—";
+                    }
                 }
             }
         }

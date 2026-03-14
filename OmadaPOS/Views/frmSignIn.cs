@@ -92,6 +92,9 @@ public partial class frmSignIn
         _clock?.Dispose();
         _spinnerTimer?.Stop();
         _spinnerTimer?.Dispose();
+        _errorCts?.Cancel();
+        _errorCts?.Dispose();
+        _errorCts = null;
         base.OnFormClosed(e);
     }
 

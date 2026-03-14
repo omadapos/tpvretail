@@ -183,7 +183,19 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
         if (placeOrderModel == null)
             return new PaymentFlowResult();
 
-        var totalPayment = SurchargePolicy.Apply(totalGlobal * 100, paymentType, SessionManager.BranchId);
+        // Apply Cash Discount service fee: add to terminal amount (cents) and order model (dollars).
+        decimal serviceFee  = SurchargePolicy.GetFeeAmount((decimal)placeOrderModel.Order_Amount, paymentType);
+        placeOrderModel.Service_Fee   = (double)serviceFee;
+        placeOrderModel.Order_Amount += (double)serviceFee;
+
+        var totalPayment = SurchargePolicy.Apply(totalGlobal * 100, paymentType);
+
+        System.Diagnostics.Debug.WriteLine(
+            $"[Surcharge] CashDiscountEnabled={SessionManager.CashDiscountEnabled} | " +
+            $"PaymentType={paymentType} | " +
+            $"CartTotal={totalGlobal:C} | " +
+            $"Fee={serviceFee:C} | " +
+            $"TerminalCents={totalPayment}");
 
         var paymentResponse = await _paymentService.ProcessPaymentAsync(paymentType, new PaymentRequest
         {

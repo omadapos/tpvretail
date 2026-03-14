@@ -36,13 +36,14 @@ public sealed class frmSplit : Form
     private decimal _remainingAmount = 0;
 
     // ── Controls referenced after construction ────────────────────────────────
-    private NumericPadControl _numPad       = null!;
-    private ListView          _lvCart       = null!;
-    private ListView          _lvPayments   = null!;
-    private Label             _lblTotal     = null!;
-    private Label             _lblEntered   = null!;
-    private Label             _lblRemaining = null!;
-    private Button            _btnComplete  = null!;
+    private NumericPadControl _numPad         = null!;
+    private ListView          _lvCart         = null!;
+    private ListView          _lvPayments     = null!;
+    private Label             _lblTotal       = null!;
+    private Label             _lblEntered     = null!;
+    private Label             _lblRemaining   = null!;
+    private Button            _btnComplete    = null!;
+    private readonly List<Button> _paymentButtons = new();
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public frmSplit(
@@ -370,6 +371,7 @@ public sealed class frmSplit : Form
             };
             ElegantButtonStyles.Style(b, color, AppColors.TextWhite, fontSize: 15f);
             b.Click += PaymentButton_Click;
+            _paymentButtons.Add(b);
             col.Controls.Add(b, 0, row);
         }
 
@@ -463,10 +465,10 @@ public sealed class frmSplit : Form
             lvi.SubItems.Add(item.ProductName);
             lvi.SubItems.Add(item.Quantity.ToString());
             lvi.SubItems.Add(item.UnitPrice.ToString("C"));
-            lvi.SubItems.Add(item.Subtotal.ToString("C"));
+            lvi.SubItems.Add(item.Total.ToString("C"));
             lvi.Tag = item.ProductId;
             _lvCart.Items.Add(lvi);
-            total += item.Subtotal;
+            total += item.Total;
         }
 
         _totalGlobal = total;
@@ -525,7 +527,8 @@ public sealed class frmSplit : Form
             return;
         }
 
-        if (paymentAmount > _remainingAmount)
+        // Cash may exceed the remaining balance (cashier returns change); cards cannot.
+        if (paymentType != PaymentMethod.Cash && paymentAmount > _remainingAmount)
         {
             MessageBox.Show(
                 $"Amount exceeds remaining balance of {_remainingAmount:C}.",
@@ -533,7 +536,8 @@ public sealed class frmSplit : Form
             return;
         }
 
-        btn.Enabled = false;
+        // Disable all payment buttons to prevent double-submission while awaiting.
+        foreach (var b in _paymentButtons) b.Enabled = false;
         try
         {
             bool ok = paymentType == PaymentMethod.Cash
@@ -554,7 +558,7 @@ public sealed class frmSplit : Form
         }
         finally
         {
-            btn.Enabled = true;
+            foreach (var b in _paymentButtons) b.Enabled = true;
         }
     }
 
@@ -579,6 +583,9 @@ public sealed class frmSplit : Form
 
         // Show overlay for the PAX terminal call (can take up to 180 s)
         var waiting = new frmPaymentWaiting(amount, pType);
+        waiting.TimeoutElapsed += (_, _) =>
+            MessageBox.Show("The terminal did not respond within 90 seconds. Please check the device.",
+                "Terminal Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         waiting.Show(this);
         try
         {
@@ -591,7 +598,7 @@ public sealed class frmSplit : Form
                 Terminal     = config?.Terminal ?? string.Empty,
             });
 
-            waiting.Close();
+            if (!waiting.IsDisposed) waiting.Close();
 
             if (response == null || !response.Success)
             {
@@ -606,7 +613,7 @@ public sealed class frmSplit : Form
         }
         catch
         {
-            waiting.Close();
+            if (!waiting.IsDisposed) waiting.Close();
             throw;   // bubble up to PaymentButton_Click catch block
         }
     }
@@ -648,7 +655,7 @@ public sealed class frmSplit : Form
             var config      = await _adminSettingService.LoadSettingById(WindowsIdProvider.GetMachineGuid());
             var consecutivo = await _orderService.LoadLastConsecutivoPayment();
 
-            await _paymentService.GetEBTBalanceAsync(new PaymentRequest
+            var balanceResponse = await _paymentService.GetEBTBalanceAsync(new PaymentRequest
             {
                 Ip           = config?.IP       ?? string.Empty,
                 Port         = config?.Port     ?? 0,
@@ -656,6 +663,19 @@ public sealed class frmSplit : Form
                 Amount       = 0,
                 EcrRefNumber = consecutivo.ToString(),
             });
+
+            if (balanceResponse != null && balanceResponse.Success)
+            {
+                MessageBox.Show(
+                    $"EBT Available Balance: {balanceResponse.Balance:C}",
+                    "EBT Balance", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    balanceResponse?.MsgInfo ?? "Unable to retrieve EBT balance.",
+                    "EBT Balance", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
         catch (Exception ex)
         {

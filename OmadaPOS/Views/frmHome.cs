@@ -280,8 +280,11 @@ namespace OmadaPOS.Views
             {
                 fadeTimer.Stop();
                 fadeTimer.Dispose();
-                Controls.Remove(toast);
-                toast.Dispose();
+                if (!IsDisposed)
+                {
+                    Controls.Remove(toast);
+                    toast.Dispose();
+                }
             };
             fadeTimer.Start();
         }
@@ -302,7 +305,11 @@ namespace OmadaPOS.Views
             _posHeaderControl.SettingsRequested   += (_, _) => buttonSetting_Click(this, EventArgs.Empty);
             _posHeaderControl.DailyCloseRequested += (_, _) => labelCashier_ClickInternal();
             _posHeaderControl.InvoiceRequested    += (_, _) => _windowService.OpenPrintInvoice(this);
-            _posHeaderControl.LogoutRequested     += async (_, _) => await EjecutarLogout();
+            _posHeaderControl.LogoutRequested     += async (_, _) =>
+            {
+                try { await EjecutarLogout(); }
+                catch (Exception ex) { MessageBox.Show($"Logout error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            };
             _posHeaderControl.ExitRequested       += (_, _) => Close(); // triggers frmHome_FormClosing → PIN check → Application.Exit()
 
             // ── Cart list ─────────────────────────────────────────────────────
@@ -501,6 +508,7 @@ namespace OmadaPOS.Views
                 AdminId = SessionManager.AdminId ?? 0,
                 Phone   = SessionManager.Phone
             });
+            SessionManager.Clear();       // Reset all session state so next login starts clean.
             _supervisorApproved = true;   // Tell FormClosing this close is authorised.
             _isLoggingOut      = true;    // Tell FormClosing NOT to exit the app.
             _windowService.OpenSignIn();
@@ -525,6 +533,14 @@ namespace OmadaPOS.Views
             try
             {
                 Cursor = Cursors.WaitCursor;
+
+                // Load branch settings (Cash Discount flag, etc.) once at startup.
+                var branchService = Program.GetService<IBranchService>();
+                if (branchService != null)
+                {
+                    var branch = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
+                    SessionManager.CashDiscountEnabled = branch?.CashDiscountEnabled ?? false;
+                }
 
                 // Show the customer display on the secondary screen (LED 1024×768).
                 if (!_customerScreen.Visible)
@@ -651,6 +667,10 @@ namespace OmadaPOS.Views
             _scaleBanner?.Dispose();
             _scaleBanner    = null;
             _scaleBannerBtn = null;
+
+            _scannerBanner?.Dispose();
+            _scannerBanner    = null;
+            _scannerBannerBtn = null;
 
             // On full exit (not a logout) tear down the app cleanly.
             if (!_isLoggingOut)
@@ -1060,10 +1080,18 @@ namespace OmadaPOS.Views
 
         private async void buttonSplit_Click(object sender, EventArgs e)
         {
-            if (_shoppingCart.ItemCount > 0 && totalGlobal > 0)
+            try
             {
-                if (!await EnsureAgeVerificationAsync()) return;
-                _windowService.OpenSplitPayment(this);
+                if (_shoppingCart.ItemCount > 0 && totalGlobal > 0)
+                {
+                    if (!await EnsureAgeVerificationAsync()) return;
+                    _windowService.OpenSplitPayment(this);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening split payment: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1087,18 +1115,32 @@ namespace OmadaPOS.Views
 
         private async Task GiftCardPayAsync()
         {
-            if (!await EnsureAgeVerificationAsync()) return;
-
-            var orderResponse = await _paymentCoordinatorService.ProcessGiftCardAsync(changeValue, false);
-
-            if (orderResponse != null)
+            _paymentPanelControl?.Enabled = false;
+            try
             {
-                await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
+                if (!await EnsureAgeVerificationAsync()) return;
+
+                var orderResponse = await _paymentCoordinatorService.ProcessGiftCardAsync(changeValue, false);
+
+                if (orderResponse != null)
+                {
+                    await PaymentSummary(orderResponse.Order_Id, orderResponse.Consecutivo);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Gift card payment error: {ex.Message}", "Payment Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _paymentPanelControl?.BeginInvoke(() => { if (_paymentPanelControl != null) _paymentPanelControl.Enabled = true; });
             }
         }
 
         private async void buttonPayCash_Click(object sender, EventArgs e)
         {
+            _paymentPanelControl?.Enabled = false;
             try
             {
                 if (!await EnsureAgeVerificationAsync()) return;
@@ -1121,6 +1163,10 @@ namespace OmadaPOS.Views
             {
                 MessageBox.Show($"Cash payment error: {ex.Message}", "Payment Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _paymentPanelControl?.BeginInvoke(() => { if (_paymentPanelControl != null) _paymentPanelControl.Enabled = true; });
             }
         }
 
@@ -1148,7 +1194,39 @@ namespace OmadaPOS.Views
         private void buttonGiftCard_Click(object sender, EventArgs e)
             => _windowService.OpenGiftCard(totalGlobal, 1, this);
 
-        private async void buttonPayCreditCard_Click(object sender, EventArgs e) => await PaymentOrder(PaymentType.Credit);
+        private async void buttonPayCreditCard_Click(object sender, EventArgs e)
+        {
+            if (SessionManager.CashDiscountEnabled && _shoppingCart.ItemCount > 0)
+            {
+                decimal fee   = Math.Round(totalGlobal * Domain.SurchargePolicy.Rate, 2);
+                decimal total = totalGlobal + fee;
+
+                // Disable payment panel BEFORE showing the dialog to prevent the
+                // WinForms "click-through" bug: when the MessageBox closes, the
+                // click that dismissed it can activate the button underneath (e.g. CASH).
+                _paymentPanelControl?.Enabled = false;
+                try
+                {
+                    var answer = MessageBox.Show(
+                        $"Cash Discount Fee (3.8%):  {fee:C}\n" +
+                        $"Total charged to card:      {total:C}\n\n" +
+                        "Proceed with credit card payment?",
+                        "Credit Card Fee",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Information,
+                        MessageBoxDefaultButton.Button1);
+
+                    if (answer != DialogResult.Yes) return;
+                }
+                finally
+                {
+                    // Re-enable regardless of the user's choice.
+                    _paymentPanelControl?.BeginInvoke(() => { if (_paymentPanelControl != null) _paymentPanelControl.Enabled = true; });
+                }
+            }
+
+            await PaymentOrder(PaymentType.Credit);
+        }
 
         private async void buttonPayDebitCard_Click(object sender, EventArgs e) => await PaymentOrder(PaymentType.Debit);
 
@@ -1160,9 +1238,15 @@ namespace OmadaPOS.Views
             if (paymentType != PaymentType.EBTBalance && !await EnsureAgeVerificationAsync())
                 return;
 
+            // Disable the payment panel before hitting the terminal to prevent double-submission.
+            _paymentPanelControl?.Invoke(() => { if (_paymentPanelControl != null) _paymentPanelControl.Enabled = false; });
+
             // Show full-screen overlay while the PAX terminal processes the transaction.
             // The try/finally guarantees the overlay always closes — even on exception.
             var waiting = new frmPaymentWaiting(totalGlobal, paymentType);
+            waiting.TimeoutElapsed += (_, _) =>
+                MessageBox.Show("The terminal did not respond within 90 seconds. Please check the device.",
+                    "Terminal Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             waiting.Show(this);   // non-blocking; owner = this (covers frmHome)
 
             try
@@ -1170,7 +1254,7 @@ namespace OmadaPOS.Views
                 var result = await _paymentCoordinatorService.ProcessTerminalPaymentAsync(paymentType, totalGlobal, false);
 
                 // Close overlay before showing result popups so they render on top cleanly.
-                waiting.Close();
+                if (!waiting.IsDisposed) waiting.Close();
 
                 if (result.PaymentResponse != null && !result.PaymentResponse.Success)
                 {
@@ -1187,9 +1271,13 @@ namespace OmadaPOS.Views
             }
             catch (Exception ex)
             {
-                waiting.Close();
+                if (!waiting.IsDisposed) waiting.Close();
                 MessageBox.Show($"Payment error: {ex.Message}", "Payment Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _paymentPanelControl?.BeginInvoke(() => { if (_paymentPanelControl != null) _paymentPanelControl.Enabled = true; });
             }
         }
 

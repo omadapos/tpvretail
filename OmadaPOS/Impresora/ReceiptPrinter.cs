@@ -57,6 +57,7 @@ public sealed class ReceiptPrinter
     private readonly string  _storeAddress;
     private readonly string? _storePhone;
     private readonly string? _footerMsg;
+    private readonly decimal _serviceFee;
     private readonly PaymentResponseModel?  _paymentResponse;
     private readonly List<PaymentModel>?    _splitPayments;
 
@@ -69,6 +70,7 @@ public sealed class ReceiptPrinter
         string  storeAddress,
         string? storePhone              = null,
         string? footerMsg               = null,
+        decimal serviceFee              = 0m,
         PaymentResponseModel? paymentResponse = null,
         List<PaymentModel>?   splitPayments   = null)
     {
@@ -79,6 +81,7 @@ public sealed class ReceiptPrinter
         _storeAddress    = storeAddress;
         _storePhone      = storePhone;
         _footerMsg       = footerMsg;
+        _serviceFee      = serviceFee;
         _paymentResponse = paymentResponse;
         _splitPayments   = splitPayments;
     }
@@ -172,9 +175,6 @@ public sealed class ReceiptPrinter
 
     private void PrintItems(EscPosBuilder b)
     {
-        int ebtItems = 0;
-        int wicItems = 0;
-
         foreach (var d in _details)
         {
             string name = Truncate((d.Product_Name ?? "Unknown").ToUpperInvariant(), 28);
@@ -222,6 +222,9 @@ public sealed class ReceiptPrinter
 
         if (_order.Total_Desc_Amount > 0)
             b.TwoCol("Discount:", $"-{_order.Total_Desc_Amount:C}");
+
+        if (_serviceFee > 0)
+            b.TwoCol("Cash Discount Fee (3.8%):", _serviceFee.ToString("C"));
 
         b.Bold(true).Separator('=').NormalStyle();
 
@@ -373,10 +376,10 @@ public sealed class ReceiptPrinter
 
     // ── Formatting helpers ────────────────────────────────────────────────────
 
-    // 48 chars: name(28) + qty(6) + price(12) + 2 padding
+    // 46 chars: name(28) + qty(6) + price(12) — matches FormatItemLine width exactly
     private static string FormatItemHeader()
     {
-        return "PRODUCT".PadRight(28) + "QTY".PadLeft(6) + "TOTAL".PadLeft(12) + "  ";
+        return "PRODUCT".PadRight(28) + "QTY".PadLeft(6) + "TOTAL".PadLeft(12);
     }
 
     private static string FormatItemLine(string name, string qty, double total)

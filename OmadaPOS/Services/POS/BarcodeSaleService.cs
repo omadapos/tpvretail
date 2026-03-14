@@ -64,10 +64,10 @@ public class BarcodeSaleService : IBarcodeSaleService
 
         if (result.IsFound && result.CartItem != null)
         {
-            _shoppingCart.AddItem(result.CartItem);
+            bool added = _shoppingCart.AddItem(result.CartItem);
             return new BarcodeSaleProcessResult
             {
-                AddedToCart = true,
+                AddedToCart = added,
                 ProductName = result.ProductName
             };
         }
@@ -85,8 +85,7 @@ public class BarcodeSaleService : IBarcodeSaleService
         if (cartItem == null)
             return false;
 
-        _shoppingCart.AddItem(cartItem);
-        return true;
+        return _shoppingCart.AddItem(cartItem);
     }
 
     public ProductSelectionResult HandleProductSelection(ProductModel product, IReadOnlyList<CategoryModel> categories)
@@ -108,7 +107,7 @@ public class BarcodeSaleService : IBarcodeSaleService
             };
         }
 
-        _shoppingCart.AddItem(new CartItem
+        bool added = _shoppingCart.AddItem(new CartItem
         {
             ProductId               = product.Id ?? 0,
             ProductName             = product.Name ?? string.Empty,
@@ -127,7 +126,7 @@ public class BarcodeSaleService : IBarcodeSaleService
 
         return new ProductSelectionResult
         {
-            AddedToCart = true,
+            AddedToCart = added,
             ProductName = product.Name
         };
     }
@@ -138,13 +137,13 @@ public class BarcodeSaleService : IBarcodeSaleService
         if (product == null)
             return new WeightedProductAddResult();
 
-        _shoppingCart.AddItem(new CartItem
+        bool added = _shoppingCart.AddItem(new CartItem
         {
             ProductId               = product.Id ?? 0,
             ProductName             = product.Name ?? string.Empty,
             UnitPrice               = product.Price ?? 0.0m,
             Quantity                = 1,
-            Peso                    = weight / 1000,
+            Peso                    = weight / 1000,   // weight comes in grams; Peso is kg
             Tax                     = product.Tax ?? 0.0,
             IsEBT                   = product.Ebt,
             UPC                     = product.UPC,
@@ -158,7 +157,7 @@ public class BarcodeSaleService : IBarcodeSaleService
 
         return new WeightedProductAddResult
         {
-            AddedToCart = true,
+            AddedToCart = added,
             ProductName = product.Name
         };
     }

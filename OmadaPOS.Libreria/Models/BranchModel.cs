@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Libreria.Models;
+namespace OmadaPOS.Libreria.Models;
 
 public class BranchModel
 {
@@ -10,4 +10,5 @@ public class BranchModel
     public string? FooterMsg { get; set; }
     public string? Address { get; set; }
     public int? Status { get; set; }
+    public bool CashDiscountEnabled { get; set; }
 }

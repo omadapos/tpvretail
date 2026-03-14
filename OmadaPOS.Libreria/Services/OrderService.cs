@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Libreria.Models;
+using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 using System.Net.Http.Headers;
 using System.Text;
@@ -8,8 +8,8 @@ namespace OmadaPOS.Libreria.Services;
 
 public interface IOrderService
 {
-    Task<OrderResponse> PlaceOrder(PlaceOrderModel order);
-    Task<OrderResponse> PlaceOrderMultiple(PlaceOrderMultipleModel order);
+    Task<OrderResponse?> PlaceOrder(PlaceOrderModel order);
+    Task<OrderResponse?> PlaceOrderMultiple(PlaceOrderMultipleModel order);
     Task<int> LoadLastInvoiceGeneral();
     Task<int> LoadLastInvoiceAdmin();
     Task<long> LoadLastConsecutivoPayment();
@@ -24,252 +24,201 @@ public class OrderService : IOrderService
 {
     private readonly HttpClient _client;
 
+    // Single shared options instance — creating per-call adds unnecessary allocation.
+    private static readonly JsonSerializerOptions _jsonOpts =
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
     public OrderService(HttpClient client)
     {
         _client = client;
-
-        _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", SessionManager.Token);
+        // Do NOT set DefaultRequestHeaders here — the HttpClient is a singleton
+        // shared across all transient service instances. Setting headers in the
+        // constructor causes a race condition when tokens rotate. Use per-request
+        // headers instead (see BuildRequest helper below).
     }
 
-    public async Task<OrderResponse> PlaceOrder(PlaceOrderModel order)
+    // ── Auth helper ───────────────────────────────────────────────────────────
+
+    private static HttpRequestMessage BuildRequest(HttpMethod method, string url)
     {
-        var orderResponse = new OrderResponse();
-
-        var json = JsonSerializer.Serialize(order);
-        var data = new StringContent(json, Encoding.UTF8, "application/json");
-
-        HttpResponseMessage response = await _client.PostAsync(Constants.BaseUrl + "/api/order/place", data);
-
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
-
-            orderResponse = JsonSerializer.Deserialize<OrderResponse>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return orderResponse;
+        var req = new HttpRequestMessage(method, url);
+        req.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", SessionManager.Token);
+        return req;
     }
+
+    // ── Branch guard ──────────────────────────────────────────────────────────
+
+    private static int RequireBranchId() =>
+        SessionManager.BranchId
+        ?? throw new InvalidOperationException("BranchId is not set. Ensure the user is logged in.");
+
+    // ── Order placement ───────────────────────────────────────────────────────
+
+    public async Task<OrderResponse?> PlaceOrder(PlaceOrderModel order)
+    {
+        var json = JsonSerializer.Serialize(order);
+        using var req = BuildRequest(HttpMethod.Post, Constants.BaseUrl + "/api/order/place");
+        req.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _client.SendAsync(req).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<OrderResponse>(content, _jsonOpts);
+    }
+
+    public async Task<OrderResponse?> PlaceOrderMultiple(PlaceOrderMultipleModel order)
+    {
+        var json = JsonSerializer.Serialize(order);
+        using var req = BuildRequest(HttpMethod.Post, Constants.BaseUrl + "/api/order/place/multiple");
+        req.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _client.SendAsync(req).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<OrderResponse>(content, _jsonOpts);
+    }
+
+    // ── Invoice / consecutivo ─────────────────────────────────────────────────
 
     public async Task<int> LoadLastInvoiceGeneral()
     {
-        int orderId = 0;
         try
         {
-            string url = Constants.BaseUrl + $"/api/order/last/invoice/{SessionManager.BranchId}";
+            int branchId = RequireBranchId();
+            using var req = BuildRequest(HttpMethod.Get,
+                Constants.BaseUrl + $"/api/order/last/invoice/{branchId}");
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-
-                var orderLast = JsonSerializer.Deserialize<OrderLast>(content, options: new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                });
-                if (orderLast != null)
-                {
-                    orderId = orderLast.OrderId;
-                }
-            }
+            if (!response.IsSuccessStatusCode) return 0;
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var orderLast = JsonSerializer.Deserialize<OrderLast>(content, _jsonOpts);
+            return orderLast?.OrderId ?? 0;
         }
-        catch (Exception)
-        {
-            orderId = 0;
-        }
-
-        return orderId;
-    }
-
-    public async Task<long> LoadLastConsecutivoPayment()
-    {
-        long consecutivo = 0;
-        try
-        {
-            string url = Constants.BaseUrl + $"/api/ConsecutivoPayment/next/{SessionManager.BranchId}";
-
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-
-                var consecutivoLast = JsonSerializer.Deserialize<long>(content, options: new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                });
-
-                consecutivo = consecutivoLast;
-            }
-        }
-        catch (Exception)
-        {
-        }
-
-        return consecutivo;
+        catch (Exception) { return 0; }
     }
 
     public async Task<int> LoadLastInvoiceAdmin()
     {
-        int orderId = 0;
         try
         {
-            string url = Constants.BaseUrl + $"/api/order/last/invoice/{SessionManager.BranchId}/admin";
+            int branchId = RequireBranchId();
+            using var req = BuildRequest(HttpMethod.Get,
+                Constants.BaseUrl + $"/api/order/last/invoice/{branchId}/admin");
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-            HttpResponseMessage response = await _client.GetAsync(url);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-
-                var orderLast = JsonSerializer.Deserialize<OrderLast>(content, options: new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                });
-                if (orderLast != null)
-                {
-                    orderId = orderLast.OrderId;
-                }
-            }
+            if (!response.IsSuccessStatusCode) return 0;
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var orderLast = JsonSerializer.Deserialize<OrderLast>(content, _jsonOpts);
+            return orderLast?.OrderId ?? 0;
         }
-        catch (Exception)
-        {
-            orderId = 0;
-        }
-
-        return orderId;
+        catch (Exception) { return 0; }
     }
+
+    public async Task<long> LoadLastConsecutivoPayment()
+    {
+        try
+        {
+            int branchId = RequireBranchId();
+            using var req = BuildRequest(HttpMethod.Get,
+                Constants.BaseUrl + $"/api/ConsecutivoPayment/next/{branchId}");
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode) return 0;
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<long>(content, _jsonOpts);
+        }
+        catch (Exception) { return 0; }
+    }
+
+    // ── Order queries ─────────────────────────────────────────────────────────
 
     public async Task<OrderModel> GetOrderById(int orderId)
     {
-        OrderModel order = null;
-
         try
         {
-            HttpResponseMessage response = await _client.GetAsync(Constants.BaseUrl + $"/api/order/{orderId}");
+            using var req = BuildRequest(HttpMethod.Get,
+                Constants.BaseUrl + $"/api/order/{orderId}");
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-            if (response.IsSuccessStatusCode)
-            {
-                string content = await response.Content.ReadAsStringAsync();
-
-                order = JsonSerializer.Deserialize<OrderModel>(content, options: new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                });
-
-            }
+            if (!response.IsSuccessStatusCode) return null;
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<OrderModel>(content, _jsonOpts);
         }
-        catch (Exception)
-        {
-
-        }
-
-        return order;
+        catch (Exception) { return null; }
     }
 
     public async Task<List<OrderDetailModel>> GetOrderDetailsByOrderId(int orderId)
     {
-        var details = new List<OrderDetailModel>();
-
-        HttpResponseMessage response = await _client.GetAsync(Constants.BaseUrl + $"/api/orderdetail/{orderId}");
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            string content = await response.Content.ReadAsStringAsync();
+            using var req = BuildRequest(HttpMethod.Get,
+                Constants.BaseUrl + $"/api/orderdetail/{orderId}");
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-            details = JsonSerializer.Deserialize<List<OrderDetailModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
+            if (!response.IsSuccessStatusCode) return new List<OrderDetailModel>();
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<List<OrderDetailModel>>(content, _jsonOpts)
+                   ?? new List<OrderDetailModel>();
         }
-
-        return details;
+        catch (Exception) { return new List<OrderDetailModel>(); }
     }
 
     public async Task<CloseResultModel> CierreDiario(string fecha, string username)
     {
-        CloseResultModel closeResponse = null;
-
-        string url = Constants.BaseUrl + $"/api/cierrediario/usuario/branch/{SessionManager.BranchId}/{fecha}/{username}";
-
-        HttpResponseMessage response = await _client.GetAsync(url);
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            string content = await response.Content.ReadAsStringAsync();
+            int branchId = RequireBranchId();
+            string url = Constants.BaseUrl +
+                $"/api/cierrediario/usuario/branch/{branchId}/{Uri.EscapeDataString(fecha)}/{Uri.EscapeDataString(username)}";
+            using var req = BuildRequest(HttpMethod.Get, url);
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-            closeResponse = JsonSerializer.Deserialize<CloseResultModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
+            if (!response.IsSuccessStatusCode) return null;
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<CloseResultModel>(content, _jsonOpts);
         }
-
-        return closeResponse;
-    }
-
-    public async Task<OrderResponse> PlaceOrderMultiple(PlaceOrderMultipleModel order)
-    {
-        var orderResponse = new OrderResponse();
-
-        var json = JsonSerializer.Serialize(order);
-        var data = new StringContent(json, Encoding.UTF8, "application/json");
-
-        HttpResponseMessage response = await _client.PostAsync(Constants.BaseUrl + "/api/order/place/multiple", data);
-
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
-
-            orderResponse = JsonSerializer.Deserialize<OrderResponse>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return orderResponse;
+        catch (Exception) { return null; }
     }
 
     public async Task<List<OrderModel>> GetOrderTop()
     {
-        var orders = new List<OrderModel>();
-
-        HttpResponseMessage response = await _client.GetAsync(
-            Constants.BaseUrl + $"/api/Order/top/branch/{SessionManager.BranchId}/50");
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            string content = await response.Content.ReadAsStringAsync();
+            int branchId = RequireBranchId();
+            using var req = BuildRequest(HttpMethod.Get,
+                Constants.BaseUrl + $"/api/Order/top/branch/{branchId}/50");
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-            orders = JsonSerializer.Deserialize<List<OrderModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
+            if (!response.IsSuccessStatusCode) return new List<OrderModel>();
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<List<OrderModel>>(content, _jsonOpts)
+                   ?? new List<OrderModel>();
         }
-
-        return orders;
+        catch (Exception) { return new List<OrderModel>(); }
     }
 
     public async Task<List<OrderModel>> GetOrderTop(string fecha1, string fecha2)
     {
-        var orders = new List<OrderModel>();
-
-        HttpResponseMessage response = await _client.GetAsync(
-            Constants.BaseUrl + $"/api/Order/top/branch/{SessionManager.BranchId}/{fecha1}/{fecha2}");
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            string content = await response.Content.ReadAsStringAsync();
+            int branchId = RequireBranchId();
+            string url = Constants.BaseUrl +
+                $"/api/Order/top/branch/{branchId}/{Uri.EscapeDataString(fecha1)}/{Uri.EscapeDataString(fecha2)}";
+            using var req = BuildRequest(HttpMethod.Get, url);
+            var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-            orders = JsonSerializer.Deserialize<List<OrderModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
+            if (!response.IsSuccessStatusCode) return new List<OrderModel>();
+            string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<List<OrderModel>>(content, _jsonOpts)
+                   ?? new List<OrderModel>();
         }
-
-        return orders;
+        catch (Exception) { return new List<OrderModel>(); }
     }
 }

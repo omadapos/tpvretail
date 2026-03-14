@@ -30,6 +30,8 @@ public sealed class frmPrintInvoice : POSDialog
     private Label          _lblSummary  = null!;  // selected-invoice summary strip
     private TextBox        _tbScan      = null!;  // barcode scan input
 
+    private System.Windows.Forms.Timer? _highlightTimer;
+
     // ── Column index constants ────────────────────────────────────────────────
     private const int COL_INV_NUM     = 0;
     private const int COL_INV_DATE    = 1;
@@ -45,7 +47,8 @@ public sealed class frmPrintInvoice : POSDialog
         _branchService       = branchService;
         _adminSettingService = adminSettingService;
 
-        Shown += async (_, _) => await LoadInvoicesAsync();
+        Shown      += async (_, _) => await LoadInvoicesAsync();
+        FormClosed += (_, _) => { _highlightTimer?.Stop(); _highlightTimer?.Dispose(); };
     }
 
     protected override Color      AccentColor => AppColors.SlateBlue;
@@ -471,6 +474,14 @@ public sealed class frmPrintInvoice : POSDialog
 
     private async Task SearchAsync()
     {
+        if (_dtFrom.Value.Date > _dtTo.Value.Date)
+        {
+            MessageBox.Show(
+                "\"From\" date must be on or before the \"To\" date.",
+                "Invalid Date Range", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
         string from = _dtFrom.Value.ToString("yyyyMMdd");
         string to   = _dtTo.Value.ToString("yyyyMMdd");
         await LoadInvoicesAsync(from, to);
@@ -533,16 +544,21 @@ public sealed class frmPrintInvoice : POSDialog
             _lvInvoices.EnsureVisible(lvi.Index);
             _lvInvoices.Focus();
 
-            // Highlight row briefly with accent color using a quick timer
+            // Highlight row briefly with accent color using a quick timer.
             var origColor = lvi.BackColor;
             lvi.BackColor = AppColors.AccentGreen;
-            var t = new System.Windows.Forms.Timer { Interval = 450 };
-            t.Tick += (_, _) =>
+            _highlightTimer?.Stop();
+            _highlightTimer?.Dispose();
+            _highlightTimer = new System.Windows.Forms.Timer { Interval = 450 };
+            _highlightTimer.Tick += (_, _) =>
             {
-                lvi.BackColor = origColor;
-                t.Stop(); t.Dispose();
+                _highlightTimer.Stop();
+                _highlightTimer.Dispose();
+                _highlightTimer = null;
+                if (!IsDisposed)
+                    lvi.BackColor = origColor;
             };
-            t.Start();
+            _highlightTimer.Start();
 
             _lblSummary.Text = $"✔  Invoice #{consecutivo} found — {order.Created_At:MM/dd/yyyy HH:mm}";
             return true;
@@ -563,11 +579,9 @@ public sealed class frmPrintInvoice : POSDialog
             var list = await _orderService.GetOrderDetailsByOrderId(order.Id);
             if (list == null) return;
 
-            double lineTotal = 0;
             foreach (var item in list)
             {
                 double sub = item.Price * item.Quantity;
-                lineTotal += sub + item.Tax_Amount;
 
                 var lvi = new ListViewItem(item.Product_Name ?? "—");
                 lvi.SubItems.Add(item.Quantity % 1 == 0
@@ -623,7 +637,8 @@ public sealed class frmPrintInvoice : POSDialog
                     storeName:    branch.Name    ?? AppConstants.AppName,
                     storeAddress: branch.Address ?? "",
                     storePhone:   branch.Contact,
-                    footerMsg:    branch.FooterMsg);
+                    footerMsg:    branch.FooterMsg,
+                    serviceFee:   (decimal)order.Service_Fee);
 
                 string? configuredPrinter = settings?.PrinterName;
                 if (!string.IsNullOrWhiteSpace(configuredPrinter))

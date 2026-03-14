@@ -92,17 +92,38 @@ public sealed class frmSetting : POSDialog
 
     protected override async Task<bool> OnConfirmAsync()
     {
-        await _adminSettingService.UpdateSetting(new AdminSetting
+        // Validate port
+        if (!int.TryParse(_tbPort.Text, out int port) || port < 1 || port > 65535)
+        {
+            MessageBox.Show(
+                "Port must be a number between 1 and 65535.",
+                "Invalid Port", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+
+        bool saved = await _adminSettingService.UpdateSetting(new AdminSetting
         {
             WindowsId   = WindowsIdProvider.GetMachineGuid(),
             IP          = _tbIP.Text,
-            Port        = int.TryParse(_tbPort.Text, out int p) ? p : 0,
+            Port        = port,
             Terminal    = _tbTerminal.Text,
             PrinterName = _tbPrinter.Text,
         });
 
+        if (!saved)
+        {
+            MessageBox.Show(
+                "Settings could not be saved. Please try again.",
+                "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
+        }
+
         // Force the payment service to reload config on next payment call
         _paymentCoordinatorService.InvalidateConfig();
+
+        MessageBox.Show(
+            "Settings saved successfully.",
+            "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         return true;
     }

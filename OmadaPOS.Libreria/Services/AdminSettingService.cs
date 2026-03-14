@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Libreria.Models;
+using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 using System.Net.Http.Headers;
 using System.Text;
@@ -14,55 +14,56 @@ public interface IAdminSettingService
 }
 
 
-public class AdminSettingService: IAdminSettingService
+public class AdminSettingService : IAdminSettingService
 {
     private readonly HttpClient _client;
+
+    private static readonly JsonSerializerOptions _jsonOpts =
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
     public AdminSettingService(HttpClient client)
     {
         _client = client;
+        // Do NOT set DefaultRequestHeaders here — singleton HttpClient race condition.
+        // Use per-request headers in each method instead.
+    }
 
-        _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", SessionManager.Token);
+    private static HttpRequestMessage BuildRequest(HttpMethod method, string url)
+    {
+        var req = new HttpRequestMessage(method, url);
+        req.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", SessionManager.Token);
+        return req;
     }
 
     public async Task<List<AdminSetting>?> LoadSettings(int branchId)
     {
-        var result = new List<AdminSetting>();
+        // Use the supplied branchId parameter (not SessionManager.BranchId, which
+        // was previously used here by mistake, ignoring the caller's argument).
+        using var req = BuildRequest(HttpMethod.Get,
+            Constants.BaseUrl + $"/api/AdminSetting/branch/{branchId}");
 
-        HttpResponseMessage response = await _client.GetAsync(Constants.BaseUrl + $"/api/AdminSetting/branch/" + SessionManager.BranchId);
+        var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+            return null;
 
-            result = JsonSerializer.Deserialize<List<AdminSetting>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return result;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<List<AdminSetting>>(content, _jsonOpts);
     }
 
     public async Task<AdminSetting?> LoadSettingById(string windowsId)
     {
-        AdminSetting? setting = null;
+        using var req = BuildRequest(HttpMethod.Get,
+            Constants.BaseUrl + $"/api/AdminSetting/windows/{windowsId}");
 
-        string url = Constants.BaseUrl + $"/api/AdminSetting/windows/{windowsId}";
+        var response = await _client.SendAsync(req).ConfigureAwait(false);
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+            return null;
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
-            setting = JsonSerializer.Deserialize<AdminSetting>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return setting;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<AdminSetting>(content, _jsonOpts);
     }
 
     public async Task<bool> UpdateSetting(AdminSetting setting)
@@ -70,10 +71,10 @@ public class AdminSettingService: IAdminSettingService
         string url = Constants.BaseUrl + $"/api/AdminSetting/windows/{setting.WindowsId}";
 
         var json = JsonSerializer.Serialize(setting);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var req = BuildRequest(HttpMethod.Put, url);
+        req.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        HttpResponseMessage response = await _client.PutAsync(url, content);
-
+        var response = await _client.SendAsync(req).ConfigureAwait(false);
         return response.IsSuccessStatusCode;
     }
 }

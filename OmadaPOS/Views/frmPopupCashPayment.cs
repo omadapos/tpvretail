@@ -353,6 +353,7 @@ public sealed class frmPopupCashPayment : POSDialog
                     storeAddress:    branch.Address ?? "",
                     storePhone:      branch.Contact,
                     footerMsg:       branch.FooterMsg,
+                    serviceFee:      (decimal)order.Service_Fee,
                     paymentResponse: _paymentResponse,
                     splitPayments:   _splitPayments);
 

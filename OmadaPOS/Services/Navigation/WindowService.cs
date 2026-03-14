@@ -26,12 +26,14 @@ public class WindowService : IWindowService
 
     public void OpenHome()
     {
-        _provider.GetRequiredService<frmHome>().Show();
+        var form = _provider.GetRequiredService<frmHome>();
+        ShowModeless(form);
     }
 
     public void OpenSignIn()
     {
-        _provider.GetRequiredService<frmSignIn>().Show();
+        var form = _provider.GetRequiredService<frmSignIn>();
+        ShowModeless(form);
     }
 
     public void OpenSplitPayment(IWin32Window? owner = null)
@@ -107,7 +109,11 @@ public class WindowService : IWindowService
     private void ShowModeless(Form form, IWin32Window? owner = null)
     {
         _modelessForms.Add(form);
-        form.FormClosed += (_, _) => _modelessForms.Remove(form);
+        form.FormClosed += (_, _) =>
+        {
+            _modelessForms.Remove(form);
+            form.Dispose();
+        };
         // Passing the owner makes Windows:
         //   1. always keep the child on top of the owner
         //   2. automatically close the child when the owner closes (cascade)

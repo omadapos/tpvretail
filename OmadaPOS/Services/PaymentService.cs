@@ -151,8 +151,8 @@ public class PaymentService : IPaymentService
             _logger.LogInformation(
                 "Payment processed successfully. Type: {PaymentType}, Amount: {Amount}, Reference: {Reference}",
                 paymentType,
-                response.PaymentReferenceNumber,
-                response.PaymentNumber);
+                response.PaymentNumber,
+                response.PaymentReferenceNumber);
         }
         else
         {

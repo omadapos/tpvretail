@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Libreria.Models;
+namespace OmadaPOS.Libreria.Models;
 
 public class OrderModel
 {
@@ -15,5 +15,8 @@ public class OrderModel
     public int Branch_Id { get; set; }
     public double Devuelta { get; set; }
     public double Balance { get; set; }
+
+    /// <summary>Cash Discount Program service fee recorded at time of sale.</summary>
+    public double Service_Fee { get; set; }
 }
 

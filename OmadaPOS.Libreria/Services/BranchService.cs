@@ -36,7 +36,9 @@ public class BranchService : IBranchService
 
         string content = await response.Content.ReadAsStringAsync();
 
+#if DEBUG
         System.Diagnostics.Debug.WriteLine($"[Branch API] GET {url} → {content}");
+#endif
 
         return JsonSerializer.Deserialize<BranchModel>(content, new JsonSerializerOptions
         {

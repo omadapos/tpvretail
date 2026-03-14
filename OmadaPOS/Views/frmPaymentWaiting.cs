@@ -29,14 +29,25 @@ public sealed class frmPaymentWaiting : Form
     private static readonly SolidBrush  _overlayBrush = new(_overlay);
     private static readonly StringFormat _sfCenter    = new() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
+    private const int TimeoutSeconds = 90;
+
     // ── State ─────────────────────────────────────────────────────────────────
     private readonly decimal     _amount;
     private readonly PaymentType _paymentType;
     private readonly DateTime    _startTime = DateTime.Now;
     private readonly System.Windows.Forms.Timer _timer;
 
-    private float   _spinAngle = 0f;
+    private float   _spinAngle    = 0f;
     private Bitmap? _backdrop;
+    private bool    _timeoutFired = false;
+
+    /// <summary>
+    /// Raised on the UI thread when no response has been received from the
+    /// terminal after <see cref="TimeoutSeconds"/> seconds. Subscribers should
+    /// inform the user that the terminal timed out.
+    /// The form closes itself immediately after raising this event.
+    /// </summary>
+    public event EventHandler? TimeoutElapsed;
 
     // Card geometry + pre-baked shadow paths (set in OnLoad, fixed thereafter)
     private Rectangle _card;
@@ -60,6 +71,14 @@ public sealed class frmPaymentWaiting : Form
         {
             _spinAngle = (_spinAngle + 9f) % 360f;   // 9° per tick keeps same visual speed at 16fps
             Invalidate();
+
+            // Auto-close after timeout so the cashier is never permanently stuck.
+            if (!_timeoutFired && (DateTime.Now - _startTime).TotalSeconds >= TimeoutSeconds)
+            {
+                _timeoutFired = true;
+                TimeoutElapsed?.Invoke(this, EventArgs.Empty);
+                BeginInvoke(Close);
+            }
         };
     }
 

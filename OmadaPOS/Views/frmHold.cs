@@ -238,14 +238,22 @@ public sealed class frmHold : POSDialog
     private async void HoldIt_Click(object? sender, EventArgs e)
     {
         if (_shoppingCart.ItemCount <= 0) return;
+
+        _btnHoldIt.Enabled = false;
         try
         {
-            _btnHoldIt.Enabled = false;
             string tag = "";
             foreach (var color in _colorTags)
             {
                 var existing = await _holdService.GetHeldCartsByIdAsync(color);
                 if (existing == null) { tag = color; break; }
+            }
+
+            if (tag == "")
+            {
+                MessageBox.Show("All hold slots are in use. Please restore a held cart first.",
+                    "Hold Slots Full", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
 
             bool ok = await _holdService.HoldCartAsync(WindowsIdProvider.GetMachineGuid(), tag);
@@ -259,7 +267,11 @@ public sealed class frmHold : POSDialog
         {
             MessageBox.Show($"Error saving cart: {ex.Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
-            _btnHoldIt.Enabled = true;
+        }
+        finally
+        {
+            if (!IsDisposed && !Disposing)
+                _btnHoldIt.Enabled = true;
         }
     }
 }

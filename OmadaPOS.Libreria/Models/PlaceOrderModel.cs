@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Libreria.Models;
+namespace OmadaPOS.Libreria.Models;
 
 public class PlaceOrderModel
 {
@@ -24,4 +24,7 @@ public class PlaceOrderModel
     public string? Terminal { get; set; }
     public string? UserName { get; set; }
     public decimal Balance { get; set; } = 0;
+
+    /// <summary>Cash Discount Program service fee (3.8% on credit). Zero when not applicable.</summary>
+    public double Service_Fee { get; set; } = 0;
 }
