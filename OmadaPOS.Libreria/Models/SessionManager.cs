@@ -8,6 +8,8 @@ public static class SessionManager
     public static string? Name { get; set; }
     public static int? AdminId { get; set; }
     public static string? Phone { get; set; }
+    /// <summary>Display name of the branch/store. Loaded at login from the branch API.</summary>
+    public static string? BranchName { get; set; }
 
     /// <summary>
     /// True when the branch uses a Cash Discount Program —
@@ -25,6 +27,7 @@ public static class SessionManager
         Name                = null;
         AdminId             = null;
         Phone               = null;
+        BranchName          = null;
         CashDiscountEnabled = false;
     }
 }

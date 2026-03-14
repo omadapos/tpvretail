@@ -15,6 +15,7 @@ public interface IPaymentTerminalService
     Task<PaymentResponseModel> ProcessDebitPaymentAsync(Terminal terminal, DoDebitRequest request);
     Task<PaymentResponseModel> ProcessEBTPaymentAsync(Terminal terminal, DoEbtRequest request);
     Task<PaymentResponseModel> ProcessEBTBalanceAsync(Terminal terminal, DoEbtRequest request);
+    Task<PaymentResponseModel> ProcessReturnAsync(Terminal terminal, DoCreditRequest request);
 }
 
 public class PaymentTerminalService : IPaymentTerminalService
@@ -116,6 +117,24 @@ public class PaymentTerminalService : IPaymentTerminalService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing EBT payment");
+            throw;
+        }
+    }
+
+    public async Task<PaymentResponseModel> ProcessReturnAsync(Terminal terminal, DoCreditRequest request)
+    {
+        try
+        {
+            return await Task.Run(() =>
+            {
+                DoCreditResponse response;
+                var result = terminal.Transaction.DoCredit(request, out response);
+                return ProcessPaymentResponse(result, response);
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing return/refund");
             throw;
         }
     }

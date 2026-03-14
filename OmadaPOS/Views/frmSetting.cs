@@ -1,6 +1,7 @@
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
+using OmadaPOS.Services;
 using OmadaPOS.Services.POS;
 
 namespace OmadaPOS.Views;
@@ -14,6 +15,8 @@ public sealed class frmSetting : POSDialog
     private TextBox _tbPort        = null!;
     private TextBox _tbTerminal    = null!;
     private TextBox _tbPrinter     = null!;
+    private TextBox _tbNewPin      = null!;
+    private TextBox _tbConfirmPin  = null!;
     private Label   _lblWindowsId  = null!;
 
     public frmSetting(IAdminSettingService adminSettingService, IPaymentCoordinatorService paymentCoordinatorService)
@@ -21,6 +24,7 @@ public sealed class frmSetting : POSDialog
         _adminSettingService       = adminSettingService;
         _paymentCoordinatorService = paymentCoordinatorService;
         Shown += async (_, _) => await LoadSettingsAsync();
+        Shown += (_, _) => ThemeManager.ApplyAll(this);
     }
 
     protected override Color      AccentColor => AppColors.SlateBlue;
@@ -46,6 +50,28 @@ public sealed class frmSetting : POSDialog
         var f3 = FieldPanel("Terminal ID",   out _tbTerminal, "POS");
         var f4 = FieldPanel("Printer Name",  out _tbPrinter,  "RONGTA");
 
+        // ── Supervisor PIN section ────────────────────────────────────────────
+        var lblPinSection = new Label
+        {
+            Text      = "SUPERVISOR PIN",
+            Font      = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Top,
+            Height    = 28,
+            TextAlign = ContentAlignment.BottomLeft,
+            Padding   = new Padding(2, 0, 0, 2),
+        };
+        lblPinSection.Paint += (_, e) =>
+        {
+            using var pen = new Pen(AppColors.SurfaceMuted, 1f);
+            e.Graphics.DrawLine(pen, 0, lblPinSection.Height - 1, lblPinSection.Width, lblPinSection.Height - 1);
+        };
+        var fPin1 = FieldPanel("New PIN (4 digits)",     out _tbNewPin,     "Leave blank to keep current PIN");
+        var fPin2 = FieldPanel("Confirm PIN",            out _tbConfirmPin, "Re-enter new PIN to confirm");
+        _tbNewPin.UseSystemPasswordChar     = true;
+        _tbConfirmPin.UseSystemPasswordChar = true;
+
         // Windows/Machine ID (read-only footer label)
         _lblWindowsId = new Label
         {
@@ -60,6 +86,9 @@ public sealed class frmSetting : POSDialog
 
         // Stack top-down (Controls.Add reverses order for DockStyle.Top)
         scroll.Controls.Add(_lblWindowsId);
+        scroll.Controls.Add(fPin2);
+        scroll.Controls.Add(fPin1);
+        scroll.Controls.Add(lblPinSection);
         scroll.Controls.Add(f4);
         scroll.Controls.Add(f3);
         scroll.Controls.Add(f2);
@@ -101,6 +130,29 @@ public sealed class frmSetting : POSDialog
             return false;
         }
 
+        // Validate and apply supervisor PIN change (optional — blank = keep current)
+        string newPin     = _tbNewPin.Text.Trim();
+        string confirmPin = _tbConfirmPin.Text.Trim();
+        bool   changingPin = !string.IsNullOrEmpty(newPin) || !string.IsNullOrEmpty(confirmPin);
+
+        if (changingPin)
+        {
+            if (newPin.Length < 4 || newPin.Length > 8 || !newPin.All(char.IsDigit))
+            {
+                MessageBox.Show(
+                    "Supervisor PIN must be 4 to 8 digits.",
+                    "Invalid PIN", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (newPin != confirmPin)
+            {
+                MessageBox.Show(
+                    "PIN entries do not match. Please re-enter.",
+                    "PIN Mismatch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+        }
+
         bool saved = await _adminSettingService.UpdateSetting(new AdminSetting
         {
             WindowsId   = WindowsIdProvider.GetMachineGuid(),
@@ -118,11 +170,26 @@ public sealed class frmSetting : POSDialog
             return false;
         }
 
+        // Persist new supervisor PIN if changed
+        if (changingPin)
+        {
+            try
+            {
+                LocalPinStore.Save(newPin);
+            }
+            catch
+            {
+                MessageBox.Show(
+                    "Terminal settings saved, but the supervisor PIN could not be stored to disk.",
+                    "PIN Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         // Force the payment service to reload config on next payment call
         _paymentCoordinatorService.InvalidateConfig();
 
         MessageBox.Show(
-            "Settings saved successfully.",
+            "Settings saved successfully." + (changingPin ? "\nSupervisor PIN updated." : ""),
             "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         return true;

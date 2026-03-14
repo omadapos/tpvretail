@@ -58,7 +58,7 @@ public static class ElegantButtonStyles
     // MÉTODO PRINCIPAL
     // ─────────────────────────────────────────────
 
-    public static void Style(Button button, Color? backColor = null, Color? foreColor = null, int radius = 10, float fontSize = 30F)
+    public static void Style(Button button, Color? backColor = null, Color? foreColor = null, int radius = 10, float fontSize = 11F)
     {
         var bg = backColor ?? HeaderNavy;
         var fg = foreColor ?? TextWhite;
@@ -81,7 +81,7 @@ public static class ElegantButtonStyles
         button.FlatAppearance.MouseDownBackColor = Color.Transparent;
         button.Cursor  = Cursors.Default;
         button.Padding = new Padding(16, 8, 16, 8);
-        button.Height  = Math.Max(44, (int)(fontSize * 1.8f));
+        button.Height  = Math.Max(36, (int)(fontSize * 2.2f));
         button.TabStop = false;
 
         button.Paint  += ButtonPaintHandler;
@@ -102,7 +102,7 @@ public static class ElegantButtonStyles
         var oldFont = button.Font;
         button.Font = new Font("Segoe UI", fontSize, FontStyle.Bold);
         oldFont?.Dispose();
-        button.Height = Math.Max(44, (int)(fontSize * 1.8f));
+        button.Height = Math.Max(36, (int)(fontSize * 2.2f));
         button.Invalidate();
     }
 

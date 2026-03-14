@@ -18,14 +18,20 @@ public partial class frmSignIn
     private System.Windows.Forms.Timer? _clock;
     private bool _loginInProgress;
 
+    // Lockout — 5 consecutive failures trigger a 30-second block.
+    private int      _failedAttempts = 0;
+    private DateTime _lockoutUntil   = DateTime.MinValue;
+    private const int MaxFailedAttempts = 5;
+    private const int LockoutSeconds    = 30;
+
     // Overlay
     private Panel?  _pnlOverlay;
     private Label?  _lblOverlayStatus;
     private System.Windows.Forms.Timer? _spinnerTimer;
 
     // Static brushes for PIN dots — emerald filled, dark slate empty
-    private static readonly SolidBrush _dotFilledBrush = new(Color.FromArgb(52, 211, 153));   // AccentGreenLight
-    private static readonly SolidBrush _dotEmptyBrush  = new(Color.FromArgb(51, 65, 85));     // NavyLight
+    private static readonly SolidBrush _dotFilledBrush = new(AppColors.AccentGreenLight);
+    private static readonly SolidBrush _dotEmptyBrush  = new(AppColors.NavyLight);
 
     // ─────────────────────────────────────────────────────────────────
     //  Constructor
@@ -315,6 +321,15 @@ public partial class frmSignIn
             return;
         }
 
+        // Lockout check
+        if (_failedAttempts >= MaxFailedAttempts && DateTime.Now < _lockoutUntil)
+        {
+            int remaining = (int)(_lockoutUntil - DateTime.Now).TotalSeconds + 1;
+            ShowError($"Too many failed attempts. Please wait {remaining} second{(remaining == 1 ? "" : "s")}.");
+            ClearPin();
+            return;
+        }
+
         _loginInProgress    = true;
         buttonLogin.Enabled = false;
         ShowOverlay("Verificando credenciales…");
@@ -332,6 +347,10 @@ public partial class frmSignIn
 
             if (!string.IsNullOrEmpty(response.Token))
             {
+                // Successful login — reset lockout counter
+                _failedAttempts = 0;
+                _lockoutUntil   = DateTime.MinValue;
+
                 SessionManager.Token    = response.Token;
                 SessionManager.BranchId = response.BranchId;
                 SessionManager.UserName = _pin;
@@ -346,8 +365,15 @@ public partial class frmSignIn
             }
             else
             {
+                _failedAttempts++;
+                if (_failedAttempts >= MaxFailedAttempts)
+                    _lockoutUntil = DateTime.Now.AddSeconds(LockoutSeconds);
+
                 HideOverlay();
-                ShowError("Invalid PIN. Please try again.");
+                string msg = _failedAttempts >= MaxFailedAttempts
+                    ? $"Too many failed attempts. Locked for {LockoutSeconds} seconds."
+                    : $"Invalid PIN. Please try again. ({MaxFailedAttempts - _failedAttempts} attempt{(MaxFailedAttempts - _failedAttempts == 1 ? "" : "s")} remaining)";
+                ShowError(msg);
                 ClearPin();
             }
         }
@@ -399,7 +425,7 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     private void PnlHeader_Paint(object? sender, PaintEventArgs e)
     {
-        using var pen = new Pen(Color.FromArgb(16, 185, 129), 2f);
+        using var pen = new Pen(AppColors.AccentGreen, 2f);
         e.Graphics.DrawLine(pen, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
     }
 
@@ -408,7 +434,7 @@ public partial class frmSignIn
     // ─────────────────────────────────────────────────────────────────
     private void PnlCard_Paint(object? sender, PaintEventArgs e)
     {
-        using var pen = new Pen(Color.FromArgb(5, 150, 105), 3f);
+        using var pen = new Pen(AppColors.AccentGreenDark, 3f);
         e.Graphics.DrawLine(pen, 14, 1, pnlCard.Width - 14, 1);
     }
 

@@ -3,15 +3,16 @@ using System.Drawing;
 namespace OmadaPOS.Presentation.Styling;
 
 /// <summary>
-/// OmadaPOS — Paleta de colores profesional Bootstrap-inspired.
+/// OmadaPOS — Paleta de colores profesional. POS empresarial moderno.
 ///
-/// Estrategia:
-///   • Cuerpo / canvas de la app  → blanco / gris muy claro
-///   • Chrome de navegación       → navy oscuro (header, login)
-///   • Acento primario            → azul #4A90E2
-///   • Éxito / Efectivo           → verde #28A745
-///   • Peligro / Cancelar         → rojo #DC3545
-///   • Texto principal            → #212529 (alta legibilidad)
+/// Estrategia visual:
+///   • Canvas de la app          → blanco / gris muy claro #F4F6F8
+///   • Chrome de header          → navy corporativo #1F4E79
+///   • Paneles oscuros / totales → slate oscuro #1E293B
+///   • Acento primario           → azul #3B82F6
+///   • Éxito / Efectivo          → verde #16A34A
+///   • Peligro / Cancelar        → rojo #DC2626
+///   • Texto principal           → #0F172A (alta legibilidad)
 /// </summary>
 public static class AppColors
 {
@@ -20,7 +21,7 @@ public static class AppColors
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>Canvas principal — gris muy claro, casi blanco.</summary>
-    public static readonly Color BackgroundPrimary   = Color.FromArgb(248, 249, 250);   // #F8F9FA
+    public static readonly Color BackgroundPrimary   = Color.FromArgb(244, 246, 248);   // #F4F6F8
 
     /// <summary>Encabezados de tabla, áreas elevadas.</summary>
     public static readonly Color BackgroundSecondary = Color.FromArgb(233, 236, 239);   // #E9ECEF
@@ -29,10 +30,10 @@ public static class AppColors
     public static readonly Color SurfaceCard         = Color.FromArgb(255, 255, 255);   // #FFFFFF
 
     /// <summary>Bordes y líneas separadoras sobre fondo claro.</summary>
-    public static readonly Color SurfaceMuted        = Color.FromArgb(222, 226, 230);   // #DEE2E6
+    public static readonly Color SurfaceMuted        = Color.FromArgb(203, 213, 225);   // #CBD5E1
 
     /// <summary>Fila alterna en tablas — gris muy tenue.</summary>
-    public static readonly Color AlternateRow        = Color.FromArgb(242, 242, 242);   // #F2F2F2
+    public static readonly Color AlternateRow        = Color.FromArgb(242, 244, 247);   // #F2F4F7
 
     // ─────────────────────────────────────────────────────────────────────────
     // CHROME OSCURO — header, login, paneles de navegación
@@ -41,7 +42,7 @@ public static class AppColors
     /// <summary>Header / nav bar — navy más oscuro.</summary>
     public static readonly Color NavyDark  = Color.FromArgb(15,  23,  42);    // #0F172A
 
-    /// <summary>Sub-header / chrome secundario.</summary>
+    /// <summary>Sub-header / chrome secundario / dark summary panels.</summary>
     public static readonly Color NavyBase  = Color.FromArgb(30,  41,  59);    // #1E293B
 
     /// <summary>Estados activos dentro del chrome oscuro.</summary>
@@ -51,57 +52,80 @@ public static class AppColors
     public static readonly Color SlateBlue = Color.FromArgb(71,  85, 105);    // #475569
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ACENTO PRIMARIO — azul profesional
+    // HEADER CORPORATIVO — azul navy empresarial #1F4E79
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Header bar background principal — navy corporativo.</summary>
+    public static readonly Color HeaderPrimary   = Color.FromArgb(31,  78, 121);    // #1F4E79
+
+    /// <summary>Header bar background zona scan — navy ligeramente más oscuro.</summary>
+    public static readonly Color HeaderSecondary = Color.FromArgb(22,  59,  109);   // #163B6D
+
+    /// <summary>Header bar botones (menú) — navy más oscuro.</summary>
+    public static readonly Color HeaderDark      = Color.FromArgb(15,  45,  86);    // #0F2D56
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ACENTO PRIMARIO — azul profesional Tailwind
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>Botones de acción neutral: QTY, HOLD, LOOKUP, letras.</summary>
-    public static readonly Color AccentBlue      = Color.FromArgb(74, 144, 226);   // #4A90E2
+    public static readonly Color AccentBlue      = Color.FromArgb(59, 130, 246);    // #3B82F6
 
     /// <summary>Estado hover / selected del acento azul.</summary>
-    public static readonly Color AccentBlueDark  = Color.FromArgb(53, 122, 189);   // #357ABD
+    public static readonly Color AccentBlueDark  = Color.FromArgb(37, 99,  235);    // #2563EB
 
     /// <summary>Estado pressed / borde del acento azul.</summary>
-    public static readonly Color AccentBlueDarker = Color.FromArgb(40,  96, 144);  // #286090
+    public static readonly Color AccentBlueDarker = Color.FromArgb(29, 78,  216);   // #1D4ED8
 
     // ─────────────────────────────────────────────────────────────────────────
     // VERDE — efectivo, éxito, tender
     // ─────────────────────────────────────────────────────────────────────────
 
-    public static readonly Color AccentGreen      = Color.FromArgb(40, 167,  69);   // #28A745
-    public static readonly Color AccentGreenLight = Color.FromArgb(72, 187, 120);   // #48BB78
-    public static readonly Color AccentGreenDark  = Color.FromArgb(30, 126,  52);   // #1E7E34
+    public static readonly Color AccentGreen      = Color.FromArgb(22,  163,  74);  // #16A34A
+    public static readonly Color AccentGreenLight = Color.FromArgb(34,  197, 94);   // #22C55E
+    public static readonly Color AccentGreenDark  = Color.FromArgb(21,  128,  61);  // #15803D
 
     // ─────────────────────────────────────────────────────────────────────────
     // SEMÁNTICOS
     // ─────────────────────────────────────────────────────────────────────────
 
-    public static readonly Color Danger  = Color.FromArgb(220,  53,  69);   // #DC3545
-    public static readonly Color Warning = Color.FromArgb(255, 193,   7);   // #FFC107
-    public static readonly Color Info    = Color.FromArgb(23, 162, 184);    // #17A2B8
+    public static readonly Color Danger  = Color.FromArgb(220,  38,  38);    // #DC2626
+    public static readonly Color Warning = Color.FromArgb(245, 158,  11);    // #F59E0B
+    public static readonly Color Info    = Color.FromArgb(14,  165, 233);    // #0EA5E9
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CONTROLES DESHABILITADOS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Fondo de control deshabilitado.</summary>
+    public static readonly Color DisabledBackground = Color.FromArgb(229, 231, 235);   // #E5E7EB
+
+    /// <summary>Texto de control deshabilitado.</summary>
+    public static readonly Color DisabledText       = Color.FromArgb(148, 163, 184);   // #94A3B8
 
     // ─────────────────────────────────────────────────────────────────────────
     // COLORES DE PAGO
     // ─────────────────────────────────────────────────────────────────────────
 
-    public static readonly Color PaymentCash     = Color.FromArgb(40,  167,  69);   // verde
-    public static readonly Color PaymentCredit   = Color.FromArgb(74,  144, 226);   // azul
-    public static readonly Color PaymentDebit    = Color.FromArgb(108, 117, 125);   // gris #6C757D
-    public static readonly Color PaymentEBT      = Color.FromArgb(217, 119,   6);   // ámbar
+    public static readonly Color PaymentCash     = Color.FromArgb(22,  163,  74);   // verde #16A34A
+    public static readonly Color PaymentCredit   = Color.FromArgb(59,  130, 246);   // azul  #3B82F6
+    public static readonly Color PaymentDebit    = Color.FromArgb(100, 116, 139);   // slate #64748B
+    public static readonly Color PaymentEBT      = Color.FromArgb(245, 158,  11);   // ámbar #F59E0B
     public static readonly Color PaymentGiftCard = Color.FromArgb(111,  66, 193);   // violeta
-    public static readonly Color PaymentSplit    = Color.FromArgb(23,  162, 184);   // cian
+    public static readonly Color PaymentSplit    = Color.FromArgb(14,  165, 233);   // cian  #0EA5E9
 
     // ─────────────────────────────────────────────────────────────────────────
     // TEXTO — dos contextos: fondo claro + chrome oscuro
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>Texto primario sobre fondo claro — gris muy oscuro.</summary>
-    public static readonly Color TextPrimary   = Color.FromArgb(33,  37,  41);    // #212529
+    /// <summary>Texto primario sobre fondo claro — casi negro.</summary>
+    public static readonly Color TextPrimary   = Color.FromArgb(15,  23,  42);     // #0F172A
 
-    /// <summary>Texto secundario sobre fondo claro — gris medio.</summary>
-    public static readonly Color TextSecondary = Color.FromArgb(108, 117, 125);   // #6C757D
+    /// <summary>Texto secundario sobre fondo claro — slate.</summary>
+    public static readonly Color TextSecondary = Color.FromArgb(71,  85, 105);     // #475569
 
     /// <summary>Texto muted / placeholder sobre fondo claro.</summary>
-    public static readonly Color TextMuted     = Color.FromArgb(173, 181, 189);   // #ADB5BD
+    public static readonly Color TextMuted     = Color.FromArgb(148, 163, 184);    // #94A3B8
 
     /// <summary>Texto blanco para botones oscuros y chrome.</summary>
     public static readonly Color TextWhite     = Color.FromArgb(255, 255, 255);
@@ -113,7 +137,7 @@ public static class AppColors
     public static readonly Color TextOnDarkMuted = Color.FromArgb(148, 163, 184);       // #94A3B8
 
     /// <summary>Acento azul como texto (totales, importes destacados).</summary>
-    public static readonly Color TextAccent = Color.FromArgb(74, 144, 226);   // #4A90E2
+    public static readonly Color TextAccent = Color.FromArgb(59, 130, 246);    // #3B82F6
 
     // ─────────────────────────────────────────────────────────────────────────
     // OVERLAYS Y SEPARADORES
@@ -122,22 +146,35 @@ public static class AppColors
     /// <summary>Separador sutil sobre chrome oscuro (15% blanco).</summary>
     public static readonly Color SeparatorOnDark  = Color.FromArgb(38,  255, 255, 255);
 
-    /// <summary>Separador / borde sobre fondo claro (#DEE2E6 con alpha).</summary>
+    /// <summary>Separador / borde sobre fondo claro.</summary>
     public static readonly Color SeparatorOnLight = Color.FromArgb(26,    0,   0,   0);
 
     /// <summary>Sombra de tarjeta — sutil (10% negro).</summary>
     public static readonly Color ShadowSubtle = Color.FromArgb(26,   0,   0,   0);
 
     /// <summary>Overlay modal.</summary>
-    public static readonly Color OverlayLight = Color.FromArgb(200, 248, 249, 250);
+    public static readonly Color OverlayLight = Color.FromArgb(200, 244, 246, 248);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CAMBIO / SUCCESS HIGHLIGHT — fondo verde muy claro para importe de cambio
+    // CAMBIO / SUCCESS HIGHLIGHT
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>Fondo de chip de cambio — verde muy claro.</summary>
-    public static readonly Color SuccessLight = Color.FromArgb(212, 237, 218);   // #D4EDDA
+    public static readonly Color SuccessLight = Color.FromArgb(220, 252, 231);   // #DCFCE7
 
     /// <summary>Texto del chip de cambio — verde oscuro.</summary>
     public static readonly Color SuccessDark  = Color.FromArgb(21,  87,  36);    // #155724
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SELECCIÓN EN LISTVIEW (light blue — no invasivo sobre fondo claro)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Fondo de fila seleccionada en listas — azul muy claro.</summary>
+    public static readonly Color ListViewSelection     = Color.FromArgb(219, 234, 254);   // #DBEAFE
+
+    /// <summary>Texto de fila seleccionada — oscuro (contraste sobre azul claro).</summary>
+    public static readonly Color ListViewSelectionText = Color.FromArgb(15,  23,  42);    // #0F172A
+
+    /// <summary>Línea de grilla en listview.</summary>
+    public static readonly Color ListViewGridLine      = Color.FromArgb(226, 232, 240);   // #E2E8F0
 }

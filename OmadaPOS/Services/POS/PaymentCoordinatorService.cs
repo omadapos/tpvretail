@@ -29,6 +29,8 @@ public interface IPaymentCoordinatorService
     Task<OrderResponse?> ProcessMultiplePaymentsAsync(decimal changeValue, bool applyDiscount);
     Task<OrderResponse?> PlaceOrderAsync(string paymentMethod, decimal changeAmount, bool applyDiscount);
 
+    Task<PaymentResponseModel?> ProcessReturnAsync(decimal amount);
+
     /// <summary>Call after saving terminal settings so next payment reloads config from SQLite.</summary>
     void InvalidateConfig();
 }
@@ -183,17 +185,26 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
         if (placeOrderModel == null)
             return new PaymentFlowResult();
 
+        // For EBT, limit the terminal amount to EBT-eligible items only.
+        // Non-EBT items (if any) must be covered by a separate payment leg (split).
+        decimal effectiveTotal = paymentType == PaymentType.EBT
+            ? _shoppingCart.EbtTotal
+            : totalGlobal;
+
         // Apply Cash Discount service fee: add to terminal amount (cents) and order model (dollars).
+        // EBT is exempt from surcharges per SNAP regulations.
         decimal serviceFee  = SurchargePolicy.GetFeeAmount((decimal)placeOrderModel.Order_Amount, paymentType);
         placeOrderModel.Service_Fee   = (double)serviceFee;
         placeOrderModel.Order_Amount += (double)serviceFee;
 
-        var totalPayment = SurchargePolicy.Apply(totalGlobal * 100, paymentType);
+        var totalPayment = SurchargePolicy.Apply(effectiveTotal * 100, paymentType);
 
         System.Diagnostics.Debug.WriteLine(
-            $"[Surcharge] CashDiscountEnabled={SessionManager.CashDiscountEnabled} | " +
+            $"[Payment] CashDiscountEnabled={SessionManager.CashDiscountEnabled} | " +
             $"PaymentType={paymentType} | " +
             $"CartTotal={totalGlobal:C} | " +
+            $"EbtTotal={_shoppingCart.EbtTotal:C} | " +
+            $"EffectiveTotal={effectiveTotal:C} | " +
             $"Fee={serviceFee:C} | " +
             $"TerminalCents={totalPayment}");
 
@@ -279,6 +290,23 @@ public class PaymentCoordinatorService : IPaymentCoordinatorService
         return placeOrderModel == null
             ? null
             : await _orderService.PlaceOrderMultiple(placeOrderModel).ConfigureAwait(false);
+    }
+
+    public async Task<PaymentResponseModel?> ProcessReturnAsync(decimal amount)
+    {
+        var config = await GetConfigAsync().ConfigureAwait(false);
+        if (config == null) return null;
+
+        var consecutivo = await _orderService.LoadLastConsecutivoPayment().ConfigureAwait(false);
+
+        return await _paymentService.ProcessReturnAsync(new PaymentRequest
+        {
+            Ip           = config.IP       ?? string.Empty,
+            Port         = config.Port     ?? 0,
+            Terminal     = config.Terminal ?? string.Empty,
+            Amount       = amount * 100,   // terminal expects cents
+            EcrRefNumber = consecutivo.ToString(),
+        }).ConfigureAwait(false);
     }
 
     public async Task<OrderResponse?> PlaceOrderAsync(string paymentMethod, decimal changeAmount, bool applyDiscount)

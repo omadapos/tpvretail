@@ -1,4 +1,4 @@
-﻿namespace OmadaPOS.Libreria.Utils;
+namespace OmadaPOS.Libreria.Utils;
 
 public class Constants
 {
@@ -46,5 +46,7 @@ public enum PaymentType
     Credit,
     Debit,
     EBT,
-    EBTBalance
+    EBTBalance,
+    CreditReturn,
+    DebitReturn
 }

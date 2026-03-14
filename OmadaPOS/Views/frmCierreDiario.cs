@@ -1,6 +1,7 @@
 using OmadaPOS.Impresora;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
+using OmadaPOS.Services;
 
 namespace OmadaPOS.Views;
 
@@ -14,6 +15,7 @@ public sealed class frmCierreDiario : POSDialog
     {
         _orderService  = orderService;
         _branchService = branchService;
+        Shown += (_, _) => ThemeManager.ApplyAll(this);
     }
 
     protected override Color      AccentColor => AppColors.Danger;
@@ -58,6 +60,24 @@ public sealed class frmCierreDiario : POSDialog
 
     protected override async Task<bool> OnConfirmAsync()
     {
+        string dateLabel = _picker.Value.ToString("MMMM dd, yyyy");
+
+        // Step 1: Confirm the operation with a clear warning
+        var confirm = MessageBox.Show(
+            $"You are about to close the day for:\n\n  📅  {dateLabel}\n\n" +
+            "This will generate the Z-Report and close the current shift.\n" +
+            "This action cannot be undone.\n\n" +
+            "Supervisor authorization is required to proceed.",
+            "Confirm Day Close",
+            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+        if (confirm != DialogResult.Yes) return false;
+
+        // Step 2: Require supervisor PIN
+        using var pinDialog = new frmSupervisorPin();
+        if (pinDialog.ShowDialog(this) != DialogResult.OK) return false;
+
+        // Step 3: Execute
         var sDate  = _picker.Value.ToString("yyyyMMdd");
         var cierre = await _orderService.CierreDiario(sDate, SessionManager.UserName);
         if (cierre == null) return false;

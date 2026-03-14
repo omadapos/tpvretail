@@ -1,4 +1,4 @@
-﻿using OmadaPOS.Libreria.Models;
+using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Models;
 using System.Net.Http.Headers;
@@ -27,264 +27,169 @@ public class CategoryService : ICategoryService
 {
     private readonly HttpClient _client;
 
+    private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+
     public CategoryService(HttpClient client)
     {
         _client = client;
+    }
 
-        _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", SessionManager.Token);
+    // Builds a request with the current session token — avoids DefaultRequestHeaders race condition.
+    private HttpRequestMessage Auth(HttpMethod method, string url, HttpContent? content = null)
+    {
+        var req = new HttpRequestMessage(method, url);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", SessionManager.Token);
+        if (content != null) req.Content = content;
+        return req;
     }
 
     public async Task<List<MenuCategoryModel>?> LoadMenuCategories()
     {
-        var mCategories = new List<MenuCategoryModel>();
+        var response = await _client.SendAsync(
+            Auth(HttpMethod.Get, Constants.BaseUrl + $"/api/menucategory/branch/{SessionManager.BranchId}")).ConfigureAwait(false);
 
-        HttpResponseMessage response = await _client.GetAsync(Constants.BaseUrl + $"/api/menucategory/branch/" + SessionManager.BranchId);
+        if (!response.IsSuccessStatusCode) return new List<MenuCategoryModel>();
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
-
-            mCategories = JsonSerializer.Deserialize<List<MenuCategoryModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return mCategories;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<List<MenuCategoryModel>>(content, _jsonOptions);
     }
 
     public async Task<List<CategoryModel>?> LoadCategories()
     {
-        var categories = new List<CategoryModel>();
+        var response = await _client.SendAsync(
+            Auth(HttpMethod.Get, Constants.BaseUrl + "/api/category/branch/" + SessionManager.BranchId)).ConfigureAwait(false);
 
-        HttpResponseMessage response = await _client.GetAsync(Constants.BaseUrl + "/api/category/branch/" + SessionManager.BranchId);
+        if (!response.IsSuccessStatusCode) return new List<CategoryModel>();
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
-
-            categories = JsonSerializer.Deserialize<List<CategoryModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return categories;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<List<CategoryModel>>(content, _jsonOptions);
     }
 
     public async Task<List<ProductModel>?> LoadProductsByCategory(int categoryId)
     {
-        var products = new List<ProductModel>();
-
         string url = Constants.BaseUrl + $"/api/product/category/{SessionManager.BranchId}/{categoryId}";
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        var response = await _client.SendAsync(Auth(HttpMethod.Get, url)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) return new List<ProductModel>();
 
-            products = JsonSerializer.Deserialize<List<ProductModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return products;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<List<ProductModel>>(content, _jsonOptions);
     }
 
     public async Task<ProductModel?> LoadProductById(int productId)
     {
-        var product = new ProductModel();
-
         string url = Constants.BaseUrl + $"/api/product/{productId}";
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        var response = await _client.SendAsync(Auth(HttpMethod.Get, url)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) return new ProductModel();
 
-            product = JsonSerializer.Deserialize<ProductModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return product;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<ProductModel>(content, _jsonOptions);
     }
 
     public async Task<ProductModel?> LoadProductByUPC(string upc)
     {
-        ProductModel? product = null;
-
         string url = Constants.BaseUrl + $"/api/product/upc/{SessionManager.BranchId}/{upc}";
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        var response = await _client.SendAsync(Auth(HttpMethod.Get, url)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) return null;
 
-            product = JsonSerializer.Deserialize<ProductModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return product;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<ProductModel>(content, _jsonOptions);
     }
 
     public async Task<ProductModel?> LoadProductByUPC_Promotion(string upc)
     {
-        ProductModel? product = null;
-
         string url = Constants.BaseUrl + $"/api/product/upc/promotion/{SessionManager.BranchId}/{upc}";
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        var response = await _client.SendAsync(Auth(HttpMethod.Get, url)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) return null;
 
-            product = JsonSerializer.Deserialize<ProductModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return product;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<ProductModel>(content, _jsonOptions);
     }
 
     public async Task<PluModel> LoadPluByCode(string code)
     {
-        var plu = new PluModel();
-
         string url = Constants.BaseUrl + $"/api/plu/{code}";
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        var response = await _client.SendAsync(Auth(HttpMethod.Get, url)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) return new PluModel();
 
-            plu = JsonSerializer.Deserialize<PluModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return plu;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<PluModel>(content, _jsonOptions);
     }
 
     public async Task<List<ProductModel>> LoadProductIdCategories(IdCategoryDTO model)
     {
-        var result = new List<ProductModel>();
+        var json    = JsonSerializer.Serialize(model);
+        var payload = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var json = JsonSerializer.Serialize(model);
-        var data = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await _client.SendAsync(
+            Auth(HttpMethod.Post, Constants.BaseUrl + $"/api/product/list/{SessionManager.BranchId}", payload)).ConfigureAwait(false);
 
-        HttpResponseMessage response = await _client.PostAsync(Constants.BaseUrl + $"/api/product/list/{SessionManager.BranchId}", data);
+        if (!response.IsSuccessStatusCode) return new List<ProductModel>();
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
-
-            result = JsonSerializer.Deserialize<List<ProductModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return result;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<List<ProductModel>>(content, _jsonOptions) ?? new List<ProductModel>();
     }
 
     public async Task<List<ProductModel>> LoadProductsByCategoryLetra(IdCategoryDTO model, string letra)
     {
-        var products = new List<ProductModel>();
-
         string url = Constants.BaseUrl + $"/api/product/category/{SessionManager.BranchId}/{letra}";
 
-        var json = JsonSerializer.Serialize(model);
-        var data = new StringContent(json, Encoding.UTF8, "application/json");
+        var json    = JsonSerializer.Serialize(model);
+        var payload = new StringContent(json, Encoding.UTF8, "application/json");
 
-        HttpResponseMessage response = await _client.PostAsync(url, data);
+        var response = await _client.SendAsync(Auth(HttpMethod.Post, url, payload)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) return new List<ProductModel>();
 
-            products = JsonSerializer.Deserialize<List<ProductModel>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return products;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<List<ProductModel>>(content, _jsonOptions) ?? new List<ProductModel>();
     }
 
     public async Task<ProductModel> LoadProductInfoByUPC(string upc)
     {
-        var product = new ProductModel();
+        // Uses the session branch, not a hardcoded value.
+        string url = Constants.BaseUrl + $"/api/product/new/branch/{SessionManager.BranchId}/{upc}";
 
-        string url = Constants.BaseUrl + $"/api/product/new/branch/31/{upc}";
+        var response = await _client.SendAsync(Auth(HttpMethod.Get, url)).ConfigureAwait(false);
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        if (!response.IsSuccessStatusCode) return new ProductModel();
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
-
-            product = JsonSerializer.Deserialize<ProductModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return product;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<ProductModel>(content, _jsonOptions) ?? new ProductModel();
     }
 
     public async Task<ProductModel?> SaveProduct(ProductCreateModel model)
     {
-        var json = JsonSerializer.Serialize(model);
-        var data = new StringContent(json, Encoding.UTF8, "application/json");
+        var json    = JsonSerializer.Serialize(model);
+        var payload = new StringContent(json, Encoding.UTF8, "application/json");
 
-        HttpResponseMessage response = await _client.PostAsync(Constants.BaseUrl + "/api/product", data);
+        var response = await _client.SendAsync(
+            Auth(HttpMethod.Post, Constants.BaseUrl + "/api/product", payload)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
+        if (!response.IsSuccessStatusCode) return null;
 
-            string content = await response.Content.ReadAsStringAsync();
-            var product = JsonSerializer.Deserialize<ProductModel>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-            return product;
-        }
-
-        return null;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<ProductModel>(content, _jsonOptions);
     }
 
     public async Task<List<ProductSearchDTO>?> Autocomplete(string text)
     {
-        var products = new List<ProductSearchDTO>();
-
         string url = Constants.BaseUrl + $"/api/product/autocomplete/branch/{SessionManager.BranchId}?name={text}";
 
-        HttpResponseMessage response = await _client.GetAsync(url);
+        var response = await _client.SendAsync(Auth(HttpMethod.Get, url)).ConfigureAwait(false);
 
-        if (response.IsSuccessStatusCode)
-        {
-            string content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) return new List<ProductSearchDTO>();
 
-            products = JsonSerializer.Deserialize<List<ProductSearchDTO>>(content, options: new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
-        }
-
-        return products;
+        string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return JsonSerializer.Deserialize<List<ProductSearchDTO>>(content, _jsonOptions);
     }
-
 }

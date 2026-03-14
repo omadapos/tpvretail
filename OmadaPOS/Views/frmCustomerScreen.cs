@@ -1,3 +1,4 @@
+using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Services;
 using System.Drawing.Drawing2D;
@@ -40,18 +41,20 @@ public sealed class frmCustomerScreen : Form
     private float    _pulseAngle  = 0f;
 
     // ── Controls ──────────────────────────────────────────────────────────────
-    private ListView   _lvCart      = null!;
-    private PictureBox _pbBannerAct = null!;   // active-mode sidebar
-    private PictureBox _pbBannerIdle= null!;   // idle-mode right column
-    private Label      _lblTotal    = null!;
-    private Label      _lblSubTax   = null!;
-    private Label      _lblItems    = null!;
-    private Label      _lblWeight   = null!;
-    private Label      _lblClock    = null!;
-    private Label      _lblIdleClock= null!;   // big clock shown in idle card
-    private Panel      _pnlGlow     = null!;   // custom-drawn pulsing WELCOME
-    private Panel      _idlePanel   = null!;
-    private Panel      _activePanel = null!;
+    private ListView   _lvCart         = null!;
+    private PictureBox _pbBannerAct    = null!;   // active-mode sidebar
+    private PictureBox _pbBannerIdle   = null!;   // idle-mode right column
+    private Label      _lblTotal       = null!;
+    private Label      _lblSubTax      = null!;
+    private Label      _lblItems       = null!;
+    private Label      _lblWeight      = null!;
+    private Label      _lblClock       = null!;
+    private Label      _lblIdleClock   = null!;   // big clock shown in idle card
+    private Panel      _pnlGlow        = null!;   // custom-drawn pulsing WELCOME
+    private Panel      _idlePanel      = null!;
+    private Panel      _activePanel    = null!;
+    private Label      _lblStoreHeader = null!;   // store name in the top header bar
+    private Label      _lblStoreIdle   = null!;   // store name in the idle welcome card
 
     // ── Timers ────────────────────────────────────────────────────────────────
     private System.Windows.Forms.Timer? _timerBanner;
@@ -92,6 +95,15 @@ public sealed class frmCustomerScreen : Form
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>Updates the store name shown in the header and the idle welcome card.</summary>
+    public void UpdateStoreName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        SessionManager.BranchName = name;
+        if (_lblStoreHeader != null) _lblStoreHeader.Text = $"🏪  {name}";
+        if (_lblStoreIdle   != null) _lblStoreIdle.Text   = name;
+    }
 
     public void PositionOnSecondaryScreen()
     {
@@ -160,9 +172,9 @@ public sealed class frmCustomerScreen : Form
             e.Graphics.FillRectangle(accent, 0, header.Height - 3, header.Width, 3);
         };
 
-        var lblStore = new Label
+        _lblStoreHeader = new Label
         {
-            Text      = "🏪  DAILY STOP",
+            Text      = $"🏪  {SessionManager.BranchName ?? "OmadaPOS"}",
             Font      = _fontHeader,
             ForeColor = AppColors.TextWhite,
             BackColor = Color.Transparent,
@@ -171,6 +183,7 @@ public sealed class frmCustomerScreen : Form
             TextAlign = ContentAlignment.MiddleLeft,
             Padding   = new Padding(18, 0, 0, 0),
         };
+        var lblStore = _lblStoreHeader;
 
         var lblWelcome = new Label
         {
@@ -287,15 +300,16 @@ public sealed class frmCustomerScreen : Form
         inner.RowStyles.Add(new RowStyle(SizeType.Percent,  100)); // clock + hint
 
         // Store name
-        var lblStore = new Label
+        _lblStoreIdle = new Label
         {
-            Text      = "DAILY STOP",
+            Text      = SessionManager.BranchName ?? "OmadaPOS",
             Font      = new Font("Segoe UI", 15F, FontStyle.Bold),
             ForeColor = AppColors.TextOnDarkSecondary,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleLeft,
         };
+        var lblStore = _lblStoreIdle;
 
         // Pulsing WELCOME — custom drawn
         _pnlGlow = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
@@ -457,7 +471,7 @@ public sealed class frmCustomerScreen : Form
         var panel = new Panel
         {
             Dock      = DockStyle.Fill,
-            BackColor = Color.FromArgb(248, 250, 252),
+            BackColor = AppColors.BackgroundPrimary,
             Padding   = new Padding(0),
             Margin    = new Padding(0),
         };
@@ -600,7 +614,7 @@ public sealed class frmCustomerScreen : Form
             AutoSize  = false, Dock      = DockStyle.Fill,
             Text      = "Subtotal: $0.00   ·   Tax: $0.00",
             Font      = _fontDetail,
-            ForeColor = Color.FromArgb(148, 163, 184),
+            ForeColor = AppColors.TextMuted,
             BackColor = Color.Transparent,
             TextAlign = ContentAlignment.MiddleLeft,
         };

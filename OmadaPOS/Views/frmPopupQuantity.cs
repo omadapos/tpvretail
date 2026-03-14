@@ -5,13 +5,19 @@ namespace OmadaPOS.Views;
 
 public sealed class frmPopupQuantity : NumericPadDialog
 {
-    private readonly int                    _productId;
+    private readonly int                     _productId;
+    private readonly int                     _currentQty;
     private readonly IHomeInteractionService _svc;
 
     public frmPopupQuantity(int number, int productId, IHomeInteractionService svc)
     {
-        _productId = productId;
-        _svc       = svc;
+        _productId  = productId;
+        _currentQty = number;
+        _svc        = svc;
+
+        // Pre-fill the pad with the current quantity so the cashier sees and edits from it.
+        if (_currentQty > 0)
+            Shown += (_, _) => Pad.TextValue = _currentQty.ToString();
     }
 
     protected override NumericPadControl.PadMode PadMode      => NumericPadControl.PadMode.Integer;

@@ -15,6 +15,7 @@ public interface IPaymentService
         PaymentType paymentType,
         PaymentRequest request);
     Task<PaymentResponseModel> GetEBTBalanceAsync(PaymentRequest request);
+    Task<PaymentResponseModel> ProcessReturnAsync(PaymentRequest request);
 }
 
 public class PaymentService : IPaymentService
@@ -53,6 +54,33 @@ public class PaymentService : IPaymentService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing payment of type {PaymentType}", paymentType);
+            return new PaymentResponseModel { Success = false, MsgInfo = ex.Message };
+        }
+    }
+
+    public async Task<PaymentResponseModel> ProcessReturnAsync(PaymentRequest request)
+    {
+        try
+        {
+            ValidatePaymentRequest(request);
+            var terminal = await _terminalService.GetTerminalAsync(request.Ip, request.Port).ConfigureAwait(false);
+            var returnRequest = new DoCreditRequest
+            {
+                AmountInformation = new AmountRequest { TransactionAmount = request.Amount.ToString("###") },
+                TraceInformation  = new TraceRequest
+                {
+                    EcrReferenceNumber = request.EcrRefNumber,
+                    InvoiceNumber      = request.EcrRefNumber
+                },
+                TransactionType = TransactionType.Return
+            };
+            var response = await _terminalService.ProcessReturnAsync(terminal, returnRequest).ConfigureAwait(false);
+            LogPaymentResponse(response, PaymentType.CreditReturn);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing return");
             return new PaymentResponseModel { Success = false, MsgInfo = ex.Message };
         }
     }

@@ -55,9 +55,9 @@ public sealed class frmAgeVerification : Form
     private readonly System.Windows.Forms.Timer _kwTimer  = new() { Interval = 250 };
 
     // ── Colors ────────────────────────────────────────────────────────────────
-    private static readonly Color _pendingBg = Color.FromArgb(55, 65, 81);   // gray-700
-    private static readonly Color _approvedBg = Color.FromArgb(16, 120, 70); // emerald
-    private static readonly Color _deniedBg   = Color.FromArgb(185, 28, 28); // red-700
+    private static readonly Color _pendingBg  = AppColors.SlateBlue;       // #475569 slate
+    private static readonly Color _approvedBg = AppColors.AccentGreenDark; // #15803D
+    private static readonly Color _deniedBg   = AppColors.Danger;          // #DC2626
 
     public frmAgeVerification(IAgeVerificationService svc, ZebraScannerService? scanner = null)
     {
@@ -89,6 +89,7 @@ public sealed class frmAgeVerification : Form
 
         Shown += (_, _) =>
         {
+            ThemeManager.ApplyAll(this);
             _txtScanCapture.Focus();
         };
     }
@@ -210,13 +211,13 @@ public sealed class frmAgeVerification : Form
         var card = new Panel
         {
             Dock      = DockStyle.Fill,
-            BackColor = Color.FromArgb(30, 41, 59),
+            BackColor = AppColors.NavyBase,
             Margin    = new Padding(0, 0, 10, 0),
         };
         card.Paint += (_, e) =>
         {
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var pen = new Pen(Color.FromArgb(51, 65, 85), 1f);
+            using var pen = new Pen(AppColors.NavyLight, 1f);
             e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
         };
 
@@ -277,8 +278,8 @@ public sealed class frmAgeVerification : Form
         {
             Text      = "Waiting for scan…",
             Font      = new Font("Segoe UI", 10F, FontStyle.Italic),
-            ForeColor = Color.FromArgb(148, 163, 184),
-            BackColor = Color.FromArgb(15, 23, 42),
+            ForeColor = AppColors.TextMuted,
+            BackColor = AppColors.NavyDark,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             Padding   = new Padding(0, 8, 0, 8),
@@ -296,13 +297,13 @@ public sealed class frmAgeVerification : Form
         var card = new Panel
         {
             Dock      = DockStyle.Fill,
-            BackColor = Color.FromArgb(30, 41, 59),
+            BackColor = AppColors.NavyBase,
             Margin    = new Padding(10, 0, 0, 0),
         };
         card.Paint += (_, e) =>
         {
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var pen = new Pen(Color.FromArgb(51, 65, 85), 1f);
+            using var pen = new Pen(AppColors.NavyLight, 1f);
             e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
         };
 
@@ -481,8 +482,8 @@ public sealed class frmAgeVerification : Form
             Width     = 220,
             Dock      = DockStyle.Left,
             Font      = new Font("Segoe UI", 13F, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(185, 28, 28),
+            ForeColor = AppColors.TextWhite,
+            BackColor = AppColors.Danger,
             FlatStyle = FlatStyle.Flat,
             FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.Transparent, MouseDownBackColor = Color.Transparent },
         };
@@ -516,8 +517,8 @@ public sealed class frmAgeVerification : Form
             Width     = 280,
             Dock      = DockStyle.Right,
             Font      = new Font("Segoe UI", 13F, FontStyle.Bold),
-            ForeColor = Color.White,
-            BackColor = Color.FromArgb(185, 28, 28),
+            ForeColor = AppColors.TextWhite,
+            BackColor = AppColors.Danger,
             FlatStyle = FlatStyle.Flat,
             Visible   = false,
             FlatAppearance = { BorderSize = 0, MouseOverBackColor = Color.Transparent, MouseDownBackColor = Color.Transparent },

@@ -34,6 +34,7 @@ public sealed class frmGiftCard : POSDialog
         _homeInteractionService = homeInteractionService;
 
         Shown += (_, _) => _textCode.Focus();
+        Shown += (_, _) => ThemeManager.ApplyAll(this);
     }
 
     protected override Color      AccentColor => AppColors.PaymentGiftCard;

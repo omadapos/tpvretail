@@ -316,7 +316,7 @@ public sealed class frmSplit : Form
                 AutoSize  = false,
                 Dock      = DockStyle.Fill,
                 Text      = t,
-                Font      = new Font("Consolas", 14F, FontStyle.Bold),
+                Font      = AppTypography.AmountMono,
                 ForeColor = fg,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleRight,

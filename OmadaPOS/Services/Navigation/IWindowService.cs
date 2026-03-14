@@ -19,7 +19,9 @@ public interface IWindowService
     void OpenGiftCard(decimal totalGlobal, int tipo, IWin32Window? owner = null);
     void OpenPaymentStatus(string message, IWin32Window? owner = null);
     void OpenPrintInvoice(IWin32Window? owner = null);
-    void OpenProductNoExist(string upc, IWin32Window? owner = null);
+    /// <returns>True if the cashier saved the product; false if cancelled.</returns>
+    bool OpenProductNoExist(string upc, IWin32Window? owner = null);
+    void OpenRefund(IWin32Window? owner = null);
     void OpenError(string message, IWin32Window? owner = null);
 
     /// <summary>Close all open modeless forms (Hold, Split, KeyLookup, etc.) — called on logout.</summary>

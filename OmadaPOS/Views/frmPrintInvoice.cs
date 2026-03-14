@@ -48,6 +48,7 @@ public sealed class frmPrintInvoice : POSDialog
         _adminSettingService = adminSettingService;
 
         Shown      += async (_, _) => await LoadInvoicesAsync();
+        Shown      += (_, _) => ThemeManager.ApplyAll(this);
         FormClosed += (_, _) => { _highlightTimer?.Stop(); _highlightTimer?.Dispose(); };
     }
 
@@ -343,8 +344,8 @@ public sealed class frmPrintInvoice : POSDialog
         {
             bool isAlt = e.ItemIndex % 2 == 1;
             bool isSel = (e.State & ListViewItemStates.Selected) == ListViewItemStates.Selected;
-            var  bg    = isSel ? AppColors.NavyBase
-                       : isAlt ? AppColors.SurfaceMuted
+            var  bg    = isSel ? AppColors.ListViewSelection
+                       : isAlt ? AppColors.BackgroundPrimary
                        : AppColors.SurfaceCard;
             using var br = new SolidBrush(bg);
             e.Graphics.FillRectangle(br, e.Bounds);
@@ -377,7 +378,7 @@ public sealed class frmPrintInvoice : POSDialog
                           : colAlign == HorizontalAlignment.Center ? StringAlignment.Center
                           : StringAlignment.Near;
 
-            Color fg = isSel ? AppColors.TextWhite : AppColors.TextPrimary;
+            Color fg = isSel ? AppColors.ListViewSelectionText : AppColors.TextPrimary;
             using var textBrush = new SolidBrush(fg);
             using var fmt       = new StringFormat
             {

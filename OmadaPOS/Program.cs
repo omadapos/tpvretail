@@ -83,6 +83,7 @@ internal static class Program
         services.AddTransient<frmPaymentStatus>();
         services.AddTransient<frmPrintInvoice>();
         services.AddTransient<frmProductNoExist>();
+        services.AddTransient<frmRefund>();
         services.AddTransient<frmKeyLookup>();
         services.AddTransient<frmError>();
 
@@ -111,6 +112,9 @@ internal static class Program
         Application.SetHighDpiMode(HighDpiMode.SystemAware);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+
+        // Load persisted supervisor PIN (overrides the hardcoded default "1234").
+        LocalPinStore.Load();
 
         ConfigureServices();
 

@@ -20,10 +20,10 @@ public sealed class POSHeaderControl : UserControl
     private readonly Label _lblCashier;
     private readonly Label _lblProductName;
 
-    // ── Header palette — dark chrome ───────────────────────────────────────────
-    private static readonly Color _headerBg    = Color.FromArgb(74, 144, 226);   // AccentBlue #4A90E2
-    private static readonly Color _headerBg2   = Color.FromArgb(53, 122, 189);  // AccentBlueDark #357ABD
-    private static readonly Color _btnMenuBg   = Color.FromArgb(46, 109, 164);  // AccentBlueDarker #2E6DA4
+    // ── Header palette — corporate navy chrome ─────────────────────────────────
+    private static readonly Color _headerBg    = AppColors.HeaderPrimary;    // #1F4E79 navy
+    private static readonly Color _headerBg2   = AppColors.HeaderSecondary; // #163B6D navy scan zone
+    private static readonly Color _btnMenuBg   = AppColors.HeaderDark;      // #0F2D56 navy menu btn
     private static readonly Color _btnExitBg   = Color.FromArgb(185, 28, 28);   // red — exit button bg
     private static readonly Color _accentLine  = AppColors.AccentGreen;
     private static readonly Color _iconColor   = Color.FromArgb(220, 230, 245); // near-white icon

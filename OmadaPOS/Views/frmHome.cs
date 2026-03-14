@@ -334,6 +334,8 @@ namespace OmadaPOS.Views
             _paymentPanelControl.OpenDrawerClicked  += buttonOpenDrawer_Click;
             _paymentPanelControl.QuickSaleClicked   += buttonProductNoTax_Click;
             _paymentPanelControl.UPCLookupClicked   += buttonLookup_Click;
+            _paymentPanelControl.CheckPriceClicked  += (_, _) => _windowService.OpenCheckPrice(this);
+            _paymentPanelControl.ReturnClicked      += (_, _) => _windowService.OpenRefund(this);
             _paymentPanelControl.ScalePictureClicked+= pictureBoxPesado_Click;
             _paymentPanelControl.NumpadValueChanged += (_, _) => DisplayTotales();
         }
@@ -540,6 +542,8 @@ namespace OmadaPOS.Views
                 {
                     var branch = await branchService.LoadBranch(SessionManager.BranchId ?? 0);
                     SessionManager.CashDiscountEnabled = branch?.CashDiscountEnabled ?? false;
+                    if (!string.IsNullOrWhiteSpace(branch?.Name))
+                        _customerScreen.UpdateStoreName(branch.Name);
                 }
 
                 // Show the customer display on the secondary screen (LED 1024×768).
@@ -987,7 +991,9 @@ namespace OmadaPOS.Views
                 return;
             }
 
-            _windowService.OpenPopupQuantity(0, productId, this);
+            // Pass current quantity so the cashier sees it pre-filled in the pad.
+            int currentQty = (int)(_shoppingCart.GetItem(productId)?.Quantity ?? 0);
+            _windowService.OpenPopupQuantity(currentQty, productId, this);
         }
 
         private void buttonDeleteItem_Click(object sender, EventArgs e)
@@ -1310,7 +1316,14 @@ namespace OmadaPOS.Views
             }
             else if (result.ProductNotFoundOnServer)
             {
-                _windowService.OpenProductNoExist(textBoxUPC.Text, this);
+                string savedUpc = textBoxUPC.Text;
+                bool saved = _windowService.OpenProductNoExist(savedUpc, this);
+                if (saved)
+                {
+                    // Product was just created — search again so it gets added to the cart.
+                    await SearchProductAsync(savedUpc);
+                    return;
+                }
             }
             else
             {

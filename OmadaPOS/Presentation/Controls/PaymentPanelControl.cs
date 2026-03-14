@@ -31,6 +31,8 @@ public sealed class PaymentPanelControl : UserControl
     public event EventHandler? OpenDrawerClicked;
     public event EventHandler? QuickSaleClicked;
     public event EventHandler? UPCLookupClicked;
+    public event EventHandler? CheckPriceClicked;
+    public event EventHandler? ReturnClicked;
     public event EventHandler? NumpadValueChanged;
     public event EventHandler? ScalePictureClicked;
 
@@ -129,24 +131,32 @@ public sealed class PaymentPanelControl : UserControl
         var panel = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
-            ColumnCount = 2,
+            ColumnCount = 4,
             RowCount    = 1,
             BackColor   = AppColors.BackgroundPrimary,
             Padding     = new Padding(0, 4, 0, 4),
             Margin      = new Padding(0),
         };
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var btnQsale  = MakeButton("QUICK SALE",  ElegantButtonStyles.CashGreen, 14f, 0, 3);
-        var btnLookup = MakeButton("LOOKUP UPC",  ElegantButtonStyles.Keypad,    14f, 3, 0);
+        var btnQsale      = MakeButton("QUICK SALE",   ElegantButtonStyles.CashGreen,  11f, 0, 2);
+        var btnLookup     = MakeButton("LOOKUP UPC",   ElegantButtonStyles.Keypad,     11f, 2, 2);
+        var btnCheckPrice = MakeButton("CHECK PRICE",  AppColors.PaymentSplit,         11f, 2, 2);
+        var btnReturn     = MakeButton("↩ RETURN",     AppColors.Danger,               11f, 2, 0);
 
-        btnQsale.Click  += (s, e) => QuickSaleClicked?.Invoke(s, e);
-        btnLookup.Click += (s, e) => UPCLookupClicked?.Invoke(s, e);
+        btnQsale.Click      += (s, e) => QuickSaleClicked?.Invoke(s, e);
+        btnLookup.Click     += (s, e) => UPCLookupClicked?.Invoke(s, e);
+        btnCheckPrice.Click += (s, e) => CheckPriceClicked?.Invoke(s, e);
+        btnReturn.Click     += (s, e) => ReturnClicked?.Invoke(s, e);
 
-        panel.Controls.Add(btnQsale,  0, 0);
-        panel.Controls.Add(btnLookup, 1, 0);
+        panel.Controls.Add(btnQsale,      0, 0);
+        panel.Controls.Add(btnLookup,     1, 0);
+        panel.Controls.Add(btnCheckPrice, 2, 0);
+        panel.Controls.Add(btnReturn,     3, 0);
         return panel;
     }
 

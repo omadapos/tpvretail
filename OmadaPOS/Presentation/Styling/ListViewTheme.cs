@@ -14,12 +14,13 @@ namespace OmadaPOS.Presentation.Styling;
 public static class ListViewTheme
 {
     // ── Shared palette ────────────────────────────────────────────────────────
-    public static readonly Color RowEven     = Color.FromArgb(255, 255, 255);
-    public static readonly Color RowOdd      = Color.FromArgb(248, 250, 252);
-    public static readonly Color RowSelected = AppColors.AccentGreen;
-    public static readonly Color HeaderBg    = Color.FromArgb(30, 41, 59);
-    public static readonly Color RowBorder   = Color.FromArgb(20, 0, 0, 0);
-    public static readonly Color TextDark    = Color.FromArgb(15, 23, 42);
+    public static readonly Color RowEven         = Color.FromArgb(255, 255, 255);
+    public static readonly Color RowOdd          = Color.FromArgb(248, 250, 252);
+    public static readonly Color RowSelected     = AppColors.ListViewSelection;
+    public static readonly Color RowSelectedText = AppColors.ListViewSelectionText;
+    public static readonly Color HeaderBg        = AppColors.NavyBase;
+    public static readonly Color RowBorder       = AppColors.ListViewGridLine;
+    public static readonly Color TextDark        = AppColors.TextPrimary;
 
     // ── Cached StringFormat instances ─────────────────────────────────────────
     private static readonly StringFormat _sfCenter = new() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter };
@@ -107,7 +108,7 @@ public static class ListViewTheme
                        : e.ColumnIndex == 1 ? _sfNear
                        : _sfCenter;
 
-            Color fg = selected ? AppColors.TextWhite : TextDark;
+            Color fg = selected ? RowSelectedText : TextDark;
             using var fgBrush = new SolidBrush(fg);
 
             var textRect = new Rectangle(e.Bounds.X + 5, e.Bounds.Y,

@@ -74,6 +74,9 @@
     <Compile Update="Views\frmProductNoExist.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\frmRefund.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\frmSetting.cs">
       <SubType>Form</SubType>
     </Compile>

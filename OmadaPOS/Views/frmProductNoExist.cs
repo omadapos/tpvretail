@@ -42,6 +42,12 @@ public sealed class frmProductNoExist : POSDialog
     private bool _wicOn = false;
     private ExternalProductInfo? _apiInfo;
 
+    /// <summary>
+    /// Set after a successful save. Callers can read this after ShowDialog returns
+    /// to add the newly created product to the cart without a second server round-trip.
+    /// </summary>
+    public bool ProductSaved { get; private set; }
+
     // ── POSDialog identity ─────────────────────────────────────────────────────
     protected override Color      AccentColor => AppColors.Warning;
     protected override string     Icon        => "⚠";
@@ -60,6 +66,7 @@ public sealed class frmProductNoExist : POSDialog
         _upc             = upc;
 
         Load += async (_, _) => await LoadAllDataAsync();
+        Shown += (_, _) => ThemeManager.ApplyAll(this);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -143,7 +150,7 @@ public sealed class frmProductNoExist : POSDialog
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1.5f);
+            using var pen = new Pen(AppColors.SurfaceMuted, 1.5f);
             g.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
         };
 
@@ -152,12 +159,12 @@ public sealed class frmProductNoExist : POSDialog
         {
             Dock      = DockStyle.Top,
             Height    = 40,
-            BackColor = Color.FromArgb(240, 253, 244),   // very light green tint
+            BackColor = AppColors.SuccessLight,
             Padding   = new Padding(10, 0, 10, 0),
         };
         upcChip.Paint += (_, e) =>
         {
-            using var pen = new Pen(Color.FromArgb(187, 247, 208), 1f);
+            using var pen = new Pen(AppColors.AccentGreenLight, 1f);
             e.Graphics.DrawLine(pen, 0, upcChip.Height - 1, upcChip.Width, upcChip.Height - 1);
         };
         upcChip.Controls.Add(new Label
@@ -193,7 +200,7 @@ public sealed class frmProductNoExist : POSDialog
         };
         _lblSourceBadge.Paint += (_, e) =>
         {
-            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1f);
+            using var pen = new Pen(AppColors.SurfaceMuted, 1f);
             e.Graphics.DrawLine(pen, 0, 0, _lblSourceBadge.Width, 0);
         };
 
@@ -334,14 +341,14 @@ public sealed class frmProductNoExist : POSDialog
             Text      = string.Empty,
             Font      = new Font("Segoe UI", 10F, FontStyle.Italic),
             ForeColor = AppColors.TextSecondary,
-            BackColor = Color.FromArgb(248, 250, 252),
+            BackColor = AppColors.BackgroundPrimary,
             TextAlign = ContentAlignment.TopLeft,
             Padding   = new Padding(8, 6, 8, 4),
             AutoSize  = false,
         };
         _lblDesc.Paint += (_, e) =>
         {
-            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1f);
+            using var pen = new Pen(AppColors.SurfaceMuted, 1f);
             e.Graphics.DrawRectangle(pen, 0, 0, _lblDesc.Width - 1, _lblDesc.Height - 1);
         };
         tbl.Controls.Add(_lblDesc, 0, 3);
@@ -644,7 +651,7 @@ public sealed class frmProductNoExist : POSDialog
         int    catId       = _cbCategory.SelectedValue is int id ? id : 0;
         string description = _apiInfo?.DescriptionEs ?? _apiInfo?.DescriptionEn ?? name;
 
-        await _categoryService.SaveProduct(new ProductCreateModel
+        var saved = await _categoryService.SaveProduct(new ProductCreateModel
         {
             Name           = name,
             Short_Name     = name.Length > 20 ? name[..20] : name,
@@ -663,6 +670,15 @@ public sealed class frmProductNoExist : POSDialog
             Stock          = 0,
             Cost           = 0,
         });
+
+        if (saved == null)
+        {
+            MessageBox.Show("Failed to save the product. Please try again.", "Save Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
+        }
+
+        ProductSaved = true;
         return true;
     }
 
@@ -686,7 +702,7 @@ public sealed class frmProductNoExist : POSDialog
         var p = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent };
         p.Paint += (_, e) =>
         {
-            using var pen = new Pen(Color.FromArgb(220, 226, 235), 1f);
+            using var pen = new Pen(AppColors.SurfaceMuted, 1f);
             e.Graphics.DrawLine(pen, 0, p.Height / 2, p.Width, p.Height / 2);
         };
         return p;
@@ -694,11 +710,11 @@ public sealed class frmProductNoExist : POSDialog
 
     // ── Toggle buttons ─────────────────────────────────────────────────────────
     private static readonly Color _tActiveBg  = AppColors.AccentGreen;
-    private static readonly Color _tInactiveBg = Color.FromArgb(241, 245, 249);
-    private static readonly Color _tActiveFg  = Color.White;
+    private static readonly Color _tInactiveBg = AppColors.BackgroundSecondary;
+    private static readonly Color _tActiveFg  = AppColors.TextWhite;
     private static readonly Color _tInactiveFg = AppColors.TextSecondary;
     private static readonly Color _tActiveBd  = AppColors.AccentGreenDark;
-    private static readonly Color _tInactiveBd = Color.FromArgb(203, 213, 225);
+    private static readonly Color _tInactiveBd = AppColors.SurfaceMuted;
 
     private static Button MakeToggle(string text, bool active) => new()
     {

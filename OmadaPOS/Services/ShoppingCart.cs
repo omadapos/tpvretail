@@ -13,6 +13,8 @@ public interface IShoppingCart
     decimal Subtotal   { get; }
     decimal TotalTax   { get; }
     decimal Total      { get; }
+    /// <summary>Sum of Total for items where IsEBT = true. Used to send the correct amount to the EBT terminal.</summary>
+    decimal EbtTotal   { get; }
     string  MachineGuid { get; }
 
     bool AddItem(CartItem item);
@@ -42,6 +44,8 @@ public class ShoppingCart : IShoppingCart
     public decimal TotalTax    => _items.Sum(i => i.TaxAmount);
     /// <summary>Cart grand total (subtotal + tax). Always consistent with what PricingEngine computed.</summary>
     public decimal Total       => _items.Sum(i => i.Total);
+    /// <summary>Sum of Total for EBT-eligible items only. Used to limit the amount sent to the EBT terminal.</summary>
+    public decimal EbtTotal    => _items.Where(i => i.IsEBT).Sum(i => i.Total);
     public string  MachineGuid => _machineGuid ?? string.Empty;
 
     public event EventHandler? CartChanged;

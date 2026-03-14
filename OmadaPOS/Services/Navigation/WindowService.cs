@@ -86,8 +86,19 @@ public class WindowService : IWindowService
     public void OpenPrintInvoice(IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmPrintInvoice>(), owner);
 
-    public void OpenProductNoExist(string upc, IWin32Window? owner = null)
-        => ShowDialog(CreateForm<frmProductNoExist>(upc), owner);
+    public bool OpenProductNoExist(string upc, IWin32Window? owner = null)
+    {
+        var form = CreateForm<frmProductNoExist>(upc);
+        using (form)
+        {
+            if (owner != null) form.ShowDialog(owner);
+            else               form.ShowDialog();
+            return form.ProductSaved;
+        }
+    }
+
+    public void OpenRefund(IWin32Window? owner = null)
+        => ShowDialog(CreateForm<frmRefund>(), owner);
 
     public void OpenError(string message, IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmError>(message), owner);

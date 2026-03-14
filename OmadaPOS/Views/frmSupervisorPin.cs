@@ -221,7 +221,7 @@ public sealed class frmSupervisorPin : Form
 
     private void Confirm()
     {
-        if (_entered == SupervisorConfig.Pin)
+        if (SupervisorConfig.Verify(_entered))
         {
             DialogResult = DialogResult.OK;
             Close();

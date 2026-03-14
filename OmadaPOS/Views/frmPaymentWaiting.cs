@@ -13,11 +13,11 @@ namespace OmadaPOS.Views;
 public sealed class frmPaymentWaiting : Form
 {
     // ── Config ────────────────────────────────────────────────────────────────
-    private static readonly Color _overlay  = Color.FromArgb(200, 10, 16, 30);   // dark navy 78% opaque
-    private static readonly Color _cardBg   = Color.FromArgb(255, 20, 30, 48);   // #141E30
+    private static readonly Color _overlay  = Color.FromArgb(200, AppColors.NavyDark.R,  AppColors.NavyDark.G,  AppColors.NavyDark.B);   // NavyDark 78% opaque
+    private static readonly Color _cardBg   = Color.FromArgb(255, AppColors.NavyBase.R,  AppColors.NavyBase.G,  AppColors.NavyBase.B);   // NavyBase solid
     private static readonly Color _cardBord = Color.FromArgb(60,  255, 255, 255);
     private static readonly Color _spinFg   = AppColors.AccentGreen;
-    private static readonly Color _spinBg   = Color.FromArgb(40,  16, 185, 129); // faint green ring
+    private static readonly Color _spinBg   = Color.FromArgb(40, AppColors.AccentGreen.R, AppColors.AccentGreen.G, AppColors.AccentGreen.B); // faint green ring
 
     private static readonly Font _fontType    = new("Segoe UI",  11F, FontStyle.Regular);
     private static readonly Font _fontAmount  = new("Consolas",  28F, FontStyle.Bold);
