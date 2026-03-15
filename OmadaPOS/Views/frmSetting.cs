@@ -1,8 +1,10 @@
+using OmadaPOS.Impresora;
 using OmadaPOS.Libreria.Models;
 using OmadaPOS.Libreria.Services;
 using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Services;
 using OmadaPOS.Services.POS;
+using System.Drawing.Printing;
 
 namespace OmadaPOS.Views;
 
@@ -11,13 +13,15 @@ public sealed class frmSetting : POSDialog
     private readonly IAdminSettingService       _adminSettingService;
     private readonly IPaymentCoordinatorService _paymentCoordinatorService;
 
-    private TextBox _tbIP          = null!;
-    private TextBox _tbPort        = null!;
-    private TextBox _tbTerminal    = null!;
-    private TextBox _tbPrinter     = null!;
-    private TextBox _tbNewPin      = null!;
-    private TextBox _tbConfirmPin  = null!;
-    private Label   _lblWindowsId  = null!;
+    private TextBox   _tbIP          = null!;
+    private TextBox   _tbPort        = null!;
+    private TextBox   _tbTerminal    = null!;
+    private ComboBox  _cbPrinter     = null!;
+    private TextBox   _tbNewPin      = null!;
+    private TextBox   _tbConfirmPin  = null!;
+    private Label     _lblWindowsId  = null!;
+
+    private const string DefaultPrinterLabel = "(Windows default)";
 
     public frmSetting(IAdminSettingService adminSettingService, IPaymentCoordinatorService paymentCoordinatorService)
     {
@@ -48,7 +52,7 @@ public sealed class frmSetting : POSDialog
         var f1 = FieldPanel("IP Address",    out _tbIP,       "192.168.1.0");
         var f2 = FieldPanel("Port",          out _tbPort,     "10009");
         var f3 = FieldPanel("Terminal ID",   out _tbTerminal, "POS");
-        var f4 = FieldPanel("Printer Name",  out _tbPrinter,  "RONGTA");
+        var f4 = PrinterFieldPanel();
 
         // ── Supervisor PIN section ────────────────────────────────────────────
         var lblPinSection = new Label
@@ -84,8 +88,27 @@ public sealed class frmSetting : POSDialog
             TextAlign = ContentAlignment.MiddleCenter,
         };
 
+        // ── Print Test button ─────────────────────────────────────────────────
+        var btnTestPrint = new Button
+        {
+            Text      = "🖨  PRINT TEST",
+            FlatStyle = FlatStyle.Flat,
+            Font      = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            ForeColor = Color.White,
+            BackColor = AppColors.SlateBlue,
+            Height    = 36,
+            Dock      = DockStyle.Top,
+            Cursor    = Cursors.Hand,
+        };
+        btnTestPrint.FlatAppearance.BorderSize = 0;
+        btnTestPrint.Click += BtnTestPrint_Click;
+
+        var pTestPrint = new Panel { Dock = DockStyle.Top, Height = 48, Padding = new Padding(0, 6, 0, 0) };
+        pTestPrint.Controls.Add(btnTestPrint);
+
         // Stack top-down (Controls.Add reverses order for DockStyle.Top)
         scroll.Controls.Add(_lblWindowsId);
+        scroll.Controls.Add(pTestPrint);
         scroll.Controls.Add(fPin2);
         scroll.Controls.Add(fPin1);
         scroll.Controls.Add(lblPinSection);
@@ -94,6 +117,25 @@ public sealed class frmSetting : POSDialog
         scroll.Controls.Add(f2);
         scroll.Controls.Add(f1);
         return scroll;
+    }
+
+    private void BtnTestPrint_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            string selected = _cbPrinter.SelectedItem?.ToString() ?? "";
+            string? printerName = selected == DefaultPrinterLabel ? null : selected;
+            ReceiptPrinter.PrintTestPage(printerName);
+            MessageBox.Show(
+                $"Test page sent to: {printerName ?? "(Windows default)"}",
+                "Print Test", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Print test failed: {ex.Message}",
+                "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private async Task LoadSettingsAsync()
@@ -108,10 +150,16 @@ public sealed class frmSetting : POSDialog
             var s = await _adminSettingService.LoadSettingById(windowsId);
             if (s == null) return;
 
-            _tbIP.Text      = s.IP          ?? "";
-            _tbPort.Text    = s.Port?.ToString() ?? "";
-            _tbTerminal.Text= s.Terminal    ?? "";
-            _tbPrinter.Text = s.PrinterName ?? "";
+            _tbIP.Text       = s.IP          ?? "";
+            _tbPort.Text     = s.Port?.ToString() ?? "";
+            _tbTerminal.Text = s.Terminal    ?? "";
+
+            // Select the saved printer; fall back to "(Windows default)" if not found
+            string saved = s.PrinterName ?? "";
+            int idx = _cbPrinter.Items.IndexOf(saved);
+            _cbPrinter.SelectedIndex = (idx >= 0 && !string.IsNullOrWhiteSpace(saved))
+                ? idx
+                : _cbPrinter.Items.IndexOf(DefaultPrinterLabel);
         }
         catch (Exception ex)
         {
@@ -153,13 +201,18 @@ public sealed class frmSetting : POSDialog
             }
         }
 
+        // If the user chose "(Windows default)", persist empty string so ReceiptPrinter
+        // falls through to new PrinterSettings().PrinterName at print time.
+        string selectedPrinter = _cbPrinter.SelectedItem?.ToString() ?? "";
+        if (selectedPrinter == DefaultPrinterLabel) selectedPrinter = "";
+
         bool saved = await _adminSettingService.UpdateSetting(new AdminSetting
         {
             WindowsId   = WindowsIdProvider.GetMachineGuid(),
             IP          = _tbIP.Text,
             Port        = port,
             Terminal    = _tbTerminal.Text,
-            PrinterName = _tbPrinter.Text,
+            PrinterName = selectedPrinter,
         });
 
         if (!saved)
@@ -185,7 +238,6 @@ public sealed class frmSetting : POSDialog
             }
         }
 
-        // Force the payment service to reload config on next payment call
         _paymentCoordinatorService.InvalidateConfig();
 
         MessageBox.Show(
@@ -193,5 +245,52 @@ public sealed class frmSetting : POSDialog
             "Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         return true;
+    }
+
+    // ── Printer field helper ───────────────────────────────────────────────────
+
+    private Panel PrinterFieldPanel()
+    {
+        var panel = new Panel { Dock = DockStyle.Top, Height = 66, Padding = new Padding(0, 0, 0, 4) };
+
+        var lbl = new Label
+        {
+            Text      = "Receipt Printer",
+            Font      = AppTypography.RowLabel,
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Top,
+            Height    = 22,
+        };
+
+        _cbPrinter = new ComboBox
+        {
+            Dock          = DockStyle.Fill,
+            Font          = AppTypography.Body,
+            BackColor     = AppColors.SurfaceMuted,
+            ForeColor     = AppColors.TextPrimary,
+            FlatStyle     = FlatStyle.Flat,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+        };
+
+        // Populate with "(Windows default)" first, then all installed printers
+        _cbPrinter.Items.Add(DefaultPrinterLabel);
+        string windowsDefault = new PrinterSettings().PrinterName;
+        foreach (string name in PrinterSettings.InstalledPrinters)
+            _cbPrinter.Items.Add(name);
+
+        // Pre-select "(Windows default)" — LoadSettingsAsync will override if saved
+        _cbPrinter.SelectedIndex = 0;
+
+        // Show a tooltip so the cashier knows which printer is the OS default
+        var tip = new ToolTip();
+        tip.SetToolTip(_cbPrinter,
+            string.IsNullOrWhiteSpace(windowsDefault)
+                ? "No default printer detected"
+                : $"Windows default: {windowsDefault}");
+
+        panel.Controls.Add(_cbPrinter);
+        panel.Controls.Add(lbl);
+        return panel;
     }
 }

@@ -17,11 +17,13 @@ public interface IWindowService
     void OpenKeyLookup(IWin32Window? owner = null);
     void OpenPopupCashPayment(int orderId, int consecutivo, decimal devuelta, IWin32Window? owner = null, PaymentResponseModel? paymentResponse = null, List<PaymentModel>? splitPayments = null);
     void OpenGiftCard(decimal totalGlobal, int tipo, IWin32Window? owner = null);
-    void OpenPaymentStatus(string message, IWin32Window? owner = null);
+    void OpenPaymentStatus(string message, bool success = true, IWin32Window? owner = null);
     void OpenPrintInvoice(IWin32Window? owner = null);
     /// <returns>True if the cashier saved the product; false if cancelled.</returns>
     bool OpenProductNoExist(string upc, IWin32Window? owner = null);
     void OpenRefund(IWin32Window? owner = null);
+    void OpenAgeVerificationLog(IWin32Window? owner = null);
+    void OpenDiagnostics(IWin32Window? owner = null);
     void OpenError(string message, IWin32Window? owner = null);
 
     /// <summary>Close all open modeless forms (Hold, Split, KeyLookup, etc.) — called on logout.</summary>

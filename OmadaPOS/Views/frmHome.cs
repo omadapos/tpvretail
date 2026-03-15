@@ -73,6 +73,7 @@ namespace OmadaPOS.Views
         {
             InitializeComponent();
 
+            KeyPreview = true;  // enable form-level hotkeys
             InicializarControlesUI();
 
             _userService = userService;
@@ -120,7 +121,7 @@ namespace OmadaPOS.Views
 
             _scannerBanner = new Label
             {
-                Text      = "⚠  Scanner no conectado — verifique el cable USB",
+                Text      = "⚠  Scanner disconnected — check the USB cable",
                 AutoSize  = false,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font      = AppTypography.BodySmall,
@@ -133,7 +134,7 @@ namespace OmadaPOS.Views
 
             _scannerBannerBtn = new Button
             {
-                Text      = "Reconectar",
+                Text      = "Reconnect",
                 FlatStyle = FlatStyle.Flat,
                 Font      = AppTypography.BodySmall,
                 ForeColor = Color.White,
@@ -157,7 +158,7 @@ namespace OmadaPOS.Views
             if (_scannerBannerBtn != null)
             {
                 _scannerBannerBtn.Enabled = false;
-                _scannerBannerBtn.Text    = "Conectando…";
+                _scannerBannerBtn.Text    = "Connecting…";
             }
 
             // UI thread (STA) — same apartment as the COM objects. Blocks max 1 s (ClaimDevice).
@@ -170,14 +171,14 @@ namespace OmadaPOS.Views
                 _scannerBanner    = null;
                 _scannerBannerBtn = null;
                 _paymentPanelControl?.SetScaleStatus("");
-                ShowToast("Scanner conectado");
+                ShowToast("Scanner connected");
             }
             else
             {
                 if (_scannerBannerBtn != null)
                 {
                     _scannerBannerBtn.Enabled = true;
-                    _scannerBannerBtn.Text    = "Reintentar";
+                    _scannerBannerBtn.Text    = "Retry";
                 }
             }
         }
@@ -192,7 +193,7 @@ namespace OmadaPOS.Views
 
             _scaleBanner = new Label
             {
-                Text      = "⚖  Báscula no conectada — verifique el cable USB",
+                Text      = "⚖  Scale disconnected — check the USB cable",
                 AutoSize  = false,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font      = AppTypography.BodySmall,
@@ -205,7 +206,7 @@ namespace OmadaPOS.Views
 
             _scaleBannerBtn = new Button
             {
-                Text      = "Reconectar",
+                Text      = "Reconnect",
                 FlatStyle = FlatStyle.Flat,
                 Font      = AppTypography.BodySmall,
                 ForeColor = Color.White,
@@ -231,7 +232,7 @@ namespace OmadaPOS.Views
             if (_scaleBannerBtn != null)
             {
                 _scaleBannerBtn.Enabled = false;
-                _scaleBannerBtn.Text    = "Conectando…";
+                _scaleBannerBtn.Text    = "Connecting…";
             }
 
             // UI thread (STA) — same apartment as the COM objects. Blocks max 2 s (ClaimDevice).
@@ -244,17 +245,26 @@ namespace OmadaPOS.Views
                 _scaleBanner    = null;
                 _scaleBannerBtn = null;
                 _paymentPanelControl?.SetScaleStatus("");
-                ShowToast("Báscula conectada");
+                ShowToast("Scale connected");
             }
             else
             {
                 if (_scaleBannerBtn != null)
                 {
                     _scaleBannerBtn.Enabled = true;
-                    _scaleBannerBtn.Text    = "Reintentar";
+                    _scaleBannerBtn.Text    = "Retry";
                 }
-                ShowToast("No se pudo conectar la báscula", success: false);
+                ShowToast("Could not connect scale", success: false);
             }
+        }
+
+        /// <summary>
+        /// Called by Program.cs when the OfflineNotifier fires.
+        /// Shows a persistent amber banner at the top of the screen.
+        /// </summary>
+        public void ShowOfflineToast()
+        {
+            ShowToast("⚠  No internet connection — some features may be unavailable", success: false);
         }
 
         private void ShowToast(string message, bool success = true)
@@ -310,7 +320,9 @@ namespace OmadaPOS.Views
                 try { await EjecutarLogout(); }
                 catch (Exception ex) { MessageBox.Show($"Logout error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             };
-            _posHeaderControl.ExitRequested       += (_, _) => Close(); // triggers frmHome_FormClosing → PIN check → Application.Exit()
+            _posHeaderControl.ExitRequested          += (_, _) => Close(); // triggers frmHome_FormClosing → PIN check → Application.Exit()
+            _posHeaderControl.AgeAuditLogRequested   += (_, _) => _windowService.OpenAgeVerificationLog(this);
+            _posHeaderControl.DiagnosticsRequested    += (_, _) => _windowService.OpenDiagnostics(this);
 
             // ── Cart list ─────────────────────────────────────────────────────
             _cartListViewControl = CartListViewControl.Attach(tableLayoutPanelCart, listViewCart);
@@ -530,6 +542,35 @@ namespace OmadaPOS.Views
             MaintableLayout.Padding = new Padding(4, 0, 4, 4);
         }
 
+        // ── Global hotkeys ────────────────────────────────────────────────────
+        // F2  → focus the scan/UPC input
+        // Esc → clear the scan input (only when it has text; no modal popup)
+        // F4  → open Hold Cart
+        // F5  → open Split Payment
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            switch (keyData)
+            {
+                case Keys.F2:
+                    textBoxUPC.Focus();
+                    textBoxUPC.SelectAll();
+                    return true;
+
+                case Keys.Escape when !string.IsNullOrEmpty(textBoxUPC.Text):
+                    textBoxUPC.Clear();
+                    return true;
+
+                case Keys.F4:
+                    _windowService.OpenHold(this);
+                    return true;
+
+                case Keys.F5 when _shoppingCart.ItemCount > 0:
+                    _windowService.OpenSplitPayment(this);
+                    return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         private async void frmHome_Load(object sender, EventArgs e)
         {
             try
@@ -601,11 +642,56 @@ namespace OmadaPOS.Views
 
             _zebraScannerService.Initialize();
 
-            if (!_zebraScannerService.IsConnected)
-                ShowScannerBanner();
+            bool scannerOk = _zebraScannerService.IsConnected;
+            bool scaleOk   = _zebraScannerService.IsScaleConnected;
 
-            if (!_zebraScannerService.IsScaleConnected)
-                ShowScaleBanner();
+            if (!scannerOk) ShowScannerBanner();
+            if (!scaleOk)   ShowScaleBanner();
+
+            // Update header dots with initial state
+            _posHeaderControl?.UpdateScannerStatus(scannerOk);
+            _posHeaderControl?.UpdateScaleStatus(scaleOk);
+
+            // Heartbeat: poll every 30 s; auto-shows/hides banners and updates dots
+            _heartbeatTimer          = new System.Windows.Forms.Timer { Interval = 30_000 };
+            _heartbeatTimer.Tick    += HeartbeatTimer_Tick;
+            _heartbeatTimer.Start();
+        }
+
+        private System.Windows.Forms.Timer? _heartbeatTimer;
+
+        private void HeartbeatTimer_Tick(object? sender, EventArgs e)
+        {
+            if (_zebraScannerService == null) return;
+
+            bool scannerOk = _zebraScannerService.IsConnected;
+            bool scaleOk   = _zebraScannerService.IsScaleConnected;
+
+            // Scanner banner
+            if (!scannerOk && _scannerBanner == null) ShowScannerBanner();
+            if (scannerOk  && _scannerBanner != null)
+            {
+                Controls.Remove(_scannerBanner);
+                _scannerBanner?.Dispose();
+                _scannerBanner    = null;
+                _scannerBannerBtn = null;
+                PerformLayout();
+            }
+
+            // Scale banner
+            if (!scaleOk && _scaleBanner == null) ShowScaleBanner();
+            if (scaleOk  && _scaleBanner != null)
+            {
+                Controls.Remove(_scaleBanner);
+                _scaleBanner?.Dispose();
+                _scaleBanner    = null;
+                _scaleBannerBtn = null;
+                PerformLayout();
+            }
+
+            // Header status dots
+            _posHeaderControl?.UpdateScannerStatus(scannerOk);
+            _posHeaderControl?.UpdateScaleStatus(scaleOk);
         }
 
         // _supervisorApproved: set by EjecutarLogout() so FormClosing skips the PIN prompt.
@@ -667,6 +753,10 @@ namespace OmadaPOS.Views
             _upcSearchCts?.Cancel();
             _upcSearchCts?.Dispose();
             _homeInitializationService.ClearProductCache();
+
+            _heartbeatTimer?.Stop();
+            _heartbeatTimer?.Dispose();
+            _heartbeatTimer = null;
 
             _scaleBanner?.Dispose();
             _scaleBanner    = null;
@@ -962,13 +1052,17 @@ namespace OmadaPOS.Views
             if (_shoppingCart.ItemCount == 0) return;
 
             var confirm = MessageBox.Show(
-                "Are you sure you want to cancel this order?\nAll items will be removed.",
-                "Cancel Order",
+                "Are you sure you want to void this order?\nAll items will be removed.\n\nSupervisor authorization is required.",
+                "Void Order",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2);
 
             if (confirm != DialogResult.Yes) return;
+
+            // Require supervisor PIN before voiding
+            using var pinDlg = new frmSupervisorPin();
+            if (pinDlg.ShowDialog(this) != DialogResult.OK) return;
 
             _currentAgeVerification = null;
             UpdateAgeVerificationBadge();
@@ -1194,6 +1288,10 @@ namespace OmadaPOS.Views
 
             await LoadLastInvoiceAsync();
 
+            // Show thank-you screen on customer display
+            if (_customerScreen?.IsDisposed == false)
+                _customerScreen.ShowThankYou();
+
             _windowService.OpenPopupCashPayment(oId, consecutivo, devuelta, this, paymentResponse, splitPayments);
         }
 
@@ -1253,6 +1351,11 @@ namespace OmadaPOS.Views
             waiting.TimeoutElapsed += (_, _) =>
                 MessageBox.Show("The terminal did not respond within 90 seconds. Please check the device.",
                     "Terminal Timeout", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            waiting.UserCancelRequested += (_, _) =>
+                MessageBox.Show(
+                    "The payment request has been cancelled by the cashier.\n\n" +
+                    "If the terminal is still processing, please verify the transaction status before adding items.",
+                    "Payment Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             waiting.Show(this);   // non-blocking; owner = this (covers frmHome)
 
             try
@@ -1264,7 +1367,7 @@ namespace OmadaPOS.Views
 
                 if (result.PaymentResponse != null && !result.PaymentResponse.Success)
                 {
-                    _windowService.OpenPaymentStatus(result.PaymentResponse.MsgInfo ?? "Payment declined", this);
+                    _windowService.OpenPaymentStatus(result.PaymentResponse.MsgInfo ?? "Payment declined", success: false, this);
                 }
 
                 if (result.OrderResponse != null)
@@ -1313,6 +1416,11 @@ namespace OmadaPOS.Views
                 _posHeaderControl?.UpdateProductName(result.ProductName ?? string.Empty);
                 UpdateCartDisplay();
                 textBoxUPC.Text = "";
+
+                // Update customer screen with the last scanned item
+                var lastItem = _shoppingCart.Items.LastOrDefault();
+                if (lastItem != null && _customerScreen?.IsDisposed == false)
+                    _customerScreen.ShowLastScannedItem(lastItem.ProductName, lastItem.UnitPrice, lastItem.Quantity);
             }
             else if (result.ProductNotFoundOnServer)
             {

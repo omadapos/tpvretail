@@ -11,6 +11,7 @@ namespace OmadaPOS.Services;
 /// </summary>
 public class AgeVerificationAuditRecord
 {
+    public int      Id                  { get; set; }
     public string   SessionId           { get; init; } = string.Empty;
     public string   CashierName         { get; init; } = string.Empty;
     public DateTime VerifiedAt          { get; init; } = DateTime.Now;

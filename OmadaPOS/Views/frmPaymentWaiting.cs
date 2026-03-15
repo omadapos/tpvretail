@@ -37,9 +37,11 @@ public sealed class frmPaymentWaiting : Form
     private readonly DateTime    _startTime = DateTime.Now;
     private readonly System.Windows.Forms.Timer _timer;
 
-    private float   _spinAngle    = 0f;
+    private float   _spinAngle       = 0f;
     private Bitmap? _backdrop;
-    private bool    _timeoutFired = false;
+    private bool    _timeoutFired    = false;
+    private bool    _cancelRequested = false;
+    private Button? _btnCancel;
 
     /// <summary>
     /// Raised on the UI thread when no response has been received from the
@@ -48,6 +50,12 @@ public sealed class frmPaymentWaiting : Form
     /// The form closes itself immediately after raising this event.
     /// </summary>
     public event EventHandler? TimeoutElapsed;
+
+    /// <summary>
+    /// Raised when the cashier deliberately clicks "Force Cancel" after waiting.
+    /// The caller is responsible for cancelling the payment task and closing the form.
+    /// </summary>
+    public event EventHandler? UserCancelRequested;
 
     // Card geometry + pre-baked shadow paths (set in OnLoad, fixed thereafter)
     private Rectangle _card;
@@ -72,8 +80,14 @@ public sealed class frmPaymentWaiting : Form
             _spinAngle = (_spinAngle + 9f) % 360f;   // 9° per tick keeps same visual speed at 16fps
             Invalidate();
 
+            double elapsed = (DateTime.Now - _startTime).TotalSeconds;
+
+            // Show the Force Cancel button after 15 s so accidental taps don't abort.
+            if (_btnCancel != null && !_btnCancel.Visible && elapsed >= 15)
+                _btnCancel.Visible = true;
+
             // Auto-close after timeout so the cashier is never permanently stuck.
-            if (!_timeoutFired && (DateTime.Now - _startTime).TotalSeconds >= TimeoutSeconds)
+            if (!_timeoutFired && elapsed >= TimeoutSeconds)
             {
                 _timeoutFired = true;
                 TimeoutElapsed?.Invoke(this, EventArgs.Empty);
@@ -115,6 +129,33 @@ public sealed class frmPaymentWaiting : Form
         // Capture + darken the owner's current state
         _backdrop = CaptureAndDarken();
 
+        // "Force Cancel" button — appears at the bottom of the card so the cashier
+        // can abort if the terminal becomes unresponsive. It is initially invisible
+        // and becomes visible after 15 s to avoid accidental taps at the start.
+        _btnCancel = new Button
+        {
+            Text      = "✕  Force Cancel",
+            FlatStyle = FlatStyle.Flat,
+            Font      = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(252, 165, 165),  // red-300
+            BackColor = Color.FromArgb(60, 220, 38, 38),
+            Cursor    = Cursors.Hand,
+            Visible   = false,
+            Size      = new Size(140, 30),
+            Location  = new Point(
+                _card.Left + (_card.Width - 140) / 2,
+                _card.Bottom + 12),
+        };
+        _btnCancel.FlatAppearance.BorderColor = Color.FromArgb(100, 220, 38, 38);
+        _btnCancel.FlatAppearance.BorderSize  = 1;
+        _btnCancel.Click += (_, _) =>
+        {
+            _cancelRequested = true;
+            UserCancelRequested?.Invoke(this, EventArgs.Empty);
+            BeginInvoke(Close);
+        };
+        Controls.Add(_btnCancel);
+
         _timer.Start();
     }
 
@@ -131,8 +172,11 @@ public sealed class frmPaymentWaiting : Form
     // ── Prevent user from closing the overlay ─────────────────────────────────
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        if (e.CloseReason == CloseReason.UserClosing)
-            e.Cancel = true;   // only the caller (try/finally) may close this
+        // Allow close only if triggered programmatically or by the Force Cancel button.
+        // A plain UserClosing (Alt+F4, taskbar) is ignored so the overlay can't be
+        // accidentally dismissed mid-transaction.
+        if (e.CloseReason == CloseReason.UserClosing && !_cancelRequested)
+            e.Cancel = true;
         else
             base.OnFormClosing(e);
     }
@@ -220,7 +264,7 @@ public sealed class frmPaymentWaiting : Form
 
         // ── "Processing…" message ────────────────────────────────────────────
         using var msgBrush = new SolidBrush(AppColors.TextOnDarkSecondary);
-        g.DrawString("Procesando pago…  Siga las instrucciones en el terminal.",
+        g.DrawString("Processing payment…  Follow the instructions on the terminal.",
             _fontMessage, msgBrush,
             new RectangleF(_card.Left + 16, amountY + 44, _card.Width - 32, 32), _sfCenter);
 
@@ -233,7 +277,7 @@ public sealed class frmPaymentWaiting : Form
 
         // ── Hint ─────────────────────────────────────────────────────────────
         using var hintBrush = new SolidBrush(Color.FromArgb(120, 148, 163, 184));
-        g.DrawString("No presione ningún botón. La transacción está en progreso.",
+        g.DrawString("Do not press any button. Transaction is in progress.",
             _fontHint, hintBrush,
             new RectangleF(_card.Left, _card.Bottom - 28, _card.Width, 24), _sfCenter);
     }

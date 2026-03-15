@@ -29,6 +29,9 @@
     <Compile Update="Views\frmAgeVerification.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Views\frmAgeVerificationLog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Views\frmCheckPrice.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -36,6 +39,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\frmCustomerScreen.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Views\frmDiagnostics.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Views\frmError.cs">

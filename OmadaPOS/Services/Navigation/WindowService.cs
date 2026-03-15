@@ -80,8 +80,8 @@ public class WindowService : IWindowService
     public void OpenGiftCard(decimal totalGlobal, int tipo, IWin32Window? owner = null)
         => ShowModeless(CreateForm<frmGiftCard>(totalGlobal, tipo), owner);
 
-    public void OpenPaymentStatus(string message, IWin32Window? owner = null)
-        => ShowDialog(CreateForm<frmPaymentStatus>(message), owner);
+    public void OpenPaymentStatus(string message, bool success = true, IWin32Window? owner = null)
+        => ShowDialog(CreateForm<frmPaymentStatus>(message, success), owner);
 
     public void OpenPrintInvoice(IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmPrintInvoice>(), owner);
@@ -99,6 +99,12 @@ public class WindowService : IWindowService
 
     public void OpenRefund(IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmRefund>(), owner);
+
+    public void OpenAgeVerificationLog(IWin32Window? owner = null)
+        => ShowDialog(CreateForm<frmAgeVerificationLog>(), owner);
+
+    public void OpenDiagnostics(IWin32Window? owner = null)
+        => ShowDialog(CreateForm<frmDiagnostics>(), owner);
 
     public void OpenError(string message, IWin32Window? owner = null)
         => ShowDialog(CreateForm<frmError>(message), owner);

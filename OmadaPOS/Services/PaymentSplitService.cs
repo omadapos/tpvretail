@@ -7,9 +7,9 @@ namespace OmadaPOS.Services;
 public interface IPaymentSplitService
 {
     Task<List<PaymentModel>> GetSessionPaymentsAsync();
-
     Task<bool> CreatePaymentAsync(string paymentType, decimal amount);
-
+    /// <summary>Removes the most recently added payment leg for the current session.</summary>
+    Task RemoveLastPaymentAsync();
     void Clear();
 }
 
@@ -49,6 +49,20 @@ public class PaymentSplitService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error creating payment: SessionId={SessionId}, Amount={Amount}", _sessionId, amount);
+            throw;
+        }
+    }
+
+    public async Task RemoveLastPaymentAsync()
+    {
+        try
+        {
+            await sqliteManager.DeleteLastPaymentAsync(_sessionId).ConfigureAwait(false);
+            logger.LogInformation("Last payment removed for session {SessionId}", _sessionId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error removing last payment for session {SessionId}", _sessionId);
             throw;
         }
     }

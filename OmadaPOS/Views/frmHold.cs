@@ -14,8 +14,13 @@ public sealed class frmHold : POSDialog
     private readonly IHomeInteractionService  _homeInteractionService;
 
     private readonly BindingList<HoldCartModel> _heldCarts = new();
-    private ListBox _listBox   = null!;
-    private Button  _btnHoldIt = null!;
+    private ListBox  _listBox      = null!;
+    private Button   _btnHoldIt    = null!;
+    private Button   _btnRestore   = null!;
+    private ListView _lvPreview    = null!;
+    private Label    _lblMeta      = null!;
+    private Label    _lblTotal     = null!;
+    private Panel    _previewPanel = null!;
 
     // Color tags for held carts (up to 10 simultaneous holds)
     private static readonly string[] _colorTags =
@@ -36,7 +41,7 @@ public sealed class frmHold : POSDialog
         ["Black"]  = AppColors.BackgroundPrimary,
     };
 
-    // Fonts cached as static fields — never allocate in DrawItem (called per-item per-repaint)
+    // Fonts cached as static fields — never allocate in DrawItem
     private static readonly Font _drawInitFont  = new("Segoe UI", 11f, FontStyle.Bold);
     private static readonly Font _drawTitleFont = new("Segoe UI", 11f, FontStyle.Bold);
     private static readonly Font _drawSubFont   = new("Segoe UI",  9f);
@@ -59,28 +64,44 @@ public sealed class frmHold : POSDialog
     protected override string     Subtitle    => "Save current cart or restore a previous one";
     protected override DialogSize Size        => DialogSize.Wide;
 
-    // ── Footer: two buttons — HOLD IT (primary) + CANCEL ─────────────────────
-    // We override BuildContent to include the buttons so we have full control
-    // of layout (list above, buttons below), and return null ConfirmText so
-    // POSDialog renders a single CLOSE which we replace below.
     protected override string? ConfirmText => null;
     protected override string  CancelText  => "✕  CLOSE";
 
     protected override Control BuildContent()
+    {
+        // ── Root: two columns ────────────────────────────────────────────────
+        var root = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount    = 1,
+            BackColor   = AppColors.BackgroundPrimary,
+            Padding     = new Padding(16, 12, 16, 10),
+        };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48));
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        root.Controls.Add(BuildLeftColumn(),  0, 0);
+        root.Controls.Add(BuildRightColumn(), 1, 0);
+        return root;
+    }
+
+    // ── LEFT column: hold list + hold-it / cancel buttons ────────────────────
+    private Control BuildLeftColumn()
     {
         var outer = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 1,
             RowCount    = 2,
-            BackColor   = AppColors.BackgroundPrimary,
-            Padding     = new Padding(16, 12, 16, 10),
+            BackColor   = Color.Transparent,
+            Padding     = new Padding(0, 0, 8, 0),
         };
         outer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         outer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         outer.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
 
-        // ── Held carts list (owner-draw: coloured circle + cart info) ────────
         _listBox = new ListBox
         {
             Dock           = DockStyle.Fill,
@@ -90,13 +111,12 @@ public sealed class frmHold : POSDialog
             BorderStyle    = BorderStyle.FixedSingle,
             IntegralHeight = false,
             DrawMode       = DrawMode.OwnerDrawFixed,
-            ItemHeight     = 52,
+            ItemHeight     = 60,
             DataSource     = _heldCarts,
         };
         _listBox.DrawItem             += ListBox_DrawItem;
         _listBox.SelectedIndexChanged += ListBox_SelectionChanged;
 
-        // ── Button row ────────────────────────────────────────────────────────
         var btnRow = new TableLayoutPanel
         {
             Dock        = DockStyle.Fill,
@@ -118,12 +138,118 @@ public sealed class frmHold : POSDialog
         ElegantButtonStyles.Style(_btnHoldIt, AppColors.Warning, AppColors.TextWhite, fontSize: 14f);
         _btnHoldIt.Click += HoldIt_Click;
 
-        btnRow.Controls.Add(btnCancel,   0, 0);
-        btnRow.Controls.Add(_btnHoldIt,  1, 0);
+        btnRow.Controls.Add(btnCancel,  0, 0);
+        btnRow.Controls.Add(_btnHoldIt, 1, 0);
 
         outer.Controls.Add(_listBox, 0, 0);
         outer.Controls.Add(btnRow,   0, 1);
         return outer;
+    }
+
+    // ── RIGHT column: item preview ────────────────────────────────────────────
+    private Control BuildRightColumn()
+    {
+        _previewPanel = new Panel
+        {
+            Dock      = DockStyle.Fill,
+            BackColor = AppColors.SurfaceCard,
+            Padding   = new Padding(0, 0, 0, 60),
+        };
+
+        // Header
+        var header = new Panel
+        {
+            Dock      = DockStyle.Top,
+            Height    = 44,
+            BackColor = AppColors.NavyBase,
+        };
+        header.Controls.Add(new Label
+        {
+            Text      = "🛒  Cart Preview",
+            Font      = new Font("Segoe UI", 11F, FontStyle.Bold),
+            ForeColor = AppColors.TextWhite,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+        });
+
+        // Meta info (cashier, date)
+        _lblMeta = new Label
+        {
+            Text      = "Select a held cart to preview its items.",
+            Dock      = DockStyle.Top,
+            Height    = 38,
+            Font      = AppTypography.Body,
+            ForeColor = AppColors.TextSecondary,
+            BackColor = Color.FromArgb(248, 250, 252),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Padding   = new Padding(8, 0, 8, 0),
+        };
+
+        // Item list
+        _lvPreview = new ListView
+        {
+            Dock          = DockStyle.Fill,
+            View          = View.Details,
+            FullRowSelect = true,
+            GridLines     = false,
+            MultiSelect   = false,
+            HideSelection = true,
+            BackColor     = AppColors.SurfaceCard,
+            ForeColor     = AppColors.TextPrimary,
+            Font          = new Font("Segoe UI", 9.5f),
+            BorderStyle   = BorderStyle.None,
+            HeaderStyle   = ColumnHeaderStyle.Nonclickable,
+            UseCompatibleStateImageBehavior = false,
+        };
+        _lvPreview.Columns.Add("Product", 180, HorizontalAlignment.Left);
+        _lvPreview.Columns.Add("Qty",      50, HorizontalAlignment.Center);
+        _lvPreview.Columns.Add("Price",    70, HorizontalAlignment.Right);
+        _lvPreview.Columns.Add("Total",    70, HorizontalAlignment.Right);
+        _lvPreview.Resize += (_, _) =>
+        {
+            int fixed_ = 50 + 70 + 70;
+            _lvPreview.Columns[0].Width = Math.Max(_lvPreview.ClientSize.Width - fixed_ - 4, 100);
+        };
+        ListViewTheme.Apply(_lvPreview);
+
+        // Footer: total + restore button
+        var footer = new Panel
+        {
+            Dock      = DockStyle.Bottom,
+            Height    = 60,
+            BackColor = AppColors.NavyDark,
+            Padding   = new Padding(8, 8, 8, 8),
+        };
+
+        _lblTotal = new Label
+        {
+            Text      = "",
+            Dock      = DockStyle.Fill,
+            Font      = new Font("Segoe UI", 13F, FontStyle.Bold),
+            ForeColor = AppColors.TextWhite,
+            BackColor = Color.Transparent,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+
+        _btnRestore = new Button
+        {
+            Text    = "▶  RESTORE",
+            Dock    = DockStyle.Right,
+            Width   = 130,
+            Enabled = false,
+        };
+        ElegantButtonStyles.Style(_btnRestore, AppColors.AccentGreen, AppColors.TextWhite, fontSize: 13f);
+        _btnRestore.Click += async (_, _) => await RestoreSelectedAsync();
+
+        footer.Controls.Add(_lblTotal);
+        footer.Controls.Add(_btnRestore);
+
+        _previewPanel.Controls.Add(_lvPreview);
+        _previewPanel.Controls.Add(_lblMeta);
+        _previewPanel.Controls.Add(header);
+        _previewPanel.Controls.Add(footer);
+        return _previewPanel;
     }
 
     // ── Owner-draw: coloured circle + label + subtitle ───────────────────────
@@ -131,26 +257,25 @@ public sealed class frmHold : POSDialog
     {
         if (e.Index < 0 || e.Index >= _heldCarts.Count) return;
 
-        var cart     = _heldCarts[e.Index];
-        var g        = e.Graphics;
+        var cart = _heldCarts[e.Index];
+        var g    = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
         bool selected = (e.State & DrawItemState.Selected) != 0;
 
-        // Background
         using var bgBrush = new SolidBrush(selected ? AppColors.NavyBase : AppColors.SurfaceCard);
         g.FillRectangle(bgBrush, e.Bounds);
 
-        // Coloured circle on the left
+        // Coloured circle
         var dotColor = _tagColors.TryGetValue(cart.HoldId, out var c) ? c : AppColors.TextMuted;
-        int dotSize  = 32;
+        int dotSize  = 36;
         int dotX     = e.Bounds.X + 12;
         int dotY     = e.Bounds.Y + (e.Bounds.Height - dotSize) / 2;
         var dotRect  = new Rectangle(dotX, dotY, dotSize, dotSize);
         using var dotBrush = new SolidBrush(dotColor);
         g.FillEllipse(dotBrush, dotRect);
 
-        // First letter of the tag inside the circle — reuse cached fonts, no allocation
+        // Initial letter inside circle
         var initial  = cart.HoldId.Length > 0 ? cart.HoldId[0].ToString() : "?";
         using var initBrush = new SolidBrush(AppColors.TextWhite);
         var initSize = g.MeasureString(initial, _drawInitFont);
@@ -158,18 +283,22 @@ public sealed class frmHold : POSDialog
             dotX + (dotSize - initSize.Width)  / 2,
             dotY + (dotSize - initSize.Height) / 2);
 
-        // Main label: "Cart: Red"
-        int textX   = dotX + dotSize + 12;
-        int textY   = e.Bounds.Y + 7;
+        int textX = dotX + dotSize + 12;
+        int textY = e.Bounds.Y + 7;
+
+        // Line 1: "Cart: Red  —  $12.50"
         using var titleBrush = new SolidBrush(selected ? AppColors.TextWhite : AppColors.TextPrimary);
-        g.DrawString($"Cart: {cart.HoldId}", _drawTitleFont, titleBrush, textX, textY);
+        string title = cart.ItemTotal > 0
+            ? $"Cart: {cart.HoldId}   ·   {cart.ItemTotal:C}"
+            : $"Cart: {cart.HoldId}";
+        g.DrawString(title, _drawTitleFont, titleBrush, textX, textY);
 
-        // Subtitle: "3 items · 02:45 PM"
-        string sub = $"{cart.ItemCount} item{(cart.ItemCount != 1 ? "s" : "")}  ·  {cart.LastModified:hh:mm tt}";
+        // Line 2: "3 items  ·  02:45 PM  ·  John"
+        string sub = $"{cart.ItemCount} item{(cart.ItemCount != 1 ? "s" : "")}  ·  {cart.LastModified:MM/dd hh:mm tt}";
+        if (!string.IsNullOrWhiteSpace(cart.CashierName)) sub += $"  ·  {cart.CashierName}";
         using var subBrush = new SolidBrush(selected ? AppColors.OverlayLight : AppColors.TextSecondary);
-        g.DrawString(sub, _drawSubFont, subBrush, textX, textY + 22);
+        g.DrawString(sub, _drawSubFont, subBrush, textX, textY + 24);
 
-        // Thin bottom separator
         if (!selected)
         {
             using var sepPen = new Pen(AppColors.ShadowSubtle);
@@ -187,7 +316,9 @@ public sealed class frmHold : POSDialog
             _heldCarts.Clear();
             foreach (var c in carts) _heldCarts.Add(c);
 
-            _btnHoldIt.Enabled = _shoppingCart.ItemCount > 0;
+            _btnHoldIt.Enabled  = _shoppingCart.ItemCount > 0;
+            _btnRestore.Enabled = false;
+            ClearPreview();
         }
         catch (Exception ex)
         {
@@ -196,8 +327,52 @@ public sealed class frmHold : POSDialog
         }
     }
 
-    // ── Restore selected cart ─────────────────────────────────────────────────
+    // ── Preview selected cart items ───────────────────────────────────────────
     private async void ListBox_SelectionChanged(object? sender, EventArgs e)
+    {
+        if (_listBox.SelectedIndex < 0) { ClearPreview(); return; }
+
+        var selected = (HoldCartModel)_listBox.SelectedItem!;
+        try
+        {
+            var items = await _holdService.RetrieveHeldCartPreviewAsync(selected.HoldId);
+
+            _lvPreview.Items.Clear();
+            foreach (var item in items)
+            {
+                var total = item.UnitPrice * (decimal)item.Quantity;
+                var lvi   = new ListViewItem(item.ProductName);
+                lvi.SubItems.Add(item.Quantity.ToString("G"));
+                lvi.SubItems.Add(item.UnitPrice.ToString("C"));
+                lvi.SubItems.Add(total.ToString("C"));
+                _lvPreview.Items.Add(lvi);
+            }
+
+            // Meta label
+            string meta = $"Held on {selected.LastModified:MM/dd/yyyy  hh:mm tt}";
+            if (!string.IsNullOrWhiteSpace(selected.CashierName)) meta += $"   by {selected.CashierName}";
+            _lblMeta.Text = meta;
+
+            _lblTotal.Text      = $"Total:  {selected.ItemTotal:C}   ({selected.ItemCount} items)";
+            _btnRestore.Enabled = true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error loading cart preview: {ex.Message}", "Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void ClearPreview()
+    {
+        _lvPreview.Items.Clear();
+        _lblMeta.Text       = "Select a held cart to preview its items.";
+        _lblTotal.Text      = "";
+        _btnRestore.Enabled = false;
+    }
+
+    // ── Restore selected cart ─────────────────────────────────────────────────
+    private async Task RestoreSelectedAsync()
     {
         if (_listBox.SelectedIndex < 0) return;
         try
@@ -212,11 +387,7 @@ public sealed class frmHold : POSDialog
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question,
                 MessageBoxDefaultButton.Button1);
 
-            if (confirm != DialogResult.Yes)
-            {
-                _listBox.SelectedIndex = -1;
-                return;
-            }
+            if (confirm != DialogResult.Yes) return;
 
             var items = await _holdService.RetrieveHeldCartAsync(selected.HoldId);
 

@@ -3,15 +3,17 @@ namespace OmadaPOS.Views;
 public sealed class frmPaymentStatus : POSDialog
 {
     private readonly string _message;
+    private readonly bool   _success;
 
-    public frmPaymentStatus(string msg)
+    public frmPaymentStatus(string msg, bool success = true)
     {
         _message = msg;
+        _success = success;
     }
 
-    protected override Color      AccentColor => AppColors.AccentGreen;
-    protected override string     Icon        => "✔";
-    protected override string     Title       => "Payment Status";
+    protected override Color      AccentColor => _success ? AppColors.AccentGreen : AppColors.Danger;
+    protected override string     Icon        => _success ? "✔" : "✕";
+    protected override string     Title       => _success ? "Payment Approved" : "Payment Declined";
     protected override string     Subtitle    => "Transaction result";
     protected override DialogSize Size        => DialogSize.Compact;
     protected override string     CancelText  => "✕  CLOSE";
@@ -29,7 +31,7 @@ public sealed class frmPaymentStatus : POSDialog
         {
             Text      = _message,
             Font      = AppTypography.SectionTitle,
-            ForeColor = AppColors.TextPrimary,
+            ForeColor = _success ? AppColors.TextPrimary : AppColors.Danger,
             BackColor = Color.Transparent,
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,

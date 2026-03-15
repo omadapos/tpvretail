@@ -109,6 +109,37 @@ public sealed class ReceiptPrinter
         RawPrinterHelper.SendBytesToPrinter(printerName, bytes);
     }
 
+    /// <summary>
+    /// Sends a short test page to <paramref name="printerName"/> (or the Windows
+    /// default if blank) to verify the printer is reachable and configured correctly.
+    /// </summary>
+    public static void PrintTestPage(string? printerName = null)
+    {
+        string target = string.IsNullOrWhiteSpace(printerName)
+            ? new PrinterSettings().PrinterName
+            : printerName;
+
+        if (string.IsNullOrWhiteSpace(target))
+            throw new InvalidOperationException("No printer is configured.");
+
+        byte[] bytes = new EscPosBuilder()
+            .Init()
+            .Center().Bold(true).CharSize(2, 2).Line("OMADA POS")
+            .NormalStyle()
+            .Feed(1)
+            .Center().Line("* PRINT TEST *")
+            .Feed(1)
+            .Left()
+            .Line($"Printer : {target}")
+            .Line($"Date    : {DateTime.Now:yyyy-MM-dd  HH:mm:ss}")
+            .Feed(1)
+            .Center().Line("If you can read this, the printer is working correctly.")
+            .Cut()
+            .Build();
+
+        RawPrinterHelper.SendBytesToPrinter(target, bytes);
+    }
+
     // ── Receipt assembly ──────────────────────────────────────────────────────
 
     private byte[] BuildReceipt()

@@ -29,6 +29,7 @@ public interface ISqliteManager : IDisposable
     Task SavePaymentAsync(string sessionId, decimal total, string paymentType);
     Task<List<PaymentModel>> GetPaymentsAsync(string sessionId);
     Task ClearPaymentAsync(string sessionId);
+    Task DeleteLastPaymentAsync(string sessionId);
 
     // Age restriction config methods
     Task AddAgeRestrictedUpcAsync(string upc, string? note);
@@ -39,6 +40,7 @@ public interface ISqliteManager : IDisposable
     Task<List<int>> GetAgeRestrictedCategoryIdsAsync();
     Task<List<AgeRestrictedEntry>> GetAllAgeRestrictedEntriesAsync();
     Task SaveAgeVerificationAuditAsync(AgeVerificationAuditRecord record);
+    Task<List<AgeVerificationAuditRecord>> GetAgeVerificationAuditAsync(int days = 30);
 }
 
 public sealed class SqliteManager : ISqliteManager, IDisposable
@@ -154,9 +156,16 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         DELETE FROM Payments
         WHERE SessionId = @SessionId";
 
+    private const string DELETE_LAST_PAYMENT_SQL = @"
+        DELETE FROM Payments
+        WHERE rowid = (
+            SELECT rowid FROM Payments
+            WHERE SessionId = @SessionId
+            ORDER BY rowid DESC LIMIT 1)";
+
     private const string INSERT_HOLD_CART_SQL = @"
-        INSERT INTO HoldCarts (HoldId, SessionId)
-        VALUES (@HoldId, @SessionId)";
+        INSERT INTO HoldCarts (HoldId, SessionId, CashierName)
+        VALUES (@HoldId, @SessionId, @CashierName)";
 
     private const string INSERT_HOLD_ITEM_SQL = @"
         INSERT INTO HoldCartItems 
@@ -182,11 +191,13 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         DELETE FROM HoldCartItems WHERE HoldId = @HoldId";
 
     private const string SELECT_HELD_CARTS_BY_SESSION_SQL = @"
-        SELECT h.HoldId, h.LastModified, COUNT(i.ProductId) AS ItemCount
+        SELECT h.HoldId, h.LastModified, h.CashierName,
+               COUNT(i.ProductId) AS ItemCount,
+               SUM(COALESCE(i.UnitPrice * i.Quantity, 0)) AS ItemTotal
         FROM HoldCarts h
         LEFT JOIN HoldCartItems i ON h.HoldId = i.HoldId
         WHERE h.SessionId = @SessionId
-        GROUP BY h.HoldId, h.LastModified
+        GROUP BY h.HoldId, h.LastModified, h.CashierName
         ORDER BY h.LastModified DESC";
 
     private const string SELECT_HELD_CARTS_BY_ID_SQL = @"
@@ -227,6 +238,9 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
     private const string MIGRATE_HOLD_AGE_SQL =
         "ALTER TABLE HoldCartItems ADD COLUMN RequiresAgeVerification BOOLEAN NOT NULL DEFAULT 0";
 
+    private const string MIGRATE_HOLD_CASHIER_SQL =
+        "ALTER TABLE HoldCarts ADD COLUMN CashierName TEXT NOT NULL DEFAULT ''";
+
     // Age restriction CRUD
     private const string INSERT_AGE_RESTRICTED_UPC_SQL = @"
         INSERT INTO AgeRestrictedProducts (UPC, Note) VALUES (@UPC, @Note)";
@@ -256,6 +270,13 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         VALUES
         (@SessionId, @CashierName, @VerifiedAt, @VerificationMethod, @VerificationResult,
          @CustomerIs21OrOver, @IdType, @IdLast4OrToken, @DenialReason)";
+
+    private const string SELECT_AGE_AUDIT_SQL = @"
+        SELECT Id, SessionId, CashierName, VerifiedAt, VerificationMethod, VerificationResult,
+               CustomerIs21OrOver, IdType, IdLast4OrToken, DenialReason
+        FROM   AgeVerificationAudit
+        WHERE  VerifiedAt >= @Since
+        ORDER  BY VerifiedAt DESC";
 
     public SqliteManager(string dbFileName = "sqliteomada.db", ILogger<SqliteManager>? logger = null)
     {
@@ -309,6 +330,7 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
                 // SQLite raises "duplicate column name" if already added — swallow it silently.
                 await RunMigrationAsync(db, MIGRATE_CART_AGE_SQL).ConfigureAwait(false);
                 await RunMigrationAsync(db, MIGRATE_HOLD_AGE_SQL).ConfigureAwait(false);
+                await RunMigrationAsync(db, MIGRATE_HOLD_CASHIER_SQL).ConfigureAwait(false);
 
                 _logger?.LogInformation("Database initialized successfully at {DbPath}", _dbPath);
             }
@@ -638,6 +660,29 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         }
     }
 
+    public async Task DeleteLastPaymentAsync(string sessionId)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+            throw new ArgumentNullException(nameof(sessionId));
+
+        try
+        {
+            await using var db = new SqliteConnection(ConnectionString);
+            await db.OpenAsync().ConfigureAwait(false);
+
+            await using var command = new SqliteCommand(DELETE_LAST_PAYMENT_SQL, db);
+            command.Parameters.AddWithValue("@SessionId", sessionId);
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+            _logger?.LogDebug("Last payment deleted for session {SessionId}", sessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error deleting last payment for session {SessionId}", sessionId);
+            throw;
+        }
+    }
+
     // Hold
     public async Task HoldCartAsync(string sessionId, string userId)
     {
@@ -656,8 +701,9 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
             {
                 // Insert into HoldCarts
                 await using var holdCmd = new SqliteCommand(INSERT_HOLD_CART_SQL, db);
-                holdCmd.Parameters.AddWithValue("@HoldId", userId);
-                holdCmd.Parameters.AddWithValue("@SessionId", sessionId);
+                holdCmd.Parameters.AddWithValue("@HoldId",      userId);
+                holdCmd.Parameters.AddWithValue("@SessionId",   sessionId);
+                holdCmd.Parameters.AddWithValue("@CashierName", OmadaPOS.Libreria.Models.SessionManager.Name ?? string.Empty);
                 await holdCmd.ExecuteNonQueryAsync().ConfigureAwait(false);
 
                 // Copy cart items to HoldCartItems
@@ -703,7 +749,9 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
 
             var holdIdOrdinal       = reader.GetOrdinal("HoldId");
             var lastModifiedOrdinal = reader.GetOrdinal("LastModified");
+            var cashierOrdinal      = reader.GetOrdinal("CashierName");
             var itemCountOrdinal    = reader.GetOrdinal("ItemCount");
+            var itemTotalOrdinal    = reader.GetOrdinal("ItemTotal");
 
             while (await reader.ReadAsync())
             {
@@ -713,9 +761,13 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
                     LastModified = reader.IsDBNull(lastModifiedOrdinal)
                                        ? DateTime.Now
                                        : reader.GetDateTime(lastModifiedOrdinal),
+                    CashierName  = reader.IsDBNull(cashierOrdinal) ? "" : reader.GetString(cashierOrdinal),
                     ItemCount    = reader.IsDBNull(itemCountOrdinal)
                                        ? 0
                                        : reader.GetInt32(itemCountOrdinal),
+                    ItemTotal    = reader.IsDBNull(itemTotalOrdinal)
+                                       ? 0m
+                                       : (decimal)reader.GetDouble(itemTotalOrdinal),
                 };
                 heldCarts.Add(heldCart);
             }
@@ -994,6 +1046,35 @@ public sealed class SqliteManager : ISqliteManager, IDisposable
         cmd.Parameters.AddWithValue("@IdLast4OrToken",      (object?)record.IdLast4OrToken ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@DenialReason",        (object?)record.DenialReason   ?? DBNull.Value);
         await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    public async Task<List<AgeVerificationAuditRecord>> GetAgeVerificationAuditAsync(int days = 30)
+    {
+        var list   = new List<AgeVerificationAuditRecord>();
+        var since  = DateTime.UtcNow.AddDays(-days).ToString("o");
+
+        await using var db = new SqliteConnection(ConnectionString);
+        await db.OpenAsync().ConfigureAwait(false);
+        await using var cmd = new SqliteCommand(SELECT_AGE_AUDIT_SQL, db);
+        cmd.Parameters.AddWithValue("@Since", since);
+        await using var rdr = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+        while (await rdr.ReadAsync().ConfigureAwait(false))
+        {
+            list.Add(new AgeVerificationAuditRecord
+            {
+                Id                 = rdr.GetInt32(0),
+                SessionId          = rdr.IsDBNull(1)  ? "" : rdr.GetString(1),
+                CashierName        = rdr.IsDBNull(2)  ? "" : rdr.GetString(2),
+                VerifiedAt         = rdr.IsDBNull(3)  ? DateTime.MinValue : DateTime.Parse(rdr.GetString(3)),
+                VerificationMethod = rdr.IsDBNull(4)  ? "" : rdr.GetString(4),
+                VerificationResult = rdr.IsDBNull(5)  ? "" : rdr.GetString(5),
+                CustomerIs21OrOver = !rdr.IsDBNull(6) && rdr.GetBoolean(6),
+                IdType             = rdr.IsDBNull(7)  ? null : rdr.GetString(7),
+                IdLast4OrToken     = rdr.IsDBNull(8)  ? null : rdr.GetString(8),
+                DenialReason       = rdr.IsDBNull(9)  ? null : rdr.GetString(9),
+            });
+        }
+        return list;
     }
 
     public async Task DropTablesAsync()

@@ -1,23 +1,29 @@
 namespace OmadaPOS.Libreria.Utils;
 
+/// <summary>
+/// Application-wide constants with settable defaults.
+/// Override values by calling <c>Constants.Apply(config)</c> at startup
+/// (done in Program.cs from appsettings.json).
+/// </summary>
 public class Constants
 {
-    public static int CUSTOMERID => 54;
+    // ── API ────────────────────────────────────────────────────────────────────
+    public static string BaseUrl     { get; set; } = "https://efoodapi.azurewebsites.net";
+    public static string URL_STORAGE { get; set; } = "https://efood.blob.core.windows.net/product/";
 
-    //public static int CUSTOMERID => 11;
-    public static string URL_STORAGE => "https://efood.blob.core.windows.net/product/";
+    // ── Terminal defaults (overridden per-terminal in AdminSetting) ────────────
+    public static string IP      { get; set; } = "192.168.1.100";
+    public static int    PORT    { get; set; } = 10009;
+    public static int    TIMEOUT { get; set; } = 180000;
 
-    public static string BaseUrl => "https://efoodapi.azurewebsites.net";
+    // ── Business ───────────────────────────────────────────────────────────────
+    /// <summary>Default customer ID when no customer lookup is used.</summary>
+    public static int CUSTOMERID { get; set; } = 54;
 
-    public static string IP => "192.168.1.100";  
-
-    public static int PORT => 10009;
-
-    public static int TIMEOUT => 180000;
-
-    public static int CustomProduct => 65634;
-    public static int CustomProductTax => 65635;
-    public static int CustomProductWeight => 69271;
+    // ── Custom product PLUs (backend-assigned IDs) ─────────────────────────────
+    public static int CustomProduct       { get; set; } = 65634;
+    public static int CustomProductTax    { get; set; } = 65635;
+    public static int CustomProductWeight { get; set; } = 69271;
 
     public static Dictionary<string, string> LISTERRORS =
                   new Dictionary<string, string>

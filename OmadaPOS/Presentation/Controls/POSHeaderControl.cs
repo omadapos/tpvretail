@@ -15,10 +15,14 @@ public sealed class POSHeaderControl : UserControl
     public event EventHandler? InvoiceRequested;
     public event EventHandler? LogoutRequested;
     public event EventHandler? ExitRequested;
+    public event EventHandler? AgeAuditLogRequested;
+    public event EventHandler? DiagnosticsRequested;
 
     // ── Internal state ─────────────────────────────────────────────────────────
     private readonly Label _lblCashier;
     private readonly Label _lblProductName;
+    private Label? _lblScannerDot;
+    private Label? _lblScaleDot;
 
     // ── Header palette — corporate navy chrome ─────────────────────────────────
     private static readonly Color _headerBg    = AppColors.HeaderPrimary;    // #1F4E79 navy
@@ -116,10 +120,43 @@ public sealed class POSHeaderControl : UserControl
             Font      = new Font("Segoe UI", 9F),
             ForeColor = AppColors.TextOnDarkSecondary,
             BackColor = Color.Transparent,
-            Dock      = DockStyle.Fill,
+            Dock      = DockStyle.Top,
+            Height    = 18,
             TextAlign = ContentAlignment.TopLeft,
         };
 
+        // Hardware status dots — shown at the bottom of zone 1
+        var statusPanel = new Panel
+        {
+            Dock      = DockStyle.Bottom,
+            Height    = 18,
+            BackColor = Color.Transparent,
+        };
+
+        _lblScannerDot = new Label
+        {
+            Text      = "⬤ SCN",
+            Font      = new Font("Segoe UI", 7.5F),
+            ForeColor = Color.FromArgb(100, 148, 163, 184),  // muted — unknown at start
+            BackColor = Color.Transparent,
+            AutoSize  = true,
+            Location  = new Point(0, 2),
+        };
+
+        _lblScaleDot = new Label
+        {
+            Text      = "⬤ SCL",
+            Font      = new Font("Segoe UI", 7.5F),
+            ForeColor = Color.FromArgb(100, 148, 163, 184),
+            BackColor = Color.Transparent,
+            AutoSize  = true,
+            Location  = new Point(52, 2),
+        };
+
+        statusPanel.Controls.Add(_lblScannerDot);
+        statusPanel.Controls.Add(_lblScaleDot);
+
+        zone1.Controls.Add(statusPanel);
         zone1.Controls.Add(_lblCashier);
         zone1.Controls.Add(lblBrand);
         layout.Controls.Add(zone1, 0, 0);
@@ -197,12 +234,14 @@ public sealed class POSHeaderControl : UserControl
     {
         var menu = new ContextMenuStrip();
         StyleContextMenu(menu);
-        menu.Items.Add("Configuración",     null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
-        menu.Items.Add("Reimprimir factura", null, (_, _) => InvoiceRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Settings",        null, (_, _) => SettingsRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Reprint Receipt",      null, (_, _) => InvoiceRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Age Verification Log", null, (_, _) => AgeAuditLogRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Diagnostics",          null, (_, _) => DiagnosticsRequested?.Invoke(this, EventArgs.Empty));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Cierre diario",     null, (_, _) => DailyCloseRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Daily Close",          null, (_, _) => DailyCloseRequested?.Invoke(this, EventArgs.Empty));
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Cerrar sesión",     null, (_, _) => LogoutRequested?.Invoke(this, EventArgs.Empty));
+        menu.Items.Add("Sign Out",        null, (_, _) => LogoutRequested?.Invoke(this, EventArgs.Empty));
 
         var ctrl = (Control)(sender ?? this);
         menu.Show(ctrl, new Point(0, ctrl.Height));
@@ -224,6 +263,27 @@ public sealed class POSHeaderControl : UserControl
 
     public void UpdateProductName(string name)
         => _lblProductName.Text = string.IsNullOrWhiteSpace(name) ? "Ready to scan…" : name;
+
+    /// <summary>Refreshes the scanner status dot. Call from the UI thread.</summary>
+    public void UpdateScannerStatus(bool connected)
+    {
+        if (_lblScannerDot == null) return;
+        _lblScannerDot.ForeColor = connected
+            ? AppColors.AccentGreen
+            : Color.FromArgb(220, 38, 38);   // red
+        _lblScannerDot.Text = connected ? "⬤ SCN" : "⬤ SCN";
+        new ToolTip().SetToolTip(_lblScannerDot, connected ? "Scanner: connected" : "Scanner: disconnected");
+    }
+
+    /// <summary>Refreshes the scale status dot. Call from the UI thread.</summary>
+    public void UpdateScaleStatus(bool connected)
+    {
+        if (_lblScaleDot == null) return;
+        _lblScaleDot.ForeColor = connected
+            ? AppColors.AccentGreen
+            : Color.FromArgb(220, 38, 38);
+        new ToolTip().SetToolTip(_lblScaleDot, connected ? "Scale: connected" : "Scale: disconnected");
+    }
 
     // ── Icon panel factory ─────────────────────────────────────────────────────
     // Using Panel instead of Button: fully owner-drawn, no system chrome.

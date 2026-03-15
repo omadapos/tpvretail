@@ -1,10 +1,16 @@
 using OmadaPOS.Domain.Services;
+using OmadaPOS.Infrastructure;
 using OmadaPOS.Services;
 using OmadaPOS.Services.Navigation;
 using OmadaPOS.Services.POS;
 using OmadaPOS.Views;
 using OmadaPOS.Libreria.Services;
+using OmadaPOS.Libreria.Models;
+using OmadaPOS.Libreria.Utils;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace OmadaPOS;
 
@@ -13,11 +19,13 @@ internal static class Program
     // Internal — only read, never replaced after startup.
     internal static IServiceProvider ServiceProvider { get; private set; } = null!;
 
+    internal static IConfiguration Configuration { get; private set; } = null!;
+
     static void ConfigureServices()
     {
         var services = new ServiceCollection();
 
-        services.AddLogging();
+        services.AddLogging(b => b.AddSerilog(dispose: true));
 
         // ── Infrastructure — Singletons (shared across the whole app lifetime) ─────
         services.AddSingleton<ISqliteManager, SqliteManager>();
@@ -25,11 +33,19 @@ internal static class Program
         services.AddSingleton<IWindowService, WindowService>();
         services.AddSingleton<IHomeInteractionService, HomeInteractionService>();
         services.AddSingleton<IPricingEngine, PricingEngine>();
-        services.AddSingleton<HttpClient>(_ => new HttpClient
+        // Handler chain (outer → inner):
+        //   RetryingHandler → retries transient 5xx / network errors (up to 2 retries)
+        //   TokenExpiryHandler → intercepts 401 and forces re-login
+        //   HttpClientHandler → actual TCP connection
+        services.AddSingleton<HttpClient>(_ =>
         {
-            // Default is 100 s — too long for a POS terminal. With 4 sequential startup
-            // calls, a hung backend would freeze the UI for up to 400 s without this limit.
-            Timeout = TimeSpan.FromSeconds(15)
+            var inner   = new TokenExpiryHandler();          // already wraps HttpClientHandler
+            var outer   = new RetryingHandler { InnerHandler = inner };
+            return new HttpClient(outer)
+            {
+                // 15 s per attempt; with 2 retries + backoff total worst case ≈ 47 s
+                Timeout = TimeSpan.FromSeconds(15)
+            };
         });
         services.AddSingleton<ZebraScannerService>();
 
@@ -84,6 +100,8 @@ internal static class Program
         services.AddTransient<frmPrintInvoice>();
         services.AddTransient<frmProductNoExist>();
         services.AddTransient<frmRefund>();
+        services.AddTransient<frmAgeVerificationLog>();
+        services.AddTransient<frmDiagnostics>();
         services.AddTransient<frmKeyLookup>();
         services.AddTransient<frmError>();
 
@@ -98,16 +116,58 @@ internal static class Program
     [STAThread]
     static async Task Main()
     {
-        // ── Global crash logging ──────────────────────────────────────────────
+        // ── Load external configuration ───────────────────────────────────────
+        Configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+            .Build();
+
+        // Override Constants defaults with values from appsettings.json
+        Constants.BaseUrl               = Configuration["Api:BaseUrl"]               ?? Constants.BaseUrl;
+        Constants.URL_STORAGE           = Configuration["Api:StorageUrl"]             ?? Constants.URL_STORAGE;
+        Constants.IP                    = Configuration["Terminal:DefaultIp"]          ?? Constants.IP;
+        Constants.PORT                  = int.TryParse(Configuration["Terminal:DefaultPort"],    out int port)    ? port    : Constants.PORT;
+        Constants.TIMEOUT               = int.TryParse(Configuration["Terminal:TimeoutMs"],      out int timeout) ? timeout : Constants.TIMEOUT;
+        Constants.CUSTOMERID            = int.TryParse(Configuration["Business:DefaultCustomerId"],        out int cid)  ? cid  : Constants.CUSTOMERID;
+        Constants.CustomProduct         = int.TryParse(Configuration["Business:CustomProductId"],          out int cp1)  ? cp1  : Constants.CustomProduct;
+        Constants.CustomProductTax      = int.TryParse(Configuration["Business:CustomProductTaxId"],       out int cp2)  ? cp2  : Constants.CustomProductTax;
+        Constants.CustomProductWeight   = int.TryParse(Configuration["Business:CustomProductWeightId"],    out int cp3)  ? cp3  : Constants.CustomProductWeight;
+
+        // ── Serilog — file sink (rotates daily, keeps 30 files) ───────────────
+        string logDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "OmadaPOS", "logs");
+        Directory.CreateDirectory(logDir);
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Is(Enum.TryParse<Serilog.Events.LogEventLevel>(
+                Configuration["Logging:MinimumLevel"], ignoreCase: true, out var lvl)
+                    ? lvl : Serilog.Events.LogEventLevel.Information)
+            .Enrich.WithProperty("App", "OmadaPOS")
+            .WriteTo.File(
+                path:                   Path.Combine(logDir, "omadapos-.log"),
+                rollingInterval:        Serilog.RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate:         "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+
+        Log.Information("OmadaPOS starting. BaseUrl={BaseUrl}", Constants.BaseUrl);
+
+        // ── Global crash logging (also write to Serilog) ──────────────────────
         var logPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
             "OmadaPOS_crash.txt");
 
-        Application.ThreadException += (_, e) => LogCrash(logPath, e.Exception);
+        Application.ThreadException += (_, e) =>
+        { Log.Fatal(e.Exception, "Unhandled UI thread exception"); LogCrash(logPath, e.Exception); };
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
-            LogCrash(logPath, e.ExceptionObject as Exception ?? new Exception(e.ExceptionObject?.ToString()));
+        {
+            var ex = e.ExceptionObject as Exception ?? new Exception(e.ExceptionObject?.ToString());
+            Log.Fatal(ex, "Unhandled AppDomain exception");
+            LogCrash(logPath, ex);
+        };
         TaskScheduler.UnobservedTaskException += (_, e) =>
-        { LogCrash(logPath, e.Exception); e.SetObserved(); };
+        { Log.Warning(e.Exception, "Unobserved task exception"); LogCrash(logPath, e.Exception); e.SetObserved(); };
 
         Application.SetHighDpiMode(HighDpiMode.SystemAware);
         Application.EnableVisualStyles();
@@ -117,6 +177,43 @@ internal static class Program
         LocalPinStore.Load();
 
         ConfigureServices();
+
+        // ── 401 handler: when token expires, clear session and force re-login ──
+        SessionExpiredNotifier.SessionExpired += (_, _) =>
+        {
+            // Must marshal to the STA UI thread
+            var signIn = ServiceProvider.GetRequiredService<frmSignIn>();
+            signIn.BeginInvoke(() =>
+            {
+                Log.Warning("Session token expired — forcing re-login");
+                SessionManager.Clear();
+                SessionExpiredNotifier.Reset();
+
+                // Close all open forms except frmSignIn
+                foreach (Form f in Application.OpenForms.Cast<Form>().ToArray())
+                    if (f is not frmSignIn) f.Close();
+
+                MessageBox.Show(
+                    "Your session has expired. Please sign in again.",
+                    "Session Expired", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                signIn.Show();
+            });
+        };
+
+        // ── Offline / connectivity-lost handler ───────────────────────────────
+        OfflineNotifier.ConnectivityLost += (_, _) =>
+        {
+            // Show a friendly toast on the currently active form.
+            var home = Application.OpenForms.OfType<frmHome>().FirstOrDefault();
+            if (home is { IsDisposed: false })
+            {
+                home.BeginInvoke(() =>
+                {
+                    home.ShowOfflineToast();
+                });
+            }
+        };
 
         // Inicializar la base de datos al inicio de la aplicación
         try
@@ -143,6 +240,9 @@ internal static class Program
         }
 
         Application.Run(ServiceProvider.GetRequiredService<frmSignIn>());
+
+        Log.Information("OmadaPOS shutting down");
+        Log.CloseAndFlush();
     }
 
     private static void LogCrash(string path, Exception? ex)

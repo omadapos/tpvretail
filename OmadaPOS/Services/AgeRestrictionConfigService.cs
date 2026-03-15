@@ -48,16 +48,8 @@ public sealed class AgeRestrictionConfigService : IAgeRestrictionConfigService
     private volatile HashSet<string> _restrictedUpcs       = new(StringComparer.OrdinalIgnoreCase);
     private volatile HashSet<int>    _restrictedCategories = [];
 
-    // ── Hardcoded dev UPCs ─────────────────────────────────────────────────────
-    // Remove (or move to SQLite) once the backend natively returns
-    // RequiresAgeVerification = true for alcohol products.
-    // ── DEV / QA test UPCs ────────────────────────────────────────────────────
-    // These UPCs are always treated as age-restricted regardless of the DB or
-    // backend flag.  Remove or empty this set before going to production.
-    private static readonly HashSet<string> _devUPCs = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "071537001303",   // DEV TEST — remove before production
-    };
+    // Dev UPC list removed — age restriction is now driven entirely by the SQLite
+    // local config and the RequiresAgeVerification flag on the product model.
 
     public AgeRestrictionConfigService(ISqliteManager db, ILogger<AgeRestrictionConfigService>? logger = null)
     {
@@ -69,10 +61,6 @@ public sealed class AgeRestrictionConfigService : IAgeRestrictionConfigService
 
     public bool IsRestricted(string? upc, int categoryId)
     {
-        // Check hardcoded dev list first (fastest)
-        if (upc != null && _devUPCs.Contains(upc))
-            return true;
-
         // Check in-memory cache (loaded from SQLite at startup)
         if (upc != null && _restrictedUpcs.Contains(upc))
             return true;

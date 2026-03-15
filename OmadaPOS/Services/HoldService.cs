@@ -23,6 +23,12 @@ public interface IHoldService
     Task<HoldCartModel?> GetHeldCartsByIdAsync(string holdId);
 
     /// <summary>
+    /// Retrieves the items from a specific held cart (read-only — cart is NOT deleted).
+    /// Used for preview purposes only.
+    /// </summary>
+    Task<List<CartItem>> RetrieveHeldCartPreviewAsync(string holdId);
+
+    /// <summary>
     /// Retrieves the items from a specific held cart
     /// </summary>
     /// <param name="holdId">ID of the held cart to retrieve</param>
@@ -114,6 +120,9 @@ public class HoldService : IHoldService
             throw;
         }
     }
+
+    public Task<List<CartItem>> RetrieveHeldCartPreviewAsync(string holdId)
+        => RetrieveHeldCartAsync(holdId);
 
     public async Task<List<CartItem>> RetrieveHeldCartAsync(string holdId)
     {

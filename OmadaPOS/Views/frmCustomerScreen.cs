@@ -53,8 +53,10 @@ public sealed class frmCustomerScreen : Form
     private Panel      _pnlGlow        = null!;   // custom-drawn pulsing WELCOME
     private Panel      _idlePanel      = null!;
     private Panel      _activePanel    = null!;
-    private Label      _lblStoreHeader = null!;   // store name in the top header bar
+    private Label      _lblStoreHeader  = null!;   // store name in the top header bar
     private Label      _lblStoreIdle   = null!;   // store name in the idle welcome card
+    private Label      _lblLastItem    = null!;   // last-scanned item name + price banner
+    private Panel      _pnlThankYou   = null!;   // full overlay after payment
 
     // ── Timers ────────────────────────────────────────────────────────────────
     private System.Windows.Forms.Timer? _timerBanner;
@@ -103,6 +105,41 @@ public sealed class frmCustomerScreen : Form
         SessionManager.BranchName = name;
         if (_lblStoreHeader != null) _lblStoreHeader.Text = $"🏪  {name}";
         if (_lblStoreIdle   != null) _lblStoreIdle.Text   = name;
+    }
+
+    /// <summary>Highlights the most recently scanned item in the last-item banner.</summary>
+    public void ShowLastScannedItem(string productName, decimal unitPrice, double qty)
+    {
+        void Update()
+        {
+            if (_lblLastItem == null) return;
+            string qtyStr = qty == 1 ? "" : $"  ×{qty:G}";
+            _lblLastItem.Text      = $"▶  {productName}{qtyStr}   –   {unitPrice:C}";
+            _lblLastItem.ForeColor = AppColors.AccentGreenLight;
+        }
+        if (InvokeRequired) Invoke(Update); else Update();
+    }
+
+    /// <summary>Displays a full-screen "Thank You" overlay for 4 seconds after payment.</summary>
+    public void ShowThankYou()
+    {
+        void Show()
+        {
+            _pnlThankYou.BringToFront();
+            _pnlThankYou.Visible = true;
+
+            var t = new System.Windows.Forms.Timer { Interval = 4_000 };
+            t.Tick += (_, _) =>
+            {
+                t.Stop(); t.Dispose();
+                _pnlThankYou.Visible = false;
+                _idlePanel.BringToFront();
+                _isIdle = true;
+                if (_lblLastItem != null) _lblLastItem.Text = "Ready to scan…";
+            };
+            t.Start();
+        }
+        if (InvokeRequired) Invoke(Show); else Show();
     }
 
     public void PositionOnSecondaryScreen()
@@ -227,15 +264,60 @@ public sealed class frmCustomerScreen : Form
 
         _activePanel = BuildActivePanel();
         _idlePanel   = BuildIdlePanel();
+        _pnlThankYou = BuildThankYouPanel();
 
-        _activePanel.Dock = DockStyle.Fill;
-        _idlePanel.Dock   = DockStyle.Fill;
+        _activePanel.Dock  = DockStyle.Fill;
+        _idlePanel.Dock    = DockStyle.Fill;
+        _pnlThankYou.Dock  = DockStyle.Fill;
 
         container.Controls.Add(_activePanel);
         container.Controls.Add(_idlePanel);  // added last → on top by default
+        container.Controls.Add(_pnlThankYou);
+        _pnlThankYou.Visible = false;
         // Idle is shown first; RefreshCart() will switch as needed.
 
         return container;
+    }
+
+    // ── THANK-YOU overlay ─────────────────────────────────────────────────────
+    private Panel BuildThankYouPanel()
+    {
+        var panel = new Panel { BackColor = AppColors.NavyDark, Padding = new Padding(0) };
+
+        panel.Paint += (_, e) =>
+        {
+            e.Graphics.SmoothingMode    = SmoothingMode.AntiAlias;
+            e.Graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            var r = panel.ClientRectangle;
+            using var bgBrush = new SolidBrush(Color.FromArgb(30, 22, 60));
+            e.Graphics.FillRectangle(bgBrush, r);
+
+            // "✔" checkmark
+            using var checkFont  = new Font("Segoe UI", 64F, FontStyle.Bold);
+            using var checkBrush = new SolidBrush(AppColors.AccentGreen);
+            string check = "✔";
+            var checkSize = e.Graphics.MeasureString(check, checkFont);
+            e.Graphics.DrawString(check, checkFont, checkBrush,
+                (r.Width - checkSize.Width) / 2f, r.Height * 0.22f);
+
+            // "THANK YOU!"
+            using var tyFont  = new Font("Segoe UI", 36F, FontStyle.Bold);
+            using var tyBrush = new SolidBrush(AppColors.TextWhite);
+            string ty = "THANK YOU!";
+            var tySize = e.Graphics.MeasureString(ty, tyFont);
+            e.Graphics.DrawString(ty, tyFont, tyBrush,
+                (r.Width - tySize.Width) / 2f, r.Height * 0.52f);
+
+            // subtitle
+            using var subFont  = new Font("Segoe UI", 15F);
+            using var subBrush = new SolidBrush(Color.FromArgb(180, 255, 255, 255));
+            string sub = "Please take your receipt. Have a great day!";
+            var subSize = e.Graphics.MeasureString(sub, subFont);
+            e.Graphics.DrawString(sub, subFont, subBrush,
+                (r.Width - subSize.Width) / 2f, r.Height * 0.66f);
+        };
+
+        return panel;
     }
 
     // ── IDLE panel ────────────────────────────────────────────────────────────
@@ -496,6 +578,32 @@ public sealed class frmCustomerScreen : Form
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
         });
+
+        // Last-scanned item banner — shown between subHeader and the list
+        var lastItemPanel = new Panel
+        {
+            Dock      = DockStyle.Top,
+            Height    = 52,
+            BackColor = AppColors.NavyDark,
+            Padding   = new Padding(12, 0, 12, 0),
+        };
+        lastItemPanel.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Color.FromArgb(30, 255, 255, 255), 1f);
+            e.Graphics.DrawLine(pen, 0, lastItemPanel.Height - 1, lastItemPanel.Width, lastItemPanel.Height - 1);
+        };
+
+        _lblLastItem = new Label
+        {
+            Text      = "Ready to scan…",
+            Font      = new Font("Segoe UI", 12F, FontStyle.Bold),
+            ForeColor = AppColors.AccentGreenLight,
+            BackColor = Color.Transparent,
+            Dock      = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        lastItemPanel.Controls.Add(_lblLastItem);
+        panel.Controls.Add(lastItemPanel);
 
         _lvCart = new ListView
         {

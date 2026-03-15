@@ -347,9 +347,10 @@ public partial class frmSignIn
 
             if (!string.IsNullOrEmpty(response.Token))
             {
-                // Successful login — reset lockout counter
+                // Successful login — reset lockout counter and 401 notifier
                 _failedAttempts = 0;
                 _lockoutUntil   = DateTime.MinValue;
+                OmadaPOS.Infrastructure.SessionExpiredNotifier.Reset();
 
                 SessionManager.Token    = response.Token;
                 SessionManager.BranchId = response.BranchId;

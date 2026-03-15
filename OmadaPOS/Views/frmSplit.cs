@@ -6,6 +6,7 @@ using OmadaPOS.Libreria.Utils;
 using OmadaPOS.Services;
 using OmadaPOS.Services.Navigation;
 using System.Drawing.Text;
+using System.Text.RegularExpressions;
 
 namespace OmadaPOS.Views;
 
@@ -27,6 +28,7 @@ public sealed class frmSplit : Form
     private readonly IOrderService           _orderService;
     private readonly IAdminSettingService    _adminSettingService;
     private readonly IHomeInteractionService _homeInteractionService;
+    private readonly IGiftCardService        _giftCardService;
     private readonly ILogger<frmSplit>       _logger;
 
     private EventHandler? _cartChangedHandler;
@@ -53,6 +55,7 @@ public sealed class frmSplit : Form
         IOrderService           orderService,
         IAdminSettingService    adminSettingService,
         IHomeInteractionService homeInteractionService,
+        IGiftCardService        giftCardService,
         ILogger<frmSplit>       logger)
     {
         _shoppingCart           = shoppingCart;
@@ -61,6 +64,7 @@ public sealed class frmSplit : Form
         _orderService           = orderService;
         _adminSettingService    = adminSettingService;
         _homeInteractionService = homeInteractionService;
+        _giftCardService        = giftCardService;
         _logger                 = logger;
 
         InitForm();
@@ -343,21 +347,23 @@ public sealed class frmSplit : Form
         {
             Dock        = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount    = 9,
+            RowCount    = 11,
             BackColor   = Color.Transparent,
             Padding     = new Padding(10, 0, 0, 0),
             Margin      = new Padding(0),
         };
         col.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 18)); // CASH (larger)
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 12)); // CREDIT
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 12)); // DEBIT
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 12)); // EBT
-        col.RowStyles.Add(new RowStyle(SizeType.Percent,  5)); // spacer
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 11)); // LOAD REMAINING
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // EBT ELIGIBLE
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // EBT BALANCE
-        col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // CLOSE
+        col.RowStyles.Add(new RowStyle(SizeType.Percent, 15)); // CASH
+        col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // CREDIT
+        col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // DEBIT
+        col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // EBT
+        col.RowStyles.Add(new RowStyle(SizeType.Percent, 10)); // GIFT CARD
+        col.RowStyles.Add(new RowStyle(SizeType.Percent,  3)); // spacer
+        col.RowStyles.Add(new RowStyle(SizeType.Percent,  9)); // LOAD REMAINING
+        col.RowStyles.Add(new RowStyle(SizeType.Percent,  8)); // EBT ELIGIBLE
+        col.RowStyles.Add(new RowStyle(SizeType.Percent,  8)); // EBT BALANCE
+        col.RowStyles.Add(new RowStyle(SizeType.Percent,  9)); // UNDO LAST
+        col.RowStyles.Add(new RowStyle(SizeType.Percent,  8)); // CLOSE
 
         void AddPayBtn(string label, string tag, Color color, int row)
         {
@@ -380,14 +386,21 @@ public sealed class frmSplit : Form
         AddPayBtn("DEBIT CARD",  PaymentMethod.Debit,  AppColors.SlateBlue,   2);
         AddPayBtn("EBT",         PaymentMethod.Ebt,    AppColors.SlateBlue,   3);
 
+        // Gift Card
+        var btnGC = new Button { Dock = DockStyle.Fill, Text = "🎁  GIFT CARD", Margin = new Padding(0, 0, 0, 6) };
+        ElegantButtonStyles.Style(btnGC, AppColors.SlateBlue, AppColors.TextWhite, fontSize: 13f);
+        btnGC.Click += async (_, _) => await ProcessGiftCardInSplitAsync(btnGC);
+        _paymentButtons.Add(btnGC);
+        col.Controls.Add(btnGC, 0, 4);
+
         // Spacer
-        col.Controls.Add(new Label { Dock = DockStyle.Fill, BackColor = Color.Transparent }, 0, 4);
+        col.Controls.Add(new Label { Dock = DockStyle.Fill, BackColor = Color.Transparent }, 0, 5);
 
         // Load Remaining
         var btnRemain = new Button { Dock = DockStyle.Fill, Text = "LOAD REMAINING", Margin = new Padding(0, 0, 0, 6) };
         ElegantButtonStyles.Style(btnRemain, AppColors.Warning, AppColors.TextWhite, fontSize: 13f);
         btnRemain.Click += (_, _) => _numPad.ValueCents = (int)(_remainingAmount * 100);
-        col.Controls.Add(btnRemain, 0, 5);
+        col.Controls.Add(btnRemain, 0, 6);
 
         // EBT Eligible
         var btnCalcEbt = new Button { Dock = DockStyle.Fill, Text = "EBT ELIGIBLE", Margin = new Padding(0, 0, 0, 6) };
@@ -397,19 +410,25 @@ public sealed class frmSplit : Form
             decimal ebt = _shoppingCart.Items.Where(i => i.IsEBT).Sum(i => i.Total);
             _numPad.ValueCents = (int)(ebt * 100);
         };
-        col.Controls.Add(btnCalcEbt, 0, 6);
+        col.Controls.Add(btnCalcEbt, 0, 7);
 
         // EBT Balance
         var btnEbtBal = new Button { Dock = DockStyle.Fill, Text = "EBT BALANCE", Margin = new Padding(0, 0, 0, 6) };
         ElegantButtonStyles.Style(btnEbtBal, AppColors.NavyBase, AppColors.TextWhite, fontSize: 13f);
         btnEbtBal.Click += async (_, _) => await QueryEbtBalanceAsync(btnEbtBal);
-        col.Controls.Add(btnEbtBal, 0, 7);
+        col.Controls.Add(btnEbtBal, 0, 8);
+
+        // Undo Last Payment
+        var btnUndo = new Button { Dock = DockStyle.Fill, Text = "↩  UNDO LAST", Margin = new Padding(0, 0, 0, 6) };
+        ElegantButtonStyles.Style(btnUndo, AppColors.Warning, AppColors.TextWhite, fontSize: 13f);
+        btnUndo.Click += async (_, _) => await UndoLastPaymentAsync(btnUndo);
+        col.Controls.Add(btnUndo, 0, 9);
 
         // Close
         var btnClose = new Button { Dock = DockStyle.Fill, Text = "✕  CLOSE", Margin = new Padding(0, 8, 0, 0) };
         ElegantButtonStyles.Style(btnClose, AppColors.Danger, AppColors.TextWhite, fontSize: 15f);
         btnClose.Click += (_, _) => Close();
-        col.Controls.Add(btnClose, 0, 8);
+        col.Controls.Add(btnClose, 0, 10);
 
         return col;
     }
@@ -615,6 +634,155 @@ public sealed class frmSplit : Form
         {
             if (!waiting.IsDisposed) waiting.Close();
             throw;   // bubble up to PaymentButton_Click catch block
+        }
+    }
+
+    private async Task ProcessGiftCardInSplitAsync(Button btnGC)
+    {
+        decimal amount = _numPad.ValueDecimal;
+        if (amount <= 0)
+        {
+            MessageBox.Show("Enter the amount to charge to the gift card.", "Gift Card",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        if (amount > _remainingAmount)
+        {
+            MessageBox.Show($"Amount exceeds remaining balance of {_remainingAmount:C}.",
+                "Invalid Amount", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        // Inline code-entry dialog
+        string? cardCode = ShowCardCodeDialog();
+        if (string.IsNullOrWhiteSpace(cardCode)) return;
+
+        foreach (var b in _paymentButtons) b.Enabled = false;
+        try
+        {
+            var card = await _giftCardService.GetByCode(cardCode);
+            if (card == null)
+            {
+                MessageBox.Show("Gift card not found. Verify the card number and try again.",
+                    "Not Found", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            decimal balance = (decimal)(card.Balance ?? 0);
+            if (balance < amount)
+            {
+                MessageBox.Show(
+                    $"Insufficient balance.\n\nCard balance: {balance:C}\nCharge amount: {amount:C}",
+                    "Insufficient Balance", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            card.Balance = (double?)(balance - amount);
+            bool deducted = await _giftCardService.PlaceSaldo(card.Id, card);
+            if (!deducted)
+            {
+                MessageBox.Show("Gift card deduction failed. Please try again.",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            await _paymentSplitService.CreatePaymentAsync(PaymentMethod.GiftCard, amount);
+            _numPad.Reset();
+            await LoadPaymentsAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing gift card in split");
+            MessageBox.Show($"Gift card error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            foreach (var b in _paymentButtons) b.Enabled = true;
+        }
+    }
+
+    /// <summary>
+    /// Shows a minimal dialog to scan or type a gift card code.
+    /// Returns the parsed card code, or null if cancelled.
+    /// </summary>
+    private string? ShowCardCodeDialog()
+    {
+        using var dlg  = new Form();
+        dlg.Text       = "Gift Card";
+        dlg.Size       = new Size(420, 180);
+        dlg.StartPosition = FormStartPosition.CenterParent;
+        dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+        dlg.MaximizeBox = false; dlg.MinimizeBox = false;
+        dlg.BackColor  = AppColors.BackgroundPrimary;
+
+        var lbl = new Label { Text = "Scan or type the gift card number:", Dock = DockStyle.Top,
+            Height = 36, Font = AppTypography.Body, ForeColor = AppColors.TextPrimary,
+            BackColor = Color.Transparent, TextAlign = ContentAlignment.BottomLeft,
+            Padding = new Padding(12, 0, 0, 0) };
+
+        var tb = new TextBox { Dock = DockStyle.Top, Height = 36, Font = AppTypography.Body,
+            BackColor = AppColors.SurfaceMuted, ForeColor = AppColors.TextPrimary,
+            BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(12, 4, 12, 0) };
+
+        var pBtn = new Panel { Dock = DockStyle.Bottom, Height = 48,
+            BackColor = AppColors.SurfaceMuted, Padding = new Padding(12, 8, 12, 8) };
+
+        var btnOk = new Button { Text = "OK", Dock = DockStyle.Right, Width = 100,
+            DialogResult = DialogResult.OK };
+        ElegantButtonStyles.Style(btnOk, AppColors.AccentGreen, AppColors.TextWhite, fontSize: 11f);
+
+        var btnCancel = new Button { Text = "Cancel", Dock = DockStyle.Right, Width = 100,
+            DialogResult = DialogResult.Cancel };
+        ElegantButtonStyles.Style(btnCancel, AppColors.Danger, AppColors.TextWhite, fontSize: 11f);
+
+        pBtn.Controls.Add(btnOk);
+        pBtn.Controls.Add(btnCancel);
+        dlg.Controls.Add(pBtn);
+        dlg.Controls.Add(tb);
+        dlg.Controls.Add(lbl);
+        dlg.AcceptButton = btnOk;
+        dlg.CancelButton = btnCancel;
+
+        dlg.Shown += (_, _) => tb.Focus();
+
+        if (dlg.ShowDialog(this) != DialogResult.OK) return null;
+
+        string raw = tb.Text.Trim();
+        // Parse MSR track data (%...?) if present; otherwise use raw input
+        var m = Regex.Match(raw, @"%(.*?)\?");
+        return m.Success ? m.Groups[1].Value : raw;
+    }
+
+    private async Task UndoLastPaymentAsync(Button btnUndo)
+    {
+        var payments = await _paymentSplitService.GetSessionPaymentsAsync();
+        if (payments.Count == 0)
+        {
+            MessageBox.Show("No payments to undo.", "Undo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var last = payments[^1];
+        var confirm = MessageBox.Show(
+            $"Remove last payment?\n\n  {last.PaymentType}   {last.Total:C}",
+            "Undo Last Payment", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+        if (confirm != DialogResult.Yes) return;
+
+        btnUndo.Enabled = false;
+        try
+        {
+            await _paymentSplitService.RemoveLastPaymentAsync();
+            await LoadPaymentsAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error undoing last payment");
+            MessageBox.Show($"Could not undo: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            btnUndo.Enabled = true;
         }
     }
 
